@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { AppProvider } from './context/AppContext'
 import Layout from './components/Layout'
 import LoadingScreen from './components/LoadingScreen'
+import AdminApp from './admin/AdminApp'
 import Home from './pages/Home'
 import Exhibitors from './pages/Exhibitors'
 import ExhibitorDetail from './pages/ExhibitorDetail'
@@ -33,6 +34,13 @@ function App() {
       <AppProvider>
         <Router>
           <Routes>
+            {/* Admin Portal Routes */}
+            <Route path="/admin/*" element={<AdminApp />} />
+            <Route path="/exhibitor/*" element={<AdminApp />} />
+            <Route path="/partner/*" element={<AdminApp />} />
+            <Route path="/agent/*" element={<AdminApp />} />
+
+            {/* Mobile App Routes */}
             <Route path="/" element={<Layout />}>
               <Route index element={<Home />} />
               <Route path="exhibitors" element={<Exhibitors />} />
