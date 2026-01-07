@@ -104,11 +104,9 @@ const LeadRetrieval = () => {
     <>
       <Header title="Lead Retrieval" />
       <div className="p-4 space-y-4">
-        <Card className="p-4 bg-gradient-to-br from-purple-50 to-pink-50 border-0">
+        <Card className="p-4 bg-gradient-to-br from-primary-50 to-accent-50 border-0">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-purple-600 rounded-xl flex items-center justify-center">
-              <UserPlus className="w-6 h-6 text-white" />
-            </div>
+            <img src="/media/PNG/App Icons-16.png" alt="Lead Retrieval" className="w-12 h-12" />
             <div className="flex-1">
               <h3 className="font-bold text-gray-900">Exhibitor Mode</h3>
               <p className="text-sm text-gray-600">Scan & manage your leads</p>

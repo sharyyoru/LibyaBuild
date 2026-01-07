@@ -76,11 +76,9 @@ const QA = () => {
     <>
       <Header title="Live Q&A & Polls" />
       <div className="p-4 space-y-4">
-        <Card className="p-4 bg-gradient-to-br from-blue-50 to-purple-50 border-0">
+        <Card className="p-4 bg-gradient-to-br from-primary-50 to-accent-50 border-0">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center">
-              <MessageSquare className="w-6 h-6 text-white" />
-            </div>
+            <img src="/media/PNG/App Icons-06.png" alt="Q&A" className="w-12 h-12" />
             <div className="flex-1">
               <h3 className="font-bold text-gray-900">Interactive Sessions</h3>
               <p className="text-sm text-gray-600">Ask questions & vote in real-time</p>

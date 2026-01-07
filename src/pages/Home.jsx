@@ -1,17 +1,15 @@
 import { Link } from 'react-router-dom'
-import { Building2, Users, Calendar, Newspaper, MapPin, Ticket, Users2, MessageSquare, QrCode, Navigation as NavigationIcon } from 'lucide-react'
+import { QrCode } from 'lucide-react'
 import Card from '../components/Card'
 import { newsItems } from '../data/mockData'
 import { format } from 'date-fns'
 
-const QuickAction = ({ to, icon: Icon, title, color }) => (
+const QuickAction = ({ to, icon, title }) => (
   <Link to={to}>
-    <Card className="p-4 h-full">
+    <Card className="p-3 h-full">
       <div className="flex flex-col items-center gap-2 text-center">
-        <div className={`w-12 h-12 rounded-2xl ${color} flex items-center justify-center`}>
-          <Icon className="w-6 h-6 text-white" />
-        </div>
-        <span className="text-sm font-semibold text-gray-900">{title}</span>
+        <img src={icon} alt={title} className="w-12 h-12 object-contain" />
+        <span className="text-xs font-semibold text-gray-900 leading-tight">{title}</span>
       </div>
     </Card>
   </Link>
@@ -21,12 +19,20 @@ const Home = () => {
   const latestNews = newsItems.slice(0, 3)
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary-600 to-primary-700">
-      <div className="px-4 pt-8 pb-6 safe-top">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-3xl font-bold text-white mb-1">Libya Build</h1>
-            <p className="text-primary-100">March 15-17, 2026</p>
+    <div className="min-h-screen bg-gradient-to-br from-primary-600 via-primary-700 to-accent-500">
+      <div className="relative overflow-hidden">
+        <img 
+          src="/media/Banner 2.jpg" 
+          alt="Libya Build" 
+          className="w-full h-48 object-cover opacity-40"
+        />
+        <div className="absolute inset-0 flex items-center justify-between px-4 safe-top">
+          <div className="flex items-center gap-3">
+            <img src="/media/App Icons-14.svg" alt="Libya Build" className="w-16 h-16" />
+            <div>
+              <h1 className="text-3xl font-bold text-white mb-1">Libya Build</h1>
+              <p className="text-white/90 text-sm">March 15-17, 2026</p>
+            </div>
           </div>
           <Link to="/tickets">
             <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
@@ -34,12 +40,12 @@ const Home = () => {
             </div>
           </Link>
         </div>
+      </div>
 
-        <Card className="p-4 bg-gradient-to-br from-white to-primary-50 border-0 shadow-xl">
+      <div className="px-4 py-6">
+        <Card className="p-4 bg-gradient-to-br from-white to-accent-50 border-0 shadow-xl">
           <div className="flex items-center gap-3">
-            <div className="w-16 h-16 bg-primary-600 rounded-2xl flex items-center justify-center flex-shrink-0">
-              <Calendar className="w-8 h-8 text-white" />
-            </div>
+            <img src="/media/PNG/App Icons-09.png" alt="Event" className="w-16 h-16" />
             <div className="flex-1">
               <h3 className="font-bold text-gray-900 mb-1">Event Starting Soon!</h3>
               <p className="text-sm text-gray-600">3 days of innovation and networking</p>
@@ -52,14 +58,14 @@ const Home = () => {
         <div className="px-4 mb-6">
           <h2 className="text-lg font-bold text-gray-900 mb-4">Quick Access</h2>
           <div className="grid grid-cols-4 gap-3">
-            <QuickAction to="/exhibitors" icon={Building2} title="Exhibitors" color="bg-blue-500" />
-            <QuickAction to="/speakers" icon={Users} title="Speakers" color="bg-purple-500" />
-            <QuickAction to="/floor-plan" icon={MapPin} title="Floor Plan" color="bg-green-500" />
-            <QuickAction to="/schedule" icon={Calendar} title="Schedule" color="bg-orange-500" />
-            <QuickAction to="/tickets" icon={Ticket} title="Tickets" color="bg-red-500" />
-            <QuickAction to="/meetings" icon={Users2} title="Meetings" color="bg-indigo-500" />
-            <QuickAction to="/business-cards" icon={QrCode} title="Cards" color="bg-teal-500" />
-            <QuickAction to="/navigation" icon={NavigationIcon} title="Navigate" color="bg-pink-500" />
+            <QuickAction to="/exhibitors" icon="/media/PNG/App Icons-02.png" title="Exhibitors" />
+            <QuickAction to="/speakers" icon="/media/PNG/App Icons-11.png" title="Speakers" />
+            <QuickAction to="/floor-plan" icon="/media/PNG/App Icons-12.png" title="Floor Plan" />
+            <QuickAction to="/schedule" icon="/media/PNG/App Icons-09.png" title="Schedule" />
+            <QuickAction to="/tickets" icon="/media/PNG/App Icons-08.png" title="Tickets" />
+            <QuickAction to="/meetings" icon="/media/PNG/App Icons-15.png" title="Meetings" />
+            <QuickAction to="/business-cards" icon="/media/PNG/App Icons-01.png" title="Cards" />
+            <QuickAction to="/navigation" icon="/media/PNG/App Icons-03.png" title="Navigate" />
           </div>
         </div>
 

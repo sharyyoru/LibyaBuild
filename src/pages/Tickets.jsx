@@ -23,13 +23,13 @@ const Tickets = () => {
     <>
       <Header title="My Tickets" showBack={false} />
       <div className="p-4 space-y-4">
-        <Card className="p-6 bg-gradient-to-br from-primary-600 to-primary-700 text-white border-0">
+        <Card className="p-6 bg-gradient-to-br from-primary-600 to-accent-500 text-white border-0">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h3 className="text-lg font-bold mb-1">Digital Entry Pass</h3>
-              <p className="text-primary-100 text-sm">Libya Build 2026</p>
+              <p className="text-white/80 text-sm">Libya Build 2026</p>
             </div>
-            <Ticket className="w-8 h-8" />
+            <img src="/media/PNG/App Icons-08.png" alt="Ticket" className="w-10 h-10" />
           </div>
           
           <div className="bg-white rounded-2xl p-4 mb-4">

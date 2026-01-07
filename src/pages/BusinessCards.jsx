@@ -32,10 +32,13 @@ const BusinessCards = () => {
     <>
       <Header title="Business Cards" />
       <div className="p-4 space-y-4">
-        <Card className="p-6 bg-gradient-to-br from-primary-600 to-accent-600 text-white border-0">
-          <div className="text-center mb-4">
-            <h3 className="text-xl font-bold mb-2">My Digital Card</h3>
-            <p className="text-sm text-white/80">Share your contact information</p>
+        <Card className="p-6 bg-gradient-to-br from-primary-600 to-accent-500 text-white border-0">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-xl font-bold mb-1">My Digital Card</h3>
+              <p className="text-sm text-white/80">Share your contact information</p>
+            </div>
+            <img src="/media/PNG/App Icons-01.png" alt="Business Card" className="w-12 h-12" />
           </div>
           
           <div className="bg-white rounded-2xl p-4 mb-4">

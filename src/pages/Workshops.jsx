@@ -31,11 +31,9 @@ const Workshops = () => {
     <>
       <Header title="Workshops" />
       <div className="p-4 space-y-4">
-        <Card className="p-4 bg-gradient-to-br from-accent-50 to-primary-50 border-0">
+        <Card className="p-4 bg-gradient-to-br from-primary-50 to-accent-50 border-0">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 bg-accent-600 rounded-xl flex items-center justify-center">
-              <GraduationCap className="w-6 h-6 text-white" />
-            </div>
+            <img src="/media/PNG/App Icons-13.png" alt="Workshops" className="w-12 h-12" />
             <div className="flex-1">
               <h3 className="font-bold text-gray-900">Certified Workshops</h3>
               <p className="text-sm text-gray-600">Hands-on technical training</p>

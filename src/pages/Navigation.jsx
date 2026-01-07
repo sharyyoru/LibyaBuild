@@ -18,11 +18,9 @@ const Navigation = () => {
     <>
       <Header title="Navigation & Transport" showBack={false} />
       <div className="p-4 space-y-4">
-        <Card className="p-4 bg-gradient-to-br from-blue-600 to-purple-600 text-white border-0">
+        <Card className="p-4 bg-gradient-to-br from-primary-600 to-accent-500 text-white border-0">
           <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-              <NavigationIcon className="w-6 h-6 text-white" />
-            </div>
+            <img src="/media/PNG/App Icons-03.png" alt="Navigation" className="w-12 h-12" />
             <div className="flex-1">
               <h3 className="font-bold text-lg">Wayfinding Active</h3>
               <p className="text-sm text-white/80">GPS-enabled navigation</p>

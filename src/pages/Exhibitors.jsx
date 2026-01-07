@@ -1,18 +1,24 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { MapPin, Heart, Mail, Phone } from 'lucide-react'
 import Header from '../components/Header'
 import SearchBar from '../components/SearchBar'
 import Card from '../components/Card'
 import Badge from '../components/Badge'
+import Loader from '../components/Loader'
 import { exhibitors } from '../data/mockData'
 import { useApp } from '../context/AppContext'
 import { clsx } from 'clsx'
 
 const Exhibitors = () => {
+  const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('all')
   const { isFavorite, toggleFavorite } = useApp()
+
+  useEffect(() => {
+    setTimeout(() => setIsLoading(false), 500)
+  }, [])
 
   const categories = ['all', ...new Set(exhibitors.map(e => e.category))]
 
@@ -50,8 +56,13 @@ const Exhibitors = () => {
           ))}
         </div>
 
-        <div className="space-y-3">
-          {filtered.map(exhibitor => (
+        {isLoading ? (
+          <div className="flex justify-center py-12">
+            <Loader size="lg" />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {filtered.map(exhibitor => (
             <Card key={exhibitor.id}>
               <Link to={`/exhibitors/${exhibitor.id}`} className="block p-4">
                 <div className="flex gap-4">
@@ -99,7 +110,8 @@ const Exhibitors = () => {
               </Link>
             </Card>
           ))}
-        </div>
+          </div>
+        )}
       </div>
     </>
   )
