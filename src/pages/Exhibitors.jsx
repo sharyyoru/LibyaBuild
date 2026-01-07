@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { MapPin, Heart, Mail, Phone } from 'lucide-react'
+import { MapPin, Heart, Mail, Phone, Globe } from 'lucide-react'
 import Header from '../components/Header'
 import SearchBar from '../components/SearchBar'
 import Card from '../components/Card'
@@ -14,6 +14,8 @@ const Exhibitors = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('all')
+  const [country, setCountry] = useState('all')
+  const [sector, setSector] = useState('all')
   const { isFavorite, toggleFavorite } = useApp()
 
   useEffect(() => {
@@ -21,12 +23,18 @@ const Exhibitors = () => {
   }, [])
 
   const categories = ['all', ...new Set(exhibitors.map(e => e.category))]
+  const countries = ['all', ...new Set(exhibitors.map(e => e.country))]
+  const sectors = ['all', ...new Set(exhibitors.map(e => e.sector))]
 
   const filtered = exhibitors.filter(ex => {
     const matchesSearch = ex.name.toLowerCase().includes(search.toLowerCase()) ||
-      ex.description.toLowerCase().includes(search.toLowerCase())
+      ex.description.toLowerCase().includes(search.toLowerCase()) ||
+      ex.booth.toLowerCase().includes(search.toLowerCase()) ||
+      ex.hall.toLowerCase().includes(search.toLowerCase())
     const matchesCategory = category === 'all' || ex.category === category
-    return matchesSearch && matchesCategory
+    const matchesCountry = country === 'all' || ex.country === country
+    const matchesSector = sector === 'all' || ex.sector === sector
+    return matchesSearch && matchesCategory && matchesCountry && matchesSector
   })
 
   return (
@@ -36,24 +44,47 @@ const Exhibitors = () => {
         <SearchBar 
           value={search} 
           onChange={setSearch}
-          placeholder="Search exhibitors..." 
+          placeholder="Search by name, booth, hall, or country..." 
         />
 
-        <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scrollbar-hide">
-          {categories.map(cat => (
-            <button
-              key={cat}
-              onClick={() => setCategory(cat)}
-              className={clsx(
-                'px-4 py-2 rounded-full font-medium text-sm whitespace-nowrap transition-colors',
-                category === cat
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-100 text-gray-700 active:bg-gray-200'
-              )}
-            >
-              {cat === 'all' ? 'All' : cat}
-            </button>
-          ))}
+        <div>
+          <h3 className="text-xs font-semibold text-gray-600 mb-2">Country</h3>
+          <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
+            {countries.map(c => (
+              <button
+                key={c}
+                onClick={() => setCountry(c)}
+                className={clsx(
+                  'px-4 py-2 rounded-full font-medium text-sm whitespace-nowrap transition-colors',
+                  country === c
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-100 text-gray-700 active:bg-gray-200'
+                )}
+              >
+                {c === 'all' ? 'All Countries' : c}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h3 className="text-xs font-semibold text-gray-600 mb-2">Sector</h3>
+          <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
+            {sectors.map(s => (
+              <button
+                key={s}
+                onClick={() => setSector(s)}
+                className={clsx(
+                  'px-4 py-2 rounded-full font-medium text-sm whitespace-nowrap transition-colors',
+                  sector === s
+                    ? 'bg-accent-600 text-white'
+                    : 'bg-gray-100 text-gray-700 active:bg-gray-200'
+                )}
+              >
+                {s === 'all' ? 'All Sectors' : s}
+              </button>
+            ))}
+          </div>
         </div>
 
         {isLoading ? (
@@ -91,7 +122,10 @@ const Exhibitors = () => {
                         />
                       </button>
                     </div>
-                    <Badge variant="primary" size="sm">{exhibitor.category}</Badge>
+                    <div className="flex gap-1.5 mb-2">
+                      <Badge variant="primary" size="sm">{exhibitor.sector}</Badge>
+                      <Badge size="sm">{exhibitor.country}</Badge>
+                    </div>
                     <p className="text-sm text-gray-600 mt-2 line-clamp-2">{exhibitor.description}</p>
                     <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
                       <span className="flex items-center gap-1">
@@ -99,10 +133,8 @@ const Exhibitors = () => {
                         {exhibitor.booth}
                       </span>
                       <span className="flex items-center gap-1">
-                        <Mail className="w-4 h-4" />
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Phone className="w-4 h-4" />
+                        <Globe className="w-4 h-4" />
+                        {exhibitor.country}
                       </span>
                     </div>
                   </div>

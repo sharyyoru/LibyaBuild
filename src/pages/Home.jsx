@@ -1,7 +1,10 @@
 import { Link } from 'react-router-dom'
-import { QrCode } from 'lucide-react'
+import { QrCode, Sparkles } from 'lucide-react'
 import Card from '../components/Card'
-import { newsItems } from '../data/mockData'
+import HeroBannerCarousel from '../components/HeroBannerCarousel'
+import PromotionalBanner from '../components/PromotionalBanner'
+import { newsItems, exhibitors } from '../data/mockData'
+import { useApp } from '../context/AppContext'
 import { format } from 'date-fns'
 
 const QuickAction = ({ to, icon, title }) => (
@@ -17,41 +20,34 @@ const QuickAction = ({ to, icon, title }) => (
 
 const Home = () => {
   const latestNews = newsItems.slice(0, 3)
+  const { userProfile } = useApp()
+
+  const getSuggestedExhibitors = () => {
+    if (!userProfile.sector) return []
+    return exhibitors.filter(e => e.sector === userProfile.sector).slice(0, 3)
+  }
+
+  const suggested = getSuggestedExhibitors()
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-600 via-primary-700 to-accent-500">
-      <div className="relative overflow-hidden">
-        <img 
-          src="/media/Banner 2.jpg" 
-          alt="Libya Build" 
-          className="w-full h-48 object-cover opacity-40"
-        />
-        <div className="absolute inset-0 flex items-center justify-between px-4 safe-top">
+      <div className="px-4 pt-6 pb-2 safe-top">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <img src="/media/App Icons-14.svg" alt="Libya Build" className="w-16 h-16" />
+            <img src="/media/App Icons-14.svg" alt="Libya Build" className="w-12 h-12" />
             <div>
-              <h1 className="text-3xl font-bold text-white mb-1">Libya Build</h1>
-              <p className="text-white/90 text-sm">March 15-17, 2026</p>
+              <h1 className="text-2xl font-bold text-white">Libya Build</h1>
+              <p className="text-white/80 text-sm">March 15-17, 2026</p>
             </div>
           </div>
           <Link to="/tickets">
-            <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
-              <QrCode className="w-6 h-6 text-white" />
+            <div className="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+              <QrCode className="w-5 h-5 text-white" />
             </div>
           </Link>
         </div>
-      </div>
 
-      <div className="px-4 py-6">
-        <Card className="p-4 bg-gradient-to-br from-white to-accent-50 border-0 shadow-xl">
-          <div className="flex items-center gap-3">
-            <img src="/media/PNG/App Icons-09.png" alt="Event" className="w-16 h-16" />
-            <div className="flex-1">
-              <h3 className="font-bold text-gray-900 mb-1">Event Starting Soon!</h3>
-              <p className="text-sm text-gray-600">3 days of innovation and networking</p>
-            </div>
-          </div>
-        </Card>
+        <HeroBannerCarousel />
       </div>
 
       <div className="bg-white rounded-t-[2rem] pt-6 pb-4">
@@ -68,6 +64,39 @@ const Home = () => {
             <QuickAction to="/navigation" icon="/media/PNG/App Icons-03.png" title="Navigate" />
           </div>
         </div>
+
+        <div className="px-4 mb-6">
+          <PromotionalBanner />
+        </div>
+
+        {suggested.length > 0 && (
+          <div className="px-4 mb-6">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary-600" />
+                Suggested for You
+              </h2>
+              <Link to="/matchmaking" className="text-sm font-semibold text-primary-600">
+                View All
+              </Link>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4">
+              {suggested.map(exhibitor => (
+                <Link key={exhibitor.id} to={`/exhibitors/${exhibitor.id}`}>
+                  <Card className="p-3 min-w-[280px]">
+                    <div className="flex items-center gap-3 mb-2">
+                      <img src={exhibitor.logo} alt={exhibitor.name} className="w-12 h-12 rounded-lg" />
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-gray-900 text-sm truncate">{exhibitor.name}</h4>
+                        <p className="text-xs text-gray-600">{exhibitor.booth}</p>
+                      </div>
+                    </div>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div className="px-4">
           <div className="flex items-center justify-between mb-4">

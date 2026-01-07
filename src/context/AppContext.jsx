@@ -22,8 +22,12 @@ export const AppProvider = ({ children }) => {
       name: '',
       company: '',
       role: '',
+      sector: '',
+      persona: 'visitor',
+      country: '',
       interests: [],
-      qrCode: `USER-${Date.now()}`
+      qrCode: `USER-${Date.now()}`,
+      bio: ''
     }
   })
 
@@ -40,6 +44,16 @@ export const AppProvider = ({ children }) => {
   const [businessCards, setBusinessCards] = useState(() => {
     const saved = localStorage.getItem('businessCards')
     return saved ? JSON.parse(saved) : []
+  })
+
+  const [chats, setChats] = useState(() => {
+    const saved = localStorage.getItem('chats')
+    return saved ? JSON.parse(saved) : []
+  })
+
+  const [messages, setMessages] = useState(() => {
+    const saved = localStorage.getItem('messages')
+    return saved ? JSON.parse(saved) : {}
   })
 
   useEffect(() => {
@@ -61,6 +75,14 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     localStorage.setItem('businessCards', JSON.stringify(businessCards))
   }, [businessCards])
+
+  useEffect(() => {
+    localStorage.setItem('chats', JSON.stringify(chats))
+  }, [chats])
+
+  useEffect(() => {
+    localStorage.setItem('messages', JSON.stringify(messages))
+  }, [messages])
 
   const toggleFavorite = (type, id) => {
     setFavorites(prev => {
@@ -93,6 +115,41 @@ export const AppProvider = ({ children }) => {
     setBusinessCards(prev => [...prev, { ...card, scannedAt: new Date().toISOString() }])
   }
 
+  const startChat = (userId, userName, userAvatar) => {
+    const existingChat = chats.find(c => c.userId === userId)
+    if (!existingChat) {
+      setChats(prev => [...prev, {
+        id: Date.now(),
+        userId,
+        userName,
+        userAvatar,
+        lastMessage: '',
+        lastMessageTime: new Date().toISOString(),
+        unread: 0
+      }])
+      setMessages(prev => ({ ...prev, [userId]: [] }))
+    }
+    return userId
+  }
+
+  const sendMessage = (userId, content) => {
+    const newMessage = {
+      id: Date.now(),
+      content,
+      sender: 'me',
+      timestamp: new Date().toISOString()
+    }
+    setMessages(prev => ({
+      ...prev,
+      [userId]: [...(prev[userId] || []), newMessage]
+    }))
+    setChats(prev => prev.map(chat =>
+      chat.userId === userId
+        ? { ...chat, lastMessage: content, lastMessageTime: newMessage.timestamp }
+        : chat
+    ))
+  }
+
   const value = {
     favorites,
     toggleFavorite,
@@ -105,7 +162,11 @@ export const AppProvider = ({ children }) => {
     addMeeting,
     updateMeeting,
     businessCards,
-    addBusinessCard
+    addBusinessCard,
+    chats,
+    messages,
+    startChat,
+    sendMessage
   }
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>

@@ -1,8 +1,68 @@
+export const sectors = [
+  'Construction',
+  'HVAC',
+  'Interior Design',
+  'Machinery',
+  'Building Materials',
+  'Steel & Metal',
+  'Architecture',
+  'Technology',
+  'Energy Solutions',
+  'Sustainability'
+]
+
+export const countries = [
+  'Libya',
+  'Egypt',
+  'Tunisia',
+  'United Arab Emirates',
+  'Turkey',
+  'Italy',
+  'Germany',
+  'China',
+  'United States',
+  'United Kingdom'
+]
+
+export const heroBanners = [
+  {
+    id: 1,
+    title: "Libya Build 2026",
+    subtitle: "Building the Future Together",
+    image: "/media/Banner.jpg",
+    link: "/",
+    priority: 1
+  },
+  {
+    id: 2,
+    title: "Meet Industry Leaders",
+    subtitle: "Connect with 200+ exhibitors from 15 countries",
+    image: "/media/Banner 2.jpg",
+    link: "/exhibitors",
+    priority: 2
+  }
+]
+
+export const promotionalBanners = [
+  {
+    id: 1,
+    exhibitorId: 1,
+    title: "Featured: BuildTech Solutions",
+    description: "Exclusive 24-hour showcase",
+    image: "https://via.placeholder.com/800x200/2264dc/ffffff?text=BuildTech+Solutions",
+    tier: "premium",
+    expiresAt: "2026-03-16T23:59:59",
+    price: 500
+  }
+]
+
 export const exhibitors = [
   {
     id: 1,
     name: "BuildTech Solutions",
     category: "Construction Equipment",
+    sector: "Construction",
+    country: "Libya",
     booth: "A-101",
     hall: "Hall A",
     description: "Leading provider of innovative construction equipment and solutions for modern building projects.",
@@ -13,12 +73,15 @@ export const exhibitors = [
     },
     logo: "https://via.placeholder.com/150/dc3b26/ffffff?text=BT",
     tags: ["Equipment", "Innovation", "Machinery"],
-    coordinates: { x: 120, y: 80 }
+    coordinates: { x: 120, y: 80 },
+    promotionTier: "premium"
   },
   {
     id: 2,
     name: "Libyan Cement Co.",
     category: "Building Materials",
+    sector: "Building Materials",
+    country: "Libya",
     booth: "B-205",
     hall: "Hall B",
     description: "Premium cement and building materials manufacturer serving Libya since 1975.",
@@ -29,12 +92,15 @@ export const exhibitors = [
     },
     logo: "https://via.placeholder.com/150/22c55e/ffffff?text=LC",
     tags: ["Materials", "Cement", "Sustainability"],
-    coordinates: { x: 320, y: 180 }
+    coordinates: { x: 320, y: 180 },
+    promotionTier: "standard"
   },
   {
     id: 3,
     name: "Smart Home Systems",
     category: "Technology",
+    sector: "Technology",
+    country: "United Arab Emirates",
     booth: "C-310",
     hall: "Hall C",
     description: "Cutting-edge smart home automation and IoT solutions for modern buildings.",
@@ -45,12 +111,15 @@ export const exhibitors = [
     },
     logo: "https://via.placeholder.com/150/3b82f6/ffffff?text=SH",
     tags: ["Technology", "IoT", "Automation"],
-    coordinates: { x: 520, y: 120 }
+    coordinates: { x: 520, y: 120 },
+    promotionTier: "standard"
   },
   {
     id: 4,
     name: "Tripoli Steel Industries",
     category: "Steel & Metal",
+    sector: "Steel & Metal",
+    country: "Libya",
     booth: "A-150",
     hall: "Hall A",
     description: "High-quality structural steel and metal products for construction projects.",
@@ -61,12 +130,15 @@ export const exhibitors = [
     },
     logo: "https://via.placeholder.com/150/64748b/ffffff?text=TS",
     tags: ["Steel", "Manufacturing", "Quality"],
-    coordinates: { x: 220, y: 150 }
+    coordinates: { x: 220, y: 150 },
+    promotionTier: "standard"
   },
   {
     id: 5,
     name: "EcoGreen Architecture",
     category: "Architecture & Design",
+    sector: "Architecture",
+    country: "Italy",
     booth: "D-401",
     hall: "Hall D",
     description: "Sustainable architecture and green building design consultancy.",
@@ -77,12 +149,15 @@ export const exhibitors = [
     },
     logo: "https://via.placeholder.com/150/10b981/ffffff?text=EG",
     tags: ["Architecture", "Sustainability", "Design"],
-    coordinates: { x: 720, y: 250 }
+    coordinates: { x: 720, y: 250 },
+    promotionTier: "standard"
   },
   {
     id: 6,
     name: "PowerGen Libya",
     category: "Energy Solutions",
+    sector: "Energy Solutions",
+    country: "Turkey",
     booth: "B-220",
     hall: "Hall B",
     description: "Renewable energy solutions and power generation systems.",
@@ -93,7 +168,46 @@ export const exhibitors = [
     },
     logo: "https://via.placeholder.com/150/f59e0b/ffffff?text=PG",
     tags: ["Energy", "Solar", "Renewable"],
-    coordinates: { x: 420, y: 210 }
+    coordinates: { x: 420, y: 210 },
+    promotionTier: "standard"
+  },
+  {
+    id: 7,
+    name: "MegaBuild Egypt",
+    category: "Construction Equipment",
+    sector: "Construction",
+    country: "Egypt",
+    booth: "A-120",
+    hall: "Hall A",
+    description: "Leading Egyptian construction equipment supplier with 30 years of experience.",
+    contact: {
+      email: "info@megabuild.eg",
+      phone: "+20 2 234 5678",
+      website: "www.megabuild.eg"
+    },
+    logo: "https://via.placeholder.com/150/f59e0b/ffffff?text=MB",
+    tags: ["Equipment", "Construction", "Import"],
+    coordinates: { x: 180, y: 100 },
+    promotionTier: "standard"
+  },
+  {
+    id: 8,
+    name: "AirFlow HVAC Systems",
+    category: "HVAC",
+    sector: "HVAC",
+    country: "Germany",
+    booth: "C-215",
+    hall: "Hall C",
+    description: "Premium HVAC solutions for commercial and residential projects.",
+    contact: {
+      email: "contact@airflow.de",
+      phone: "+49 30 456 7890",
+      website: "www.airflow.de"
+    },
+    logo: "https://via.placeholder.com/150/3b82f6/ffffff?text=AF",
+    tags: ["HVAC", "Climate Control", "Energy Efficient"],
+    coordinates: { x: 450, y: 140 },
+    promotionTier: "standard"
   }
 ]
 

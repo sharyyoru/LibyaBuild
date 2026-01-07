@@ -19,6 +19,10 @@ import QA from './pages/QA'
 import LeadRetrieval from './pages/LeadRetrieval'
 import Navigation from './pages/Navigation'
 import Profile from './pages/Profile'
+import Matchmaking from './pages/Matchmaking'
+import ChatList from './pages/ChatList'
+import Chat from './pages/Chat'
+import HelpDesk from './pages/HelpDesk'
 
 function App() {
   const [isLoading, setIsLoading] = useState(true)
@@ -45,6 +49,10 @@ function App() {
               <Route path="qa" element={<QA />} />
               <Route path="lead-retrieval" element={<LeadRetrieval />} />
               <Route path="navigation" element={<Navigation />} />
+              <Route path="matchmaking" element={<Matchmaking />} />
+              <Route path="chats" element={<ChatList />} />
+              <Route path="chat/:userId" element={<Chat />} />
+              <Route path="help" element={<HelpDesk />} />
               <Route path="profile" element={<Profile />} />
             </Route>
           </Routes>

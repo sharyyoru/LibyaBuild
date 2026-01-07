@@ -1,5 +1,5 @@
-import { useNavigate } from 'react-router-dom'
-import { ArrowLeft, Bell } from 'lucide-react'
+import { useNavigate, Link } from 'react-router-dom'
+import { ArrowLeft, HelpCircle } from 'lucide-react'
 
 const Header = ({ title, showBack = true, action }) => {
   const navigate = useNavigate()
@@ -19,10 +19,11 @@ const Header = ({ title, showBack = true, action }) => {
           <h1 className="text-lg font-semibold text-gray-900 truncate">{title}</h1>
         </div>
         {action || (
-          <button className="p-2 hover:bg-gray-100 rounded-full transition-colors relative">
-            <Bell className="w-5 h-5 text-gray-700" />
-            <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary-600 rounded-full"></span>
-          </button>
+          <Link to="/help">
+            <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+              <HelpCircle className="w-5 h-5 text-gray-700" />
+            </button>
+          </Link>
         )}
       </div>
     </header>

@@ -1,15 +1,22 @@
 import { useState } from 'react'
-import { User, Building2, Briefcase, Heart, Calendar, Mail, Settings, LogOut } from 'lucide-react'
+import { User, Building2, Briefcase, Heart, Calendar, Mail, Settings, LogOut, Globe, Sparkles } from 'lucide-react'
 import Header from '../components/Header'
 import Card from '../components/Card'
 import Button from '../components/Button'
 import Badge from '../components/Badge'
 import { useApp } from '../context/AppContext'
+import { sectors, countries } from '../data/mockData'
 
 const Profile = () => {
   const { userProfile, setUserProfile, favorites, tickets, meetings } = useApp()
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState(userProfile)
+
+  const personas = [
+    { id: 'visitor', label: 'Visitor', icon: User, description: 'Browse and network' },
+    { id: 'exhibitor', label: 'Exhibitor', icon: Building2, description: 'Showcase products' },
+    { id: 'media', label: 'Media', icon: Mail, description: 'Press coverage' }
+  ]
 
   const handleSave = () => {
     setUserProfile(formData)
@@ -50,7 +57,13 @@ const Profile = () => {
                   {userProfile.name || 'Your Name'}
                 </h2>
                 <p className="text-gray-600 mb-1">{userProfile.role || 'Your Role'}</p>
-                <p className="text-gray-500 text-sm">{userProfile.company || 'Your Company'}</p>
+                <p className="text-gray-500 text-sm mb-2">{userProfile.company || 'Your Company'}</p>
+                {userProfile.sector && (
+                  <div className="flex gap-2">
+                    <Badge variant="primary" size="sm">{userProfile.sector}</Badge>
+                    {userProfile.country && <Badge size="sm">{userProfile.country}</Badge>}
+                  </div>
+                )}
               </>
             ) : (
               <div className="w-full space-y-3">
@@ -74,6 +87,33 @@ const Profile = () => {
                   onChange={(e) => setFormData({ ...formData, company: e.target.value })}
                   placeholder="Your Company"
                   className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+                <select
+                  value={formData.sector}
+                  onChange={(e) => setFormData({ ...formData, sector: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">Select Sector</option>
+                  {sectors.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+                <select
+                  value={formData.country}
+                  onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                  className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="">Select Country</option>
+                  {countries.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+                <textarea
+                  value={formData.bio}
+                  onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
+                  placeholder="Brief bio..."
+                  rows={3}
+                  className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
                 />
               </div>
             )}
@@ -99,9 +139,40 @@ const Profile = () => {
         </Card>
 
         {isEditing && (
-          <Card className="p-4">
-            <h3 className="font-bold text-gray-900 mb-3">Interests</h3>
-            <p className="text-sm text-gray-600 mb-3">Select topics for personalized recommendations</p>
+          <>
+            <Card className="p-4">
+              <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary-600" />
+                Select Your Persona
+              </h3>
+              <p className="text-sm text-gray-600 mb-3">This determines your app experience</p>
+              <div className="grid grid-cols-3 gap-2">
+                {personas.map(persona => {
+                  const Icon = persona.icon
+                  const isSelected = formData.persona === persona.id
+                  return (
+                    <button
+                      key={persona.id}
+                      onClick={() => setFormData({ ...formData, persona: persona.id })}
+                      className={`p-3 rounded-xl border-2 transition-all ${
+                        isSelected
+                          ? 'border-primary-600 bg-primary-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <Icon className={`w-6 h-6 mx-auto mb-1 ${isSelected ? 'text-primary-600' : 'text-gray-400'}`} />
+                      <p className={`text-xs font-semibold ${isSelected ? 'text-primary-600' : 'text-gray-700'}`}>
+                        {persona.label}
+                      </p>
+                    </button>
+                  )
+                })}
+              </div>
+            </Card>
+
+            <Card className="p-4">
+              <h3 className="font-bold text-gray-900 mb-3">Interests</h3>
+              <p className="text-sm text-gray-600 mb-3">Select topics for personalized recommendations</p>
             <div className="flex flex-wrap gap-2">
               {interests.map(interest => {
                 const isSelected = (formData.interests || []).includes(interest)
@@ -120,7 +191,8 @@ const Profile = () => {
                 )
               })}
             </div>
-          </Card>
+            </Card>
+          </>
         )}
 
         <div className="grid grid-cols-3 gap-3">
