@@ -3,6 +3,8 @@
   "appName": "Libya Build 2026",
   "webDir": "dist",
   "server": {
+    "url": "https://libya-build.vercel.app",
+    "cleartext": true,
     "androidScheme": "https"
   },
   "plugins": {

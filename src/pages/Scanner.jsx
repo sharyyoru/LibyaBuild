@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { QrCode, History, Camera, CheckCircle, XCircle, User, Building2, Users, Calendar, ArrowLeft, Trash2 } from 'lucide-react'
+import { Html5QrcodeScanner, Html5Qrcode } from 'html5-qrcode'
+import { QrCode, History, Camera, CheckCircle, XCircle, User, Building2, Users, Calendar, ArrowLeft, Trash2, StopCircle } from 'lucide-react'
 import Header from '../components/Header'
 import Card from '../components/Card'
 import Button from '../components/Button'
@@ -39,11 +40,17 @@ const Scanner = () => {
   const [manualCode, setManualCode] = useState('')
   const [todayScans, setTodayScans] = useState(0)
   const [scanHistory, setScanHistory] = useState([])
-  const videoRef = useRef(null)
-  const streamRef = useRef(null)
+  const html5QrCodeRef = useRef(null)
+  const scannerContainerId = 'qr-reader'
 
   useEffect(() => {
     loadScanHistory()
+    return () => {
+      // Cleanup scanner on unmount
+      if (html5QrCodeRef.current) {
+        html5QrCodeRef.current.stop().catch(() => {})
+      }
+    }
   }, [])
 
   const loadScanHistory = () => {
@@ -54,25 +61,56 @@ const Scanner = () => {
     setTodayScans(todayCount)
   }
 
+  const onScanSuccess = (decodedText) => {
+    // Stop scanning after successful scan
+    stopScanning()
+    
+    // Process the QR data
+    const userData = processQRData(decodedText)
+    const result = recordScan(userData)
+    setScanResult(result)
+  }
+
+  const onScanError = (errorMessage) => {
+    // Ignore errors during continuous scanning (these are normal when no QR is in view)
+  }
+
   const startScanning = async () => {
     try {
       setScanError(null)
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment' }
-      })
-      streamRef.current = stream
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
+      setScanResult(null)
+      
+      // Create new scanner instance
+      html5QrCodeRef.current = new Html5Qrcode(scannerContainerId)
+      
+      const config = {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        aspectRatio: 1.0
       }
+      
+      await html5QrCodeRef.current.start(
+        { facingMode: 'environment' },
+        config,
+        onScanSuccess,
+        onScanError
+      )
+      
       setScanning(true)
     } catch (err) {
-      setScanError('Camera access denied. Please allow camera permissions.')
+      console.error('Scanner error:', err)
+      setScanError('Camera access denied or not available. Please allow camera permissions.')
     }
   }
 
-  const stopScanning = () => {
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop())
+  const stopScanning = async () => {
+    try {
+      if (html5QrCodeRef.current) {
+        await html5QrCodeRef.current.stop()
+        html5QrCodeRef.current = null
+      }
+    } catch (err) {
+      console.error('Error stopping scanner:', err)
     }
     setScanning(false)
   }
@@ -289,28 +327,27 @@ const Scanner = () => {
                 QR Scanner
               </h3>
               
+              {/* QR Scanner Container - always rendered but hidden when not scanning */}
+              <div 
+                id={scannerContainerId} 
+                className={`mb-3 rounded-xl overflow-hidden ${scanning ? 'block' : 'hidden'}`}
+                style={{ minHeight: scanning ? '300px' : '0' }}
+              />
+              
               {scanning ? (
-                <div className="space-y-3">
-                  <div className="relative aspect-square bg-black rounded-xl overflow-hidden">
-                    <video
-                      ref={videoRef}
-                      autoPlay
-                      playsInline
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-48 h-48 border-2 border-white/50 rounded-2xl" />
-                    </div>
-                  </div>
-                  <Button fullWidth variant="secondary" onClick={stopScanning}>
-                    Stop Scanning
-                  </Button>
-                </div>
+                <Button fullWidth variant="secondary" onClick={stopScanning}>
+                  <StopCircle className="w-5 h-5 mr-2" />
+                  Stop Scanning
+                </Button>
               ) : (
                 <Button fullWidth onClick={startScanning}>
                   <Camera className="w-5 h-5 mr-2" />
-                  Start Camera
+                  Start Camera Scanner
                 </Button>
+              )}
+              
+              {scanError && (
+                <p className="text-red-500 text-sm mt-2">{scanError}</p>
               )}
             </Card>
 
