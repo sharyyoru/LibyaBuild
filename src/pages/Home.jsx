@@ -3,6 +3,7 @@ import { QrCode, Sparkles } from 'lucide-react'
 import Card from '../components/Card'
 import HeroBannerCarousel from '../components/HeroBannerCarousel'
 import PromotionalBanner from '../components/PromotionalBanner'
+import AppInstallBanner from '../components/AppInstallBanner'
 import { newsItems, exhibitors } from '../data/mockData'
 import { useApp } from '../context/AppContext'
 import { format } from 'date-fns'
@@ -123,6 +124,8 @@ const Home = () => {
           </div>
         </div>
       </div>
+
+      <AppInstallBanner />
     </div>
   )
 }

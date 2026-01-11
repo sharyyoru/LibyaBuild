@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { AppProvider } from './context/AppContext'
 import Layout from './components/Layout'
 import LoadingScreen from './components/LoadingScreen'
+import NativeWrapper from './components/NativeWrapper'
 import AdminApp from './admin/AdminApp'
 import Home from './pages/Home'
 import Exhibitors from './pages/Exhibitors'
@@ -29,7 +30,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true)
 
   return (
-    <>
+    <NativeWrapper>
       {isLoading && <LoadingScreen onLoadComplete={() => setIsLoading(false)} />}
       <AppProvider>
         <Router>
@@ -66,7 +67,7 @@ function App() {
           </Routes>
         </Router>
       </AppProvider>
-    </>
+    </NativeWrapper>
   )
 }
 
