@@ -145,7 +145,7 @@ const ScannerHome = ({ user, onLogout }) => {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => navigate('/scanner/history')}
+              onClick={() => navigate('/history')}
               className="p-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
             >
               <History className="w-5 h-5" />

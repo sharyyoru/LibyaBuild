@@ -20,7 +20,7 @@ const ScanResult = () => {
           <h2 className="text-xl font-bold mb-2">No Scan Data</h2>
           <p className="text-gray-400 mb-6">Please scan a QR code first</p>
           <button
-            onClick={() => navigate('/scanner')}
+            onClick={() => navigate('/')}
             className="bg-primary-600 px-6 py-3 rounded-xl font-medium"
           >
             Back to Scanner
@@ -34,7 +34,7 @@ const ScanResult = () => {
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="bg-gray-800 border-b border-gray-700 p-4">
         <button
-          onClick={() => navigate('/scanner')}
+          onClick={() => navigate('/')}
           className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -97,7 +97,7 @@ const ScanResult = () => {
           )}
 
           <button
-            onClick={() => navigate('/scanner')}
+            onClick={() => navigate('/')}
             className="w-full mt-6 bg-primary-600 py-4 rounded-xl font-bold text-lg hover:bg-primary-700 transition-colors"
           >
             Scan Next

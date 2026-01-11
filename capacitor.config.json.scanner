@@ -1,0 +1,29 @@
+{
+  "appId": "com.libyabuild.scanner",
+  "appName": "Libya Build Scanner",
+  "webDir": "dist-scanner",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1500,
+      "backgroundColor": "#1f2937",
+      "androidSplashResourceName": "splash",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false
+    },
+    "StatusBar": {
+      "style": "dark",
+      "backgroundColor": "#1f2937"
+    },
+    "Camera": {
+      "permissionType": "camera"
+    }
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  }
+}

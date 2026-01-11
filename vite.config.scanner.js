@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { resolve } from 'path'
 
 export default defineConfig({
   plugins: [react()],
@@ -7,7 +8,7 @@ export default defineConfig({
     outDir: 'dist-scanner',
     rollupOptions: {
       input: {
-        main: './scanner.html'
+        main: resolve(__dirname, 'scanner.html')
       }
     }
   },

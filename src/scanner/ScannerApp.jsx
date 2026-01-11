@@ -42,38 +42,38 @@ const ScannerApp = () => {
     <Router>
       <Routes>
         <Route 
-          path="/scanner/login" 
+          path="/login" 
           element={
             isAuthenticated ? 
-              <Navigate to="/scanner" replace /> : 
+              <Navigate to="/" replace /> : 
               <ScannerLogin onLogin={handleLogin} />
           } 
         />
         <Route 
-          path="/scanner" 
+          path="/" 
           element={
             isAuthenticated ? 
               <ScannerHome user={adminUser} onLogout={handleLogout} /> : 
-              <Navigate to="/scanner/login" replace />
+              <Navigate to="/login" replace />
           } 
         />
         <Route 
-          path="/scanner/result" 
+          path="/result" 
           element={
             isAuthenticated ? 
               <ScanResult /> : 
-              <Navigate to="/scanner/login" replace />
+              <Navigate to="/login" replace />
           } 
         />
         <Route 
-          path="/scanner/history" 
+          path="/history" 
           element={
             isAuthenticated ? 
               <ScanHistory /> : 
-              <Navigate to="/scanner/login" replace />
+              <Navigate to="/login" replace />
           } 
         />
-        <Route path="*" element={<Navigate to="/scanner/login" replace />} />
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Router>
   )

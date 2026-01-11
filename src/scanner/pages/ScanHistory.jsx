@@ -41,7 +41,7 @@ const ScanHistory = () => {
       <div className="bg-gray-800 border-b border-gray-700 p-4">
         <div className="flex items-center justify-between">
           <button
-            onClick={() => navigate('/scanner')}
+            onClick={() => navigate('/')}
             className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
