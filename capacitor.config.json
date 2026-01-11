@@ -1,14 +1,14 @@
 {
-  "appId": "com.libyabuild.app",
-  "appName": "Libya Build 2026",
-  "webDir": "dist",
+  "appId": "com.libyabuild.scanner",
+  "appName": "Libya Build Scanner",
+  "webDir": "dist-scanner",
   "server": {
     "androidScheme": "https"
   },
   "plugins": {
     "SplashScreen": {
-      "launchShowDuration": 2000,
-      "backgroundColor": "#2264dc",
+      "launchShowDuration": 1500,
+      "backgroundColor": "#1f2937",
       "androidSplashResourceName": "splash",
       "androidScaleType": "CENTER_CROP",
       "showSpinner": false

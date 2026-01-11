@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { QrCode, History, Camera, CheckCircle, User, Building2, Users, Calendar } from 'lucide-react'
-import { supabase } from '../../lib/supabase'
 
 const EVENT_DAYS = [
   { key: 'day1', label: 'Day 1', date: '2026-03-15' },
@@ -88,20 +87,6 @@ const ScannerHome = ({ user }) => {
     const history = JSON.parse(localStorage.getItem('scanHistory') || '[]')
     history.unshift(scanRecord)
     localStorage.setItem('scanHistory', JSON.stringify(history.slice(0, 500)))
-
-    try {
-      await supabase.from('attendance_scans').insert({
-        user_id: userData.id,
-        user_email: userData.email,
-        user_name: userData.name,
-        user_types: userData.types,
-        day: currentDay,
-        scanned_by: user.email,
-        scanned_at: new Date().toISOString()
-      })
-    } catch (err) {
-      console.log('Failed to save to database:', err)
-    }
 
     return { ...scanRecord, newDay: currentDay }
   }
