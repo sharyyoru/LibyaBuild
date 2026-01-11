@@ -7,8 +7,8 @@ import LoadingScreen from './components/LoadingScreen'
 import NativeWrapper from './components/NativeWrapper'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminApp from './admin/AdminApp'
-import ScannerApp from './scanner/ScannerApp'
 import Login from './pages/Login'
+import Scanner from './pages/Scanner'
 import Home from './pages/Home'
 import Exhibitors from './pages/Exhibitors'
 import ExhibitorDetail from './pages/ExhibitorDetail'
@@ -43,9 +43,6 @@ function App() {
               {/* Public Routes */}
               <Route path="/login" element={<Login />} />
 
-              {/* Scanner App Routes */}
-              <Route path="/scanner/*" element={<ScannerApp />} />
-
               {/* Admin Portal Routes */}
               <Route path="/admin/*" element={<AdminApp />} />
               <Route path="/exhibitor/*" element={<AdminApp />} />
@@ -78,6 +75,7 @@ function App() {
                 <Route path="chat/:userId" element={<Chat />} />
                 <Route path="help" element={<HelpDesk />} />
                 <Route path="profile" element={<Profile />} />
+                <Route path="scanner" element={<Scanner />} />
               </Route>
             </Routes>
           </Router>

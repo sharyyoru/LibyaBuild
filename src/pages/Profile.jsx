@@ -1,14 +1,21 @@
 import { useState } from 'react'
-import { User, Building2, Briefcase, Heart, Calendar, Mail, Settings, LogOut, Globe, Sparkles } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { User, Building2, Briefcase, Heart, Calendar, Mail, Settings, LogOut, Globe, Sparkles, QrCode, Shield } from 'lucide-react'
 import Header from '../components/Header'
 import Card from '../components/Card'
 import Button from '../components/Button'
 import Badge from '../components/Badge'
 import { useApp } from '../context/AppContext'
+import { useAuth } from '../context/AuthContext'
 import { sectors, countries } from '../data/mockData'
 
+const STAFF_EMAILS = ['wilson@mutant.ae', 'admin@libyabuild.com', 'staff@libyabuild.com']
+
 const Profile = () => {
+  const navigate = useNavigate()
   const { userProfile, setUserProfile, favorites, tickets, meetings } = useApp()
+  const { user, logout } = useAuth()
+  const isStaff = user?.email && STAFF_EMAILS.includes(user.email.toLowerCase())
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState(userProfile)
 
@@ -223,6 +230,27 @@ const Profile = () => {
           </Card>
         </div>
 
+        {/* Staff Scanner Access */}
+        {isStaff && (
+          <Card className="p-4 bg-gradient-to-r from-primary-600 to-accent-600 border-0">
+            <div className="flex items-center gap-3 text-white mb-3">
+              <Shield className="w-6 h-6" />
+              <div>
+                <p className="font-bold">Staff Access</p>
+                <p className="text-sm text-white/80">You have scanner privileges</p>
+              </div>
+            </div>
+            <Button 
+              fullWidth 
+              className="bg-white text-primary-600 hover:bg-gray-100"
+              onClick={() => navigate('/scanner')}
+            >
+              <QrCode className="w-5 h-5 mr-2" />
+              Open Scanner
+            </Button>
+          </Card>
+        )}
+
         <div>
           <h3 className="font-bold text-gray-900 mb-3">Settings</h3>
           <div className="space-y-2">
@@ -239,7 +267,10 @@ const Profile = () => {
               </button>
             </Card>
             <Card className="p-4 border-red-100">
-              <button className="w-full flex items-center gap-3 text-left">
+              <button 
+                className="w-full flex items-center gap-3 text-left"
+                onClick={() => logout()}
+              >
                 <LogOut className="w-5 h-5 text-red-600" />
                 <span className="flex-1 font-medium text-red-600">Sign Out</span>
               </button>
