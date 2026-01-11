@@ -1,15 +1,30 @@
 import { useState } from 'react'
-import { Ticket, Check, Sparkles, Zap, Crown } from 'lucide-react'
+import { Ticket, Check, Sparkles, Zap, Crown, User, Building2, Users, Calendar } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import Header from '../components/Header'
 import Card from '../components/Card'
 import Button from '../components/Button'
 import Badge from '../components/Badge'
 import { useApp } from '../context/AppContext'
+import { useAuth } from '../context/AuthContext'
 import { ticketUpgrades } from '../data/mockData'
 
+const EVENT_DAYS = [
+  { key: 'day1', label: 'Day 1', date: 'Mar 15' },
+  { key: 'day2', label: 'Day 2', date: 'Mar 16' },
+  { key: 'day3', label: 'Day 3', date: 'Mar 17' },
+  { key: 'day4', label: 'Day 4', date: 'Mar 18' }
+]
+
+const USER_TYPE_CONFIG = {
+  visitor: { label: 'Visitor', color: 'bg-blue-500', icon: User },
+  exhibitor: { label: 'Exhibitor', color: 'bg-green-500', icon: Building2 },
+  delegate: { label: 'Delegate', color: 'bg-purple-500', icon: Users }
+}
+
 const Tickets = () => {
-  const { tickets, addTicket, userProfile } = useApp()
+  const { tickets, addTicket, userProfile, getAttendanceCount } = useApp()
+  const { user } = useAuth()
   const [showUpgrades, setShowUpgrades] = useState(false)
 
   const handlePurchase = (upgrade) => {
@@ -18,6 +33,18 @@ const Tickets = () => {
   }
 
   const hasBaseTicket = tickets.some(t => t.name === 'Entry Pass')
+  
+  const userTypes = userProfile.userTypes || ['visitor']
+  const attendance = userProfile.attendance || {}
+  const attendedDays = getAttendanceCount ? getAttendanceCount() : 0
+
+  const qrData = JSON.stringify({
+    id: userProfile.qrCode,
+    email: user?.email || '',
+    name: userProfile.name || user?.email?.split('@')[0] || 'Guest',
+    types: userTypes,
+    attendance: attendance
+  })
 
   return (
     <>
@@ -31,19 +58,62 @@ const Tickets = () => {
             </div>
             <img src="/media/PNG/App Icons-08.png" alt="Ticket" className="w-10 h-10" />
           </div>
+
+          <div className="flex flex-wrap gap-2 mb-4">
+            {userTypes.map(type => {
+              const config = USER_TYPE_CONFIG[type]
+              if (!config) return null
+              const Icon = config.icon
+              return (
+                <span 
+                  key={type}
+                  className={`${config.color} text-white px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1`}
+                >
+                  <Icon className="w-4 h-4" />
+                  {config.label}
+                </span>
+              )
+            })}
+          </div>
           
           <div className="bg-white rounded-2xl p-4 mb-4">
             <QRCodeSVG
-              value={userProfile.qrCode}
+              value={qrData}
               size={200}
               className="mx-auto"
               level="H"
             />
           </div>
 
-          <div className="text-center">
+          <div className="text-center mb-4">
             <p className="text-sm text-primary-100 mb-1">Scan at entrance</p>
             <p className="font-mono text-xs opacity-75">{userProfile.qrCode}</p>
+          </div>
+
+          <div className="bg-white/10 rounded-xl p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                Attendance Tracker
+              </span>
+              <span className="text-sm font-bold">{attendedDays}/4 Days</span>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {EVENT_DAYS.map(day => (
+                <div 
+                  key={day.key}
+                  className={`text-center p-2 rounded-lg ${
+                    attendance[day.key] 
+                      ? 'bg-green-500 text-white' 
+                      : 'bg-white/20 text-white/60'
+                  }`}
+                >
+                  <p className="text-xs font-medium">{day.label}</p>
+                  <p className="text-[10px]">{day.date}</p>
+                  {attendance[day.key] && <Check className="w-3 h-3 mx-auto mt-1" />}
+                </div>
+              ))}
+            </div>
           </div>
         </Card>
 

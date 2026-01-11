@@ -5,14 +5,20 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:scanner": "vite --config vite.config.scanner.js",
     "build": "vite build",
+    "build:scanner": "vite build --config vite.config.scanner.js",
     "preview": "vite preview",
     "cap:init": "npx cap init \"Libya Build 2026\" com.libyabuild.app --web-dir dist",
     "cap:add:android": "npx cap add android",
     "cap:sync": "npx cap sync",
     "cap:open:android": "npx cap open android",
     "android:build": "npm run build && npx cap sync android",
-    "android:run": "npx cap run android"
+    "android:run": "npx cap run android",
+    "scanner:init": "npx cap init \"Libya Build Scanner\" com.libyabuild.scanner --web-dir dist-scanner",
+    "scanner:add:android": "npx cap add android",
+    "scanner:sync": "npx cap sync android",
+    "scanner:build": "npm run build:scanner && npx cap sync android"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.90.0",

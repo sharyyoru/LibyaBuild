@@ -7,6 +7,7 @@ import LoadingScreen from './components/LoadingScreen'
 import NativeWrapper from './components/NativeWrapper'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminApp from './admin/AdminApp'
+import ScannerApp from './scanner/ScannerApp'
 import Login from './pages/Login'
 import Home from './pages/Home'
 import Exhibitors from './pages/Exhibitors'
@@ -41,6 +42,9 @@ function App() {
             <Routes>
               {/* Public Routes */}
               <Route path="/login" element={<Login />} />
+
+              {/* Scanner App Routes */}
+              <Route path="/scanner/*" element={<ScannerApp />} />
 
               {/* Admin Portal Routes */}
               <Route path="/admin/*" element={<AdminApp />} />

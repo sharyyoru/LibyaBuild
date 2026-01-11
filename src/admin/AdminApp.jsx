@@ -8,6 +8,7 @@ import Unauthorized from './portals/Unauthorized'
 // Super Admin
 import SuperAdminDashboard from './portals/SuperAdmin/Dashboard'
 import Users from './portals/SuperAdmin/Users'
+import UserManagement from './pages/UserManagement'
 
 // Exhibitor
 import ExhibitorDashboard from './portals/Exhibitor/Dashboard'
@@ -57,6 +58,11 @@ function AdminApp() {
             <Route path="super/settings" element={
               <ProtectedRoute requiredRoles={['super_admin']}>
                 <ComingSoon title="System Settings" />
+              </ProtectedRoute>
+            } />
+            <Route path="super/user-management" element={
+              <ProtectedRoute requiredRoles={['super_admin']}>
+                <UserManagement />
               </ProtectedRoute>
             } />
 

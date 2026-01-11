@@ -27,7 +27,14 @@ export const AppProvider = ({ children }) => {
       country: '',
       interests: [],
       qrCode: `USER-${Date.now()}`,
-      bio: ''
+      bio: '',
+      userTypes: ['visitor'],
+      attendance: {
+        day1: false,
+        day2: false,
+        day3: false,
+        day4: false
+      }
     }
   })
 
@@ -150,12 +157,31 @@ export const AppProvider = ({ children }) => {
     ))
   }
 
+  const updateUserTypes = (types) => {
+    setUserProfile(prev => ({ ...prev, userTypes: types }))
+  }
+
+  const recordAttendance = (day) => {
+    setUserProfile(prev => ({
+      ...prev,
+      attendance: { ...prev.attendance, [day]: true }
+    }))
+  }
+
+  const getAttendanceCount = () => {
+    const attendance = userProfile.attendance || {}
+    return Object.values(attendance).filter(Boolean).length
+  }
+
   const value = {
     favorites,
     toggleFavorite,
     isFavorite,
     userProfile,
     setUserProfile,
+    updateUserTypes,
+    recordAttendance,
+    getAttendanceCount,
     tickets,
     addTicket,
     meetings,
