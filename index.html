@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#2264dc" />
     <link rel="icon" type="image/svg+xml" href="/media/App Icons-14.svg" />
     <meta name="description" content="Libya Build Event - Your comprehensive guide to the construction expo" />
@@ -11,6 +11,29 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <title>Libya Build 2026</title>
+    <style>
+      /* Prevent zoom and ensure fixed layout */
+      * {
+        touch-action: pan-x pan-y;
+        -webkit-touch-callout: none;
+      }
+      html, body {
+        overflow-x: hidden;
+        overscroll-behavior: none;
+        -webkit-text-size-adjust: 100%;
+      }
+      body {
+        position: fixed;
+        width: 100%;
+        height: 100%;
+      }
+      #root {
+        height: 100%;
+        overflow-y: auto;
+        overflow-x: hidden;
+        -webkit-overflow-scrolling: touch;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
