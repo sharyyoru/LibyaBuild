@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { AppProvider } from './context/AppContext'
+import { AuthProvider } from './context/AuthContext'
 import Layout from './components/Layout'
 import LoadingScreen from './components/LoadingScreen'
 import NativeWrapper from './components/NativeWrapper'
+import ProtectedRoute from './components/ProtectedRoute'
 import AdminApp from './admin/AdminApp'
+import Login from './pages/Login'
 import Home from './pages/Home'
 import Exhibitors from './pages/Exhibitors'
 import ExhibitorDetail from './pages/ExhibitorDetail'
@@ -32,41 +35,50 @@ function App() {
   return (
     <NativeWrapper>
       {isLoading && <LoadingScreen onLoadComplete={() => setIsLoading(false)} />}
-      <AppProvider>
-        <Router>
-          <Routes>
-            {/* Admin Portal Routes */}
-            <Route path="/admin/*" element={<AdminApp />} />
-            <Route path="/exhibitor/*" element={<AdminApp />} />
-            <Route path="/partner/*" element={<AdminApp />} />
-            <Route path="/agent/*" element={<AdminApp />} />
+      <AuthProvider>
+        <AppProvider>
+          <Router>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/login" element={<Login />} />
 
-            {/* Mobile App Routes */}
-            <Route path="/" element={<Layout />}>
-              <Route index element={<Home />} />
-              <Route path="exhibitors" element={<Exhibitors />} />
-              <Route path="exhibitors/:id" element={<ExhibitorDetail />} />
-              <Route path="floor-plan" element={<FloorPlan />} />
-              <Route path="speakers" element={<Speakers />} />
-              <Route path="speakers/:id" element={<SpeakerDetail />} />
-              <Route path="news" element={<News />} />
-              <Route path="schedule" element={<Schedule />} />
-              <Route path="meetings" element={<MeetingScheduler />} />
-              <Route path="tickets" element={<Tickets />} />
-              <Route path="workshops" element={<Workshops />} />
-              <Route path="business-cards" element={<BusinessCards />} />
-              <Route path="qa" element={<QA />} />
-              <Route path="lead-retrieval" element={<LeadRetrieval />} />
-              <Route path="navigation" element={<Navigation />} />
-              <Route path="matchmaking" element={<Matchmaking />} />
-              <Route path="chats" element={<ChatList />} />
-              <Route path="chat/:userId" element={<Chat />} />
-              <Route path="help" element={<HelpDesk />} />
-              <Route path="profile" element={<Profile />} />
-            </Route>
-          </Routes>
-        </Router>
-      </AppProvider>
+              {/* Admin Portal Routes */}
+              <Route path="/admin/*" element={<AdminApp />} />
+              <Route path="/exhibitor/*" element={<AdminApp />} />
+              <Route path="/partner/*" element={<AdminApp />} />
+              <Route path="/agent/*" element={<AdminApp />} />
+
+              {/* Protected Mobile App Routes */}
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <Layout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<Home />} />
+                <Route path="exhibitors" element={<Exhibitors />} />
+                <Route path="exhibitors/:id" element={<ExhibitorDetail />} />
+                <Route path="floor-plan" element={<FloorPlan />} />
+                <Route path="speakers" element={<Speakers />} />
+                <Route path="speakers/:id" element={<SpeakerDetail />} />
+                <Route path="news" element={<News />} />
+                <Route path="schedule" element={<Schedule />} />
+                <Route path="meetings" element={<MeetingScheduler />} />
+                <Route path="tickets" element={<Tickets />} />
+                <Route path="workshops" element={<Workshops />} />
+                <Route path="business-cards" element={<BusinessCards />} />
+                <Route path="qa" element={<QA />} />
+                <Route path="lead-retrieval" element={<LeadRetrieval />} />
+                <Route path="navigation" element={<Navigation />} />
+                <Route path="matchmaking" element={<Matchmaking />} />
+                <Route path="chats" element={<ChatList />} />
+                <Route path="chat/:userId" element={<Chat />} />
+                <Route path="help" element={<HelpDesk />} />
+                <Route path="profile" element={<Profile />} />
+              </Route>
+            </Routes>
+          </Router>
+        </AppProvider>
+      </AuthProvider>
     </NativeWrapper>
   )
 }
