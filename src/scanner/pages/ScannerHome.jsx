@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { QrCode, History, LogOut, Camera, CheckCircle, XCircle, User, Building2, Users, Calendar } from 'lucide-react'
+import { QrCode, History, Camera, CheckCircle, User, Building2, Users, Calendar } from 'lucide-react'
 import { supabase } from '../../lib/supabase'
 
 const EVENT_DAYS = [
@@ -22,7 +22,7 @@ const getCurrentDay = () => {
   return day ? day.key : 'day1'
 }
 
-const ScannerHome = ({ user, onLogout }) => {
+const ScannerHome = ({ user }) => {
   const navigate = useNavigate()
   const [scanning, setScanning] = useState(false)
   const [scanResult, setScanResult] = useState(null)
@@ -139,24 +139,16 @@ const ScannerHome = ({ user, onLogout }) => {
               <QrCode className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="font-bold">Scanner App</h1>
-              <p className="text-xs text-gray-400">{user.email}</p>
+              <h1 className="font-bold">Libya Build Scanner</h1>
+              <p className="text-xs text-gray-400">Attendance Tracker</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => navigate('/history')}
-              className="p-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
-            >
-              <History className="w-5 h-5" />
-            </button>
-            <button
-              onClick={onLogout}
-              className="p-2 bg-red-600/20 text-red-400 rounded-lg hover:bg-red-600/30 transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
-          </div>
+          <button
+            onClick={() => navigate('/history')}
+            className="p-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
+          >
+            <History className="w-5 h-5" />
+          </button>
         </div>
       </div>
 
