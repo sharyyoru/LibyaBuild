@@ -75,10 +75,32 @@ const Scanner = () => {
     // Ignore errors during continuous scanning (these are normal when no QR is in view)
   }
 
+  const requestCameraPermission = async () => {
+    try {
+      // Request camera permission explicitly
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } 
+      })
+      // Stop the stream immediately - we just needed to trigger the permission prompt
+      stream.getTracks().forEach(track => track.stop())
+      return true
+    } catch (err) {
+      console.error('Camera permission denied:', err)
+      return false
+    }
+  }
+
   const startScanning = async () => {
     try {
       setScanError(null)
       setScanResult(null)
+      
+      // First request camera permission
+      const hasPermission = await requestCameraPermission()
+      if (!hasPermission) {
+        setScanError('Camera permission denied. Please allow camera access in your device settings and try again.')
+        return
+      }
       
       // Create new scanner instance
       html5QrCodeRef.current = new Html5Qrcode(scannerContainerId)
@@ -99,7 +121,7 @@ const Scanner = () => {
       setScanning(true)
     } catch (err) {
       console.error('Scanner error:', err)
-      setScanError('Camera access denied or not available. Please allow camera permissions.')
+      setScanError('Camera access denied or not available. Please allow camera permissions in your device settings.')
     }
   }
 

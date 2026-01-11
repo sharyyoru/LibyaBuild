@@ -240,14 +240,13 @@ const Profile = () => {
                 <p className="text-sm text-white/80">You have scanner privileges</p>
               </div>
             </div>
-            <Button 
-              fullWidth 
-              className="bg-white text-primary-600 hover:bg-gray-100"
+            <button 
+              className="w-full py-3 px-4 bg-white rounded-xl font-bold text-primary-600 hover:bg-gray-100 flex items-center justify-center gap-2 transition-colors"
               onClick={() => navigate('/scanner')}
             >
-              <QrCode className="w-5 h-5 mr-2" />
+              <QrCode className="w-5 h-5" />
               Open Scanner
-            </Button>
+            </button>
           </Card>
         )}
 
