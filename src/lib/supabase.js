@@ -95,3 +95,81 @@ export const fetchSystemConfig = async () => {
     .select('*')
   return { data, error }
 }
+
+// Attendance tracking functions
+export const fetchCurrentScanDay = async () => {
+  const { data, error } = await supabase
+    .from('system_config')
+    .select('value')
+    .eq('key', 'current_scan_day')
+    .single()
+  return { data: data?.value || 'day1', error }
+}
+
+export const setCurrentScanDay = async (day) => {
+  const { data, error } = await supabase
+    .from('system_config')
+    .upsert({ key: 'current_scan_day', value: day }, { onConflict: 'key' })
+  return { data, error }
+}
+
+export const fetchUserAttendance = async (qrCode) => {
+  const { data, error } = await supabase
+    .from('attendance')
+    .select('*')
+    .eq('qr_code', qrCode)
+    .single()
+  return { data, error }
+}
+
+export const recordUserAttendance = async (qrCode, day, scanType, scannedBy) => {
+  // First check if user has attendance record
+  const { data: existing } = await supabase
+    .from('attendance')
+    .select('*')
+    .eq('qr_code', qrCode)
+    .single()
+
+  if (existing) {
+    // Update existing record - increment scan count for the day
+    const dayScans = existing[`${day}_scans`] || 0
+    const updateData = {
+      [day]: true,
+      [`${day}_scans`]: dayScans + 1,
+      [`${day}_last_scan`]: new Date().toISOString(),
+      [`${day}_scan_type`]: scanType,
+      updated_at: new Date().toISOString()
+    }
+    
+    const { data, error } = await supabase
+      .from('attendance')
+      .update(updateData)
+      .eq('qr_code', qrCode)
+      .select()
+    return { data, error, isNew: false }
+  } else {
+    // Create new attendance record
+    const newRecord = {
+      qr_code: qrCode,
+      [day]: true,
+      [`${day}_scans`]: 1,
+      [`${day}_last_scan`]: new Date().toISOString(),
+      [`${day}_scan_type`]: scanType,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    }
+    
+    const { data, error } = await supabase
+      .from('attendance')
+      .insert(newRecord)
+      .select()
+    return { data, error, isNew: true }
+  }
+}
+
+export const fetchAllAttendanceStats = async () => {
+  const { data, error } = await supabase
+    .from('attendance')
+    .select('*')
+  return { data, error }
+}

@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import jsQR from 'jsqr'
-import { QrCode, History, Camera, CheckCircle, XCircle, User, Building2, Users, Calendar, ArrowLeft, Trash2, StopCircle, RefreshCw } from 'lucide-react'
+import { QrCode, History, Camera, CheckCircle, XCircle, User, Building2, Users, Calendar, ArrowLeft, Trash2, StopCircle, RefreshCw, Settings } from 'lucide-react'
 import Header from '../components/Header'
 import Card from '../components/Card'
 import Button from '../components/Button'
+import { fetchCurrentScanDay, recordUserAttendance, setCurrentScanDay } from '../lib/supabase'
 
 const EVENT_DAYS = [
   { key: 'day1', label: 'Day 1', date: '2026-03-15' },
@@ -24,12 +25,6 @@ const SCAN_TYPES = {
   delegate: { label: 'Delegate Access', color: 'bg-purple-600' }
 }
 
-const getCurrentDay = () => {
-  const today = new Date().toISOString().split('T')[0]
-  const day = EVENT_DAYS.find(d => d.date === today)
-  return day ? day.key : 'day1'
-}
-
 const Scanner = () => {
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('scan')
@@ -38,6 +33,9 @@ const Scanner = () => {
   const [scanResult, setScanResult] = useState(null)
   const [scanError, setScanError] = useState(null)
   const [manualCode, setManualCode] = useState('')
+  const [currentDay, setCurrentDay] = useState('day1')
+  const [showDaySettings, setShowDaySettings] = useState(false)
+  const [savingDay, setSavingDay] = useState(false)
   const [todayScans, setTodayScans] = useState(0)
   const [scanHistory, setScanHistory] = useState([])
   const [cameraReady, setCameraReady] = useState(false)
@@ -48,10 +46,34 @@ const Scanner = () => {
 
   useEffect(() => {
     loadScanHistory()
+    loadCurrentDay()
     return () => {
       stopScanning()
     }
   }, [])
+
+  const loadCurrentDay = async () => {
+    try {
+      const { data } = await fetchCurrentScanDay()
+      if (data) {
+        setCurrentDay(data)
+      }
+    } catch (err) {
+      console.error('Error fetching current day:', err)
+    }
+  }
+
+  const handleSetCurrentDay = async (day) => {
+    setSavingDay(true)
+    try {
+      await setCurrentScanDay(day)
+      setCurrentDay(day)
+      setShowDaySettings(false)
+    } catch (err) {
+      console.error('Error setting current day:', err)
+    }
+    setSavingDay(false)
+  }
 
   const loadScanHistory = () => {
     const history = JSON.parse(localStorage.getItem('scanHistory') || '[]')
@@ -121,7 +143,7 @@ const Scanner = () => {
     }
   }
 
-  const handleQRCodeFound = (decodedText) => {
+  const handleQRCodeFound = async (decodedText) => {
     // Vibrate if available
     if (navigator.vibrate) {
       navigator.vibrate(200)
@@ -132,7 +154,7 @@ const Scanner = () => {
     
     // Process the QR data
     const userData = processQRData(decodedText)
-    const result = recordScan(userData)
+    const result = await recordScan(userData)
     setScanResult(result)
   }
 
@@ -164,8 +186,7 @@ const Scanner = () => {
     }
   }
 
-  const recordScan = (userData) => {
-    const currentDay = getCurrentDay()
+  const recordScan = async (userData) => {
     const isDelegate = userData.types?.includes('delegate')
     
     // For delegate scans, check if user is actually a delegate
@@ -190,7 +211,14 @@ const Scanner = () => {
       success: true
     }
 
-    // Update user's attendance in localStorage (simulate sync)
+    // Record attendance to Supabase database
+    try {
+      await recordUserAttendance(userData.id, currentDay, scanType, 'scanner')
+    } catch (err) {
+      console.error('Error recording attendance to database:', err)
+    }
+
+    // Also update localStorage for offline support
     const allUsers = JSON.parse(localStorage.getItem('scannedUsers') || '{}')
     if (!allUsers[userData.id]) {
       allUsers[userData.id] = { ...userData, attendance: {} }
@@ -198,6 +226,7 @@ const Scanner = () => {
     
     if (scanType === 'gate') {
       allUsers[userData.id].attendance[currentDay] = true
+      allUsers[userData.id].attendance[`${currentDay}_scans`] = (allUsers[userData.id].attendance[`${currentDay}_scans`] || 0) + 1
     } else if (scanType === 'delegate') {
       allUsers[userData.id].delegateAccess = allUsers[userData.id].delegateAccess || {}
       allUsers[userData.id].delegateAccess[currentDay] = true
@@ -223,16 +252,16 @@ const Scanner = () => {
     }
   }
 
-  const handleManualScan = () => {
+  const handleManualScan = async () => {
     if (!manualCode.trim()) return
     
     const userData = processQRData(manualCode)
-    const result = recordScan(userData)
+    const result = await recordScan(userData)
     setScanResult(result)
     setManualCode('')
   }
 
-  const simulateScan = () => {
+  const simulateScan = async () => {
     const mockData = {
       id: `USER-${Date.now()}`,
       email: 'test@example.com',
@@ -240,7 +269,7 @@ const Scanner = () => {
       types: ['visitor', 'delegate'],
       attendance: {}
     }
-    const result = recordScan(mockData)
+    const result = await recordScan(mockData)
     setScanResult(result)
   }
 
@@ -283,15 +312,54 @@ const Scanner = () => {
 
         {activeTab === 'scan' && (
           <>
+            {/* Day Settings Modal */}
+            {showDaySettings && (
+              <Card className="p-4 bg-gray-900 border-gray-700">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-white flex items-center gap-2">
+                    <Settings className="w-5 h-5" />
+                    Set Scanning Day
+                  </h3>
+                  <button onClick={() => setShowDaySettings(false)} className="text-gray-400 hover:text-white">
+                    <XCircle className="w-5 h-5" />
+                  </button>
+                </div>
+                <p className="text-gray-400 text-sm mb-4">Select which day all scanners should record attendance for:</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {EVENT_DAYS.map(day => (
+                    <button
+                      key={day.key}
+                      onClick={() => handleSetCurrentDay(day.key)}
+                      disabled={savingDay}
+                      className={`p-3 rounded-xl border-2 transition-all ${
+                        currentDay === day.key
+                          ? 'border-primary-500 bg-primary-600 text-white'
+                          : 'border-gray-600 bg-gray-800 text-gray-300 hover:border-gray-500'
+                      }`}
+                    >
+                      <p className="font-bold">{day.label}</p>
+                      <p className="text-xs opacity-75">{day.date}</p>
+                    </button>
+                  ))}
+                </div>
+                {savingDay && <p className="text-center text-gray-400 text-sm mt-3">Saving...</p>}
+              </Card>
+            )}
+
             {/* Stats */}
             <div className="grid grid-cols-2 gap-3">
               <Card className="p-4 text-center">
                 <p className="text-gray-500 text-sm">Today's Scans</p>
                 <p className="text-3xl font-bold text-primary-600">{todayScans}</p>
               </Card>
-              <Card className="p-4 text-center">
-                <p className="text-gray-500 text-sm">Current Day</p>
-                <p className="text-3xl font-bold text-accent-600">{getCurrentDay().replace('day', 'Day ')}</p>
+              <Card 
+                className="p-4 text-center cursor-pointer hover:bg-gray-50 transition-colors"
+                onClick={() => setShowDaySettings(!showDaySettings)}
+              >
+                <p className="text-gray-500 text-sm flex items-center justify-center gap-1">
+                  Scanning Day <Settings className="w-3 h-3" />
+                </p>
+                <p className="text-3xl font-bold text-accent-600">{currentDay.replace('day', 'Day ')}</p>
               </Card>
             </div>
 

@@ -8,6 +8,7 @@ import Badge from '../components/Badge'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import { ticketUpgrades } from '../data/mockData'
+import { fetchUserAttendance } from '../lib/supabase'
 
 const EVENT_DAYS = [
   { key: 'day1', label: 'Day 1', date: 'Mar 15' },
@@ -27,7 +28,8 @@ const Tickets = () => {
   const { user } = useAuth()
   const [showUpgrades, setShowUpgrades] = useState(false)
   const [activeQR, setActiveQR] = useState('gate')
-  const [lastScanCheck, setLastScanCheck] = useState(Date.now())
+  const [dbAttendance, setDbAttendance] = useState(null)
+  const [loading, setLoading] = useState(false)
   const printRef = useRef(null)
 
   const handlePurchase = (upgrade) => {
@@ -35,25 +37,33 @@ const Tickets = () => {
     setShowUpgrades(false)
   }
 
-  // Check for attendance updates from scanner
-  useEffect(() => {
-    const checkAttendance = () => {
-      const scannedUsers = JSON.parse(localStorage.getItem('scannedUsers') || '{}')
-      const myData = scannedUsers[userProfile.qrCode]
-      if (myData?.attendance) {
-        Object.keys(myData.attendance).forEach(day => {
-          if (myData.attendance[day] && !userProfile.attendance?.[day]) {
-            recordAttendance(day)
+  // Fetch attendance from database
+  const loadAttendance = async () => {
+    if (!userProfile.qrCode) return
+    setLoading(true)
+    try {
+      const { data } = await fetchUserAttendance(userProfile.qrCode)
+      if (data) {
+        setDbAttendance(data)
+        // Sync to local state
+        EVENT_DAYS.forEach(day => {
+          if (data[day.key] && !userProfile.attendance?.[day.key]) {
+            recordAttendance(day.key)
           }
         })
       }
-      setLastScanCheck(Date.now())
+    } catch (err) {
+      console.error('Error fetching attendance:', err)
     }
-    
-    const interval = setInterval(checkAttendance, 3000)
-    checkAttendance()
+    setLoading(false)
+  }
+
+  // Check for attendance updates from database
+  useEffect(() => {
+    loadAttendance()
+    const interval = setInterval(loadAttendance, 5000) // Check every 5 seconds
     return () => clearInterval(interval)
-  }, [userProfile.qrCode, userProfile.attendance, recordAttendance])
+  }, [userProfile.qrCode])
 
   const hasBaseTicket = tickets.some(t => t.name === 'Entry Pass')
   
@@ -257,24 +267,36 @@ const Tickets = () => {
               <span className="text-sm font-medium flex items-center gap-2">
                 <Calendar className="w-4 h-4" />
                 Attendance Tracker
+                {loading && <RefreshCw className="w-3 h-3 animate-spin" />}
               </span>
               <span className="text-sm font-bold">{attendedDays}/4 Days</span>
             </div>
             <div className="grid grid-cols-4 gap-2">
-              {EVENT_DAYS.map(day => (
-                <div 
-                  key={day.key}
-                  className={`text-center p-2 rounded-lg ${
-                    attendance[day.key] 
-                      ? 'bg-green-500 text-white' 
-                      : 'bg-white/20 text-white/60'
-                  }`}
-                >
-                  <p className="text-xs font-medium">{day.label}</p>
-                  <p className="text-[10px]">{day.date}</p>
-                  {attendance[day.key] && <Check className="w-3 h-3 mx-auto mt-1" />}
-                </div>
-              ))}
+              {EVENT_DAYS.map(day => {
+                const isAttended = dbAttendance?.[day.key] || attendance[day.key]
+                const scanCount = dbAttendance?.[`${day.key}_scans`] || 0
+                return (
+                  <div 
+                    key={day.key}
+                    className={`text-center p-2 rounded-lg ${
+                      isAttended 
+                        ? 'bg-green-500 text-white' 
+                        : 'bg-white/20 text-white/60'
+                    }`}
+                  >
+                    <p className="text-xs font-medium">{day.label}</p>
+                    <p className="text-[10px]">{day.date}</p>
+                    {isAttended && (
+                      <>
+                        <Check className="w-3 h-3 mx-auto mt-1" />
+                        {scanCount > 0 && (
+                          <p className="text-[9px] mt-0.5 opacity-80">{scanCount}x scanned</p>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )
+              })}
             </div>
           </div>
         </Card>
