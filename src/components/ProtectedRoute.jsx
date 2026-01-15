@@ -1,9 +1,11 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
 import Loader from './Loader'
 
 const ProtectedRoute = ({ children }) => {
   const { user, loading, isAuthenticated } = useAuth()
+  const { isLanguageSelected } = useLanguage()
   const location = useLocation()
 
   if (loading) {
@@ -15,7 +17,9 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" state={{ from: location }} replace />
+    // Redirect to onboarding if language not selected, otherwise to login
+    const redirectPath = isLanguageSelected ? '/login' : '/onboarding'
+    return <Navigate to={redirectPath} state={{ from: location }} replace />
   }
 
   return children

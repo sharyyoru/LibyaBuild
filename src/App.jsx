@@ -1,12 +1,16 @@
 import { useState } from 'react'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AppProvider } from './context/AppContext'
 import { AuthProvider } from './context/AuthContext'
+import { LanguageProvider } from './context/LanguageContext'
 import Layout from './components/Layout'
 import LoadingScreen from './components/LoadingScreen'
 import NativeWrapper from './components/NativeWrapper'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminApp from './admin/AdminApp'
+import Onboarding from './pages/Onboarding'
+import VisitorLogin from './pages/VisitorLogin'
+import ExhibitorLogin from './pages/ExhibitorLogin'
 import Login from './pages/Login'
 import Scanner from './pages/Scanner'
 import Home from './pages/Home'
@@ -41,15 +45,19 @@ function App() {
   return (
     <NativeWrapper>
       {isLoading && <LoadingScreen onLoadComplete={() => setIsLoading(false)} />}
-      <AuthProvider>
-        <AppProvider>
-          <Router>
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Registration />} />
+      <LanguageProvider>
+        <AuthProvider>
+          <AppProvider>
+            <Router>
+              <Routes>
+                {/* Onboarding & Auth Routes */}
+                <Route path="/onboarding" element={<Onboarding />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="/login/visitor" element={<VisitorLogin />} />
+                <Route path="/login/exhibitor" element={<ExhibitorLogin />} />
+                <Route path="/register" element={<Registration />} />
 
-              {/* Admin Portal Routes */}
+                {/* Admin Portal Routes */}
               <Route path="/admin/*" element={<AdminApp />} />
               <Route path="/exhibitor/*" element={<AdminApp />} />
               <Route path="/partner/*" element={<AdminApp />} />
@@ -88,9 +96,10 @@ function App() {
                 <Route path="favorites" element={<Favorites />} />
               </Route>
             </Routes>
-          </Router>
-        </AppProvider>
-      </AuthProvider>
+            </Router>
+          </AppProvider>
+        </AuthProvider>
+      </LanguageProvider>
     </NativeWrapper>
   )
 }
