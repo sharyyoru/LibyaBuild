@@ -1,15 +1,20 @@
-import { useState } from 'react'
-import { Calendar, Clock, Building2, CheckCircle, XCircle, Clock as ClockIcon } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Calendar, Clock, Building2, CheckCircle, XCircle, Clock as ClockIcon, Loader2 } from 'lucide-react'
 import Header from '../components/Header'
 import Card from '../components/Card'
 import Button from '../components/Button'
 import Badge from '../components/Badge'
 import { useApp } from '../context/AppContext'
-import { exhibitors } from '../data/mockData'
+import { getExhibitors, getVisitorMeetings, createSchedule, approveMeeting, cancelMeeting } from '../services/eventxApi'
 import { format } from 'date-fns'
 
 const MeetingScheduler = () => {
-  const { meetings, addMeeting, updateMeeting } = useApp()
+  const { meetings: localMeetings, addMeeting, updateMeeting } = useApp()
+  const [exhibitors, setExhibitors] = useState([])
+  const [meetings, setMeetings] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [formData, setFormData] = useState({
     exhibitorId: '',
@@ -19,28 +24,110 @@ const MeetingScheduler = () => {
     notes: ''
   })
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    const exhibitor = exhibitors.find(ex => ex.id === parseInt(formData.exhibitorId))
-    addMeeting({
-      ...formData,
-      exhibitorName: exhibitor?.name,
-      exhibitorBooth: exhibitor?.booth
-    })
-    setFormData({ exhibitorId: '', date: '', time: '', duration: '30', notes: '' })
-    setShowForm(false)
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    setIsLoading(true)
+    try {
+      const [exhibitorsData, meetingsData] = await Promise.all([
+        getExhibitors(),
+        getVisitorMeetings(new Date().toISOString().split('T')[0])
+      ])
+      
+      const exhibitorList = exhibitorsData.data || exhibitorsData.exhibitors || exhibitorsData || []
+      setExhibitors(Array.isArray(exhibitorList) ? exhibitorList : [])
+      
+      const meetingList = meetingsData.data || meetingsData.meetings || meetingsData || []
+      setMeetings(Array.isArray(meetingList) ? meetingList : [...localMeetings])
+    } catch (err) {
+      console.error('Failed to load data:', err)
+      setMeetings(localMeetings)
+    } finally {
+      setIsLoading(false)
+    }
   }
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setIsSubmitting(true)
+    setError('')
+    
+    try {
+      const exhibitor = exhibitors.find(ex => ex.id === parseInt(formData.exhibitorId))
+      
+      await createSchedule({
+        exhibitorId: parseInt(formData.exhibitorId),
+        date: formData.date,
+        time: formData.time,
+        message: formData.notes
+      })
+      
+      // Add to local state
+      const newMeeting = {
+        id: Date.now(),
+        exhibitorId: formData.exhibitorId,
+        exhibitorName: exhibitor?.company_name || exhibitor?.name || 'Exhibitor',
+        exhibitorBooth: exhibitor?.booth_number || exhibitor?.booth || 'TBA',
+        date: formData.date,
+        time: formData.time,
+        duration: formData.duration,
+        notes: formData.notes,
+        status: 'pending'
+      }
+      
+      setMeetings(prev => [...prev, newMeeting])
+      addMeeting(newMeeting)
+      
+      setFormData({ exhibitorId: '', date: '', time: '', duration: '30', notes: '' })
+      setShowForm(false)
+    } catch (err) {
+      setError(err.message || 'Failed to create meeting')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleUpdateStatus = async (meetingId, status) => {
+    try {
+      if (status === 'confirmed') {
+        await approveMeeting(meetingId)
+      } else if (status === 'cancelled') {
+        await cancelMeeting(meetingId)
+      }
+      
+      setMeetings(prev => prev.map(m => 
+        m.id === meetingId ? { ...m, status } : m
+      ))
+      updateMeeting(meetingId, { status })
+    } catch (err) {
+      console.error('Failed to update meeting:', err)
+      // Update locally anyway
+      setMeetings(prev => prev.map(m => 
+        m.id === meetingId ? { ...m, status } : m
+      ))
+      updateMeeting(meetingId, { status })
+    }
+  }
+
+  const getExhibitorName = (ex) => ex.company_name || ex.name || 'Unknown'
+  const getExhibitorBooth = (ex) => ex.booth_number || ex.booth || 'TBA'
 
   const statusColors = {
     pending: 'warning',
     confirmed: 'success',
-    cancelled: 'danger'
+    cancelled: 'danger',
+    approved: 'success',
+    rejected: 'danger'
   }
 
   const statusIcons = {
     pending: ClockIcon,
     confirmed: CheckCircle,
-    cancelled: XCircle
+    cancelled: XCircle,
+    approved: CheckCircle,
+    rejected: XCircle
   }
 
   return (
@@ -56,6 +143,11 @@ const MeetingScheduler = () => {
         {showForm && (
           <Card className="p-4">
             <h3 className="font-bold text-gray-900 mb-4">Request B2B Meeting</h3>
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm mb-4">
+                {error}
+              </div>
+            )}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
@@ -70,7 +162,7 @@ const MeetingScheduler = () => {
                   <option value="">Choose an exhibitor...</option>
                   {exhibitors.map(ex => (
                     <option key={ex.id} value={ex.id}>
-                      {ex.name} - {ex.booth}
+                      {getExhibitorName(ex)} - {getExhibitorBooth(ex)}
                     </option>
                   ))}
                 </select>
@@ -133,11 +225,11 @@ const MeetingScheduler = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <Button type="button" variant="secondary" fullWidth onClick={() => setShowForm(false)}>
+                <Button type="button" variant="secondary" fullWidth onClick={() => setShowForm(false)} disabled={isSubmitting}>
                   Cancel
                 </Button>
-                <Button type="submit" fullWidth>
-                  Send Request
+                <Button type="submit" fullWidth disabled={isSubmitting}>
+                  {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Sending...</> : 'Send Request'}
                 </Button>
               </div>
             </form>
@@ -148,7 +240,11 @@ const MeetingScheduler = () => {
           <h3 className="font-bold text-gray-900 mb-3">
             Scheduled Meetings ({meetings.length})
           </h3>
-          {meetings.length === 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
+            </div>
+          ) : meetings.length === 0 ? (
             <Card className="p-8 text-center">
               <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-500">No meetings scheduled yet</p>
@@ -156,47 +252,50 @@ const MeetingScheduler = () => {
           ) : (
             <div className="space-y-3">
               {meetings.map(meeting => {
-                const StatusIcon = statusIcons[meeting.status]
+                const status = meeting.status || 'pending'
+                const StatusIcon = statusIcons[status] || ClockIcon
                 return (
                   <Card key={meeting.id} className="p-4">
                     <div className="flex items-start justify-between gap-3 mb-3">
                       <div className="flex-1">
-                        <h4 className="font-bold text-gray-900 mb-1">{meeting.exhibitorName}</h4>
+                        <h4 className="font-bold text-gray-900 mb-1">
+                          {meeting.exhibitorName || meeting.exhibitor?.company_name || meeting.title || 'Meeting'}
+                        </h4>
                         <div className="flex items-center gap-2 text-sm text-gray-600">
                           <Building2 className="w-4 h-4" />
-                          <span>{meeting.exhibitorBooth}</span>
+                          <span>{meeting.exhibitorBooth || meeting.exhibitor?.booth_number || 'TBA'}</span>
                         </div>
                       </div>
-                      <Badge variant={statusColors[meeting.status]} size="sm">
+                      <Badge variant={statusColors[status] || 'default'} size="sm">
                         <StatusIcon className="w-3 h-3 mr-1 inline" />
-                        {meeting.status}
+                        {status}
                       </Badge>
                     </div>
                     
                     <div className="space-y-2 text-sm text-gray-600">
                       <div className="flex items-center gap-2">
                         <Calendar className="w-4 h-4 text-primary-600" />
-                        <span>{format(new Date(meeting.date), 'MMMM d, yyyy')}</span>
+                        <span>{meeting.date ? format(new Date(meeting.date), 'MMMM d, yyyy') : 'TBA'}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4 text-primary-600" />
-                        <span>{meeting.time} • {meeting.duration} min</span>
+                        <span>{meeting.time || meeting.start_time || 'TBA'} {meeting.duration ? `• ${meeting.duration} min` : ''}</span>
                       </div>
                     </div>
 
-                    {meeting.notes && (
+                    {(meeting.notes || meeting.message) && (
                       <p className="text-sm text-gray-600 mt-3 p-3 bg-gray-50 rounded-xl">
-                        {meeting.notes}
+                        {meeting.notes || meeting.message}
                       </p>
                     )}
 
-                    {meeting.status === 'pending' && (
+                    {status === 'pending' && (
                       <div className="grid grid-cols-2 gap-2 mt-3">
                         <Button
                           size="sm"
                           variant="secondary"
                           fullWidth
-                          onClick={() => updateMeeting(meeting.id, { status: 'cancelled' })}
+                          onClick={() => handleUpdateStatus(meeting.id, 'cancelled')}
                         >
                           Cancel
                         </Button>
@@ -204,7 +303,7 @@ const MeetingScheduler = () => {
                           size="sm"
                           variant="success"
                           fullWidth
-                          onClick={() => updateMeeting(meeting.id, { status: 'confirmed' })}
+                          onClick={() => handleUpdateStatus(meeting.id, 'confirmed')}
                         >
                           Confirm
                         </Button>

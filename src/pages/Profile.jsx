@@ -1,23 +1,81 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, Building2, Briefcase, Heart, Calendar, Mail, Settings, LogOut, Globe, Sparkles, QrCode, Shield } from 'lucide-react'
+import { User, Building2, Briefcase, Heart, Calendar, Mail, Settings, LogOut, Globe, Sparkles, QrCode, Shield, Loader2 } from 'lucide-react'
 import Header from '../components/Header'
 import Card from '../components/Card'
 import Button from '../components/Button'
 import Badge from '../components/Badge'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
-import { sectors, countries } from '../data/mockData'
+import { updateProfile, getVisitorMeetings, getExhibitorFavorites } from '../services/eventxApi'
+
+const sectors = [
+  'Architecture',
+  'Building & Construction Materials',
+  'Engineering',
+  'Interior Design',
+  'Mechanical',
+  'Real Estate',
+  'Windows, Door & Facades'
+]
+
+const countries = [
+  'Libya', 'Egypt', 'Tunisia', 'Algeria', 'Morocco',
+  'UAE', 'Saudi Arabia', 'Qatar', 'Kuwait', 'Bahrain',
+  'Turkey', 'Italy', 'Germany', 'China', 'USA', 'UK'
+]
 
 const STAFF_EMAILS = ['wilson@mutant.ae', 'admin@libyabuild.com', 'staff@libyabuild.com']
 
 const Profile = () => {
   const navigate = useNavigate()
-  const { userProfile, setUserProfile, favorites, tickets, meetings } = useApp()
+  const { userProfile, setUserProfile, favorites, tickets, meetings: localMeetings } = useApp()
   const { user, logout } = useAuth()
   const isStaff = user?.email && STAFF_EMAILS.includes(user.email.toLowerCase())
   const [isEditing, setIsEditing] = useState(false)
-  const [formData, setFormData] = useState(userProfile)
+  const [isSaving, setIsSaving] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [meetings, setMeetings] = useState([])
+  const [apiFavorites, setApiFavorites] = useState([])
+  
+  // Initialize form data from user or userProfile
+  const initialData = {
+    name: user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : userProfile.name || '',
+    role: user?.job_title || userProfile.role || '',
+    company: user?.company || userProfile.company || '',
+    sector: userProfile.sector || '',
+    country: user?.country || userProfile.country || '',
+    bio: userProfile.bio || '',
+    persona: userProfile.persona || 'visitor',
+    interests: userProfile.interests || []
+  }
+  
+  const [formData, setFormData] = useState(initialData)
+
+  useEffect(() => {
+    loadProfileData()
+  }, [])
+
+  const loadProfileData = async () => {
+    setIsLoading(true)
+    try {
+      const [meetingsData, favoritesData] = await Promise.all([
+        getVisitorMeetings(new Date().toISOString().split('T')[0]).catch(() => []),
+        getExhibitorFavorites().catch(() => ({ data: [] }))
+      ])
+      
+      const meetingList = meetingsData.data || meetingsData.meetings || meetingsData || []
+      setMeetings(Array.isArray(meetingList) ? meetingList : localMeetings)
+      
+      const favList = favoritesData.data || favoritesData.favorites || []
+      setApiFavorites(Array.isArray(favList) ? favList : [])
+    } catch (err) {
+      console.error('Failed to load profile data:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   const personas = [
     { id: 'visitor', label: 'Visitor', icon: User, description: 'Browse and network' },
@@ -25,9 +83,34 @@ const Profile = () => {
     { id: 'media', label: 'Media', icon: Mail, description: 'Press coverage' }
   ]
 
-  const handleSave = () => {
-    setUserProfile(formData)
-    setIsEditing(false)
+  const handleSave = async () => {
+    setIsSaving(true)
+    setError('')
+    
+    try {
+      // Parse name into first and last
+      const nameParts = formData.name.trim().split(' ')
+      const firstName = nameParts[0] || ''
+      const lastName = nameParts.slice(1).join(' ') || ''
+      
+      await updateProfile({
+        firstName,
+        lastName,
+        company: formData.company,
+        jobTitle: formData.role
+      })
+      
+      setUserProfile(formData)
+      setIsEditing(false)
+    } catch (err) {
+      console.error('Failed to save profile:', err)
+      setError(err.message || 'Failed to save profile')
+      // Still save locally
+      setUserProfile(formData)
+      setIsEditing(false)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const interests = [
@@ -126,6 +209,12 @@ const Profile = () => {
             )}
           </div>
 
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm mb-4">
+              {error}
+            </div>
+          )}
+          
           {!isEditing ? (
             <Button fullWidth variant="outline" onClick={() => setIsEditing(true)}>
               Edit Profile
@@ -133,13 +222,13 @@ const Profile = () => {
           ) : (
             <div className="grid grid-cols-2 gap-3">
               <Button variant="secondary" fullWidth onClick={() => {
-                setFormData(userProfile)
+                setFormData(initialData)
                 setIsEditing(false)
-              }}>
+              }} disabled={isSaving}>
                 Cancel
               </Button>
-              <Button fullWidth onClick={handleSave}>
-                Save Changes
+              <Button fullWidth onClick={handleSave} disabled={isSaving}>
+                {isSaving ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Saving...</> : 'Save Changes'}
               </Button>
             </div>
           )}
@@ -208,7 +297,7 @@ const Profile = () => {
               <Heart className="w-5 h-5 text-red-600" />
             </div>
             <p className="text-2xl font-bold text-gray-900">
-              {(favorites.exhibitors?.length || 0) + (favorites.sessions?.length || 0) + (favorites.speakers?.length || 0)}
+              {apiFavorites.length || (favorites.exhibitors?.length || 0) + (favorites.sessions?.length || 0) + (favorites.speakers?.length || 0)}
             </p>
             <p className="text-xs text-gray-600">Favorites</p>
           </Card>
@@ -217,7 +306,7 @@ const Profile = () => {
             <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center mx-auto mb-2">
               <Calendar className="w-5 h-5 text-blue-600" />
             </div>
-            <p className="text-2xl font-bold text-gray-900">{meetings.length}</p>
+            <p className="text-2xl font-bold text-gray-900">{meetings.length || localMeetings.length}</p>
             <p className="text-xs text-gray-600">Meetings</p>
           </Card>
 
