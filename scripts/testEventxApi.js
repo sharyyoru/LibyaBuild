@@ -50,9 +50,9 @@ const testVisitor = {
   howHeardAboutUs: ['Email', 'Search Engine'],
 };
 
-// Default test credentials from Postman collection
-const DEFAULT_TEST_EMAIL = 'visitor@test.test';
-const DEFAULT_TEST_PASSWORD = 'visitor-kFapB4S1';
+// Valid test credentials for event 11
+const DEFAULT_TEST_EMAIL = 'test.visitor.1768472789611@example.com';
+const DEFAULT_TEST_PASSWORD = 'visitor-qAcNF2an';
 
 // Get login credentials - priority: CLI args > registered > env vars > defaults
 const getLoginCredentials = () => {
