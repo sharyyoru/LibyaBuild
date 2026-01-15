@@ -1,17 +1,21 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { MapPin, Heart, Mail, Phone, Globe } from 'lucide-react'
+import { MapPin, Heart, Mail, Phone, Globe, Building2 } from 'lucide-react'
 import Header from '../components/Header'
 import SearchBar from '../components/SearchBar'
 import Card from '../components/Card'
 import Badge from '../components/Badge'
 import Loader from '../components/Loader'
-import { exhibitors } from '../data/mockData'
+import { getExhibitors } from '../services/eventxApi'
 import { useApp } from '../context/AppContext'
 import { clsx } from 'clsx'
 
+const DEFAULT_LOGO = '/media/default-company.svg'
+
 const Exhibitors = () => {
+  const [exhibitors, setExhibitors] = useState([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('all')
   const [country, setCountry] = useState('all')
@@ -19,22 +23,69 @@ const Exhibitors = () => {
   const { isFavorite, toggleFavorite } = useApp()
 
   useEffect(() => {
-    setTimeout(() => setIsLoading(false), 500)
+    loadExhibitors()
   }, [])
 
-  const categories = ['all', ...new Set(exhibitors.map(e => e.category))]
-  const countries = ['all', ...new Set(exhibitors.map(e => e.country))]
-  const sectors = ['all', ...new Set(exhibitors.map(e => e.sector))]
+  const loadExhibitors = async () => {
+    setIsLoading(true)
+    setError('')
+    try {
+      const data = await getExhibitors()
+      // Handle different API response structures
+      const exhibitorList = data.data || data.exhibitors || data || []
+      setExhibitors(Array.isArray(exhibitorList) ? exhibitorList : [])
+    } catch (err) {
+      console.error('Failed to load exhibitors:', err)
+      setError('Failed to load exhibitors')
+      setExhibitors([])
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const getExhibitorLogo = (exhibitor) => {
+    return exhibitor.logo_url || exhibitor.logo || exhibitor.image || exhibitor.company_logo || DEFAULT_LOGO
+  }
+
+  const getExhibitorName = (exhibitor) => {
+    return exhibitor.company_name || exhibitor.name || exhibitor.company || 'Unknown Company'
+  }
+
+  const getExhibitorSector = (exhibitor) => {
+    return exhibitor.sector || exhibitor.industry || exhibitor.category || 'General'
+  }
+
+  const getExhibitorCountry = (exhibitor) => {
+    return exhibitor.country || exhibitor.location || 'Libya'
+  }
+
+  const getExhibitorBooth = (exhibitor) => {
+    if (exhibitor.booth_number && exhibitor.hall) {
+      return `${exhibitor.hall} - ${exhibitor.booth_number}`
+    }
+    return exhibitor.booth_number || exhibitor.booth || exhibitor.stand || 'TBA'
+  }
+
+  const getExhibitorDescription = (exhibitor) => {
+    return exhibitor.description || exhibitor.about || exhibitor.company_description || ''
+  }
+
+  const countries = ['all', ...new Set(exhibitors.map(e => getExhibitorCountry(e)).filter(Boolean))]
+  const sectors = ['all', ...new Set(exhibitors.map(e => getExhibitorSector(e)).filter(Boolean))]
 
   const filtered = exhibitors.filter(ex => {
-    const matchesSearch = ex.name.toLowerCase().includes(search.toLowerCase()) ||
-      ex.description.toLowerCase().includes(search.toLowerCase()) ||
-      ex.booth.toLowerCase().includes(search.toLowerCase()) ||
-      ex.hall.toLowerCase().includes(search.toLowerCase())
-    const matchesCategory = category === 'all' || ex.category === category
-    const matchesCountry = country === 'all' || ex.country === country
-    const matchesSector = sector === 'all' || ex.sector === sector
-    return matchesSearch && matchesCategory && matchesCountry && matchesSector
+    const name = getExhibitorName(ex).toLowerCase()
+    const desc = getExhibitorDescription(ex).toLowerCase()
+    const booth = getExhibitorBooth(ex).toLowerCase()
+    const searchLower = search.toLowerCase()
+    
+    const matchesSearch = !search || 
+      name.includes(searchLower) ||
+      desc.includes(searchLower) ||
+      booth.includes(searchLower)
+    const matchesCountry = country === 'all' || getExhibitorCountry(ex) === country
+    const matchesSector = sector === 'all' || getExhibitorSector(ex) === sector
+    return matchesSearch && matchesCountry && matchesSector
   })
 
   return (
@@ -87,9 +138,21 @@ const Exhibitors = () => {
           </div>
         </div>
 
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm">
+            {error}
+            <button onClick={loadExhibitors} className="ml-2 underline">Retry</button>
+          </div>
+        )}
+
         {isLoading ? (
           <div className="flex justify-center py-12">
             <Loader size="lg" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="text-center py-12">
+            <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500">No exhibitors found</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -98,13 +161,14 @@ const Exhibitors = () => {
               <Link to={`/exhibitors/${exhibitor.id}`} className="block p-4">
                 <div className="flex gap-4">
                   <img
-                    src={exhibitor.logo}
-                    alt={exhibitor.name}
-                    className="w-16 h-16 rounded-xl object-cover flex-shrink-0"
+                    src={getExhibitorLogo(exhibitor)}
+                    alt={getExhibitorName(exhibitor)}
+                    className="w-16 h-16 rounded-xl object-cover flex-shrink-0 bg-gray-100"
+                    onError={(e) => { e.target.src = DEFAULT_LOGO }}
                   />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 mb-2">
-                      <h3 className="font-bold text-gray-900">{exhibitor.name}</h3>
+                      <h3 className="font-bold text-gray-900">{getExhibitorName(exhibitor)}</h3>
                       <button
                         onClick={(e) => {
                           e.preventDefault()
@@ -122,19 +186,21 @@ const Exhibitors = () => {
                         />
                       </button>
                     </div>
-                    <div className="flex gap-1.5 mb-2">
-                      <Badge variant="primary" size="sm">{exhibitor.sector}</Badge>
-                      <Badge size="sm">{exhibitor.country}</Badge>
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      <Badge variant="primary" size="sm">{getExhibitorSector(exhibitor)}</Badge>
+                      <Badge size="sm">{getExhibitorCountry(exhibitor)}</Badge>
                     </div>
-                    <p className="text-sm text-gray-600 mt-2 line-clamp-2">{exhibitor.description}</p>
+                    {getExhibitorDescription(exhibitor) && (
+                      <p className="text-sm text-gray-600 mt-2 line-clamp-2">{getExhibitorDescription(exhibitor)}</p>
+                    )}
                     <div className="flex items-center gap-4 mt-3 text-sm text-gray-500">
                       <span className="flex items-center gap-1">
                         <MapPin className="w-4 h-4" />
-                        {exhibitor.booth}
+                        {getExhibitorBooth(exhibitor)}
                       </span>
                       <span className="flex items-center gap-1">
                         <Globe className="w-4 h-4" />
-                        {exhibitor.country}
+                        {getExhibitorCountry(exhibitor)}
                       </span>
                     </div>
                   </div>
