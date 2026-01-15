@@ -13,7 +13,7 @@
  */
 
 const EVENTX_API_BASE_URL = process.env.EVENTX_API_URL || 'https://eventxtest.fxunlock.com/api';
-const DEFAULT_EVENT_ID = parseInt(process.env.EVENTX_EVENT_ID) || 10;
+const DEFAULT_EVENT_ID = parseInt(process.env.EVENTX_EVENT_ID) || 11;
 
 let authToken = process.env.EVENTX_TOKEN || null;
 

@@ -4,7 +4,7 @@
  */
 
 const EVENTX_API_BASE_URL = 'https://eventxtest.fxunlock.com/api';
-const DEFAULT_EVENT_ID = 10;
+const DEFAULT_EVENT_ID = 11;
 
 // Token storage
 let authToken = null;
