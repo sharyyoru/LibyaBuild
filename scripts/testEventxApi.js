@@ -1,24 +1,36 @@
 /**
  * EventX API Integration Test Script
- * Run with: node scripts/testEventxApi.js
  * 
- * Environment variables (optional):
- *   EVENTX_TOKEN - Valid auth token for testing authenticated endpoints
- *   EVENTX_EVENT_ID - Valid event ID (default: 10)
+ * Usage:
+ *   node scripts/testEventxApi.js [email] [password]
+ *   
+ * Or with environment variables:
+ *   EVENTX_TEST_EMAIL=email EVENTX_TEST_PASSWORD=pass node scripts/testEventxApi.js
+ * 
+ * Environment variables:
+ *   EVENTX_TOKEN - Valid auth token (skip login)
+ *   EVENTX_EVENT_ID - Event ID (default: 11)
  *   EVENTX_TEST_EMAIL - Test visitor email
  *   EVENTX_TEST_PASSWORD - Test visitor password
  * 
- * Example:
+ * Examples:
+ *   node scripts/testEventxApi.js user@example.com mypassword123
  *   EVENTX_TOKEN=your_token node scripts/testEventxApi.js
  */
+
+// Parse command line arguments
+const args = process.argv.slice(2);
+const CLI_EMAIL = args[0] || null;
+const CLI_PASSWORD = args[1] || null;
 
 const EVENTX_API_BASE_URL = process.env.EVENTX_API_URL || 'https://eventxtest.fxunlock.com/api';
 const DEFAULT_EVENT_ID = parseInt(process.env.EVENTX_EVENT_ID) || 11;
 
 let authToken = process.env.EVENTX_TOKEN || null;
 
-// Fallback token from Postman collection (may be expired)
-const FALLBACK_TOKEN = '219|LLQfR3Mn3uM18sfQwXZWvjBjDuXYAeBLUvJmB6JE58a5e048';
+// Store registered user credentials for login
+let registeredUserEmail = null;
+let registeredUserPassword = null;
 
 // Test data
 const testVisitor = {
@@ -38,10 +50,34 @@ const testVisitor = {
   howHeardAboutUs: ['Email', 'Search Engine'],
 };
 
-const testLoginCredentials = {
-  email: process.env.EVENTX_TEST_EMAIL || 'visitor@test.test',
-  password: process.env.EVENTX_TEST_PASSWORD || 'visitor-kFapB4S1',
-  eventId: DEFAULT_EVENT_ID,
+// Default test credentials from Postman collection
+const DEFAULT_TEST_EMAIL = 'visitor@test.test';
+const DEFAULT_TEST_PASSWORD = 'visitor-kFapB4S1';
+
+// Get login credentials - priority: CLI args > registered > env vars > defaults
+const getLoginCredentials = () => {
+  // CLI arguments have highest priority
+  if (CLI_EMAIL && CLI_PASSWORD) {
+    return {
+      email: CLI_EMAIL,
+      password: CLI_PASSWORD,
+      eventId: DEFAULT_EVENT_ID,
+    };
+  }
+  // If we have both registered email AND password, use them
+  if (registeredUserEmail && registeredUserPassword) {
+    return {
+      email: registeredUserEmail,
+      password: registeredUserPassword,
+      eventId: DEFAULT_EVENT_ID,
+    };
+  }
+  // Otherwise use environment variables or default test credentials
+  return {
+    email: process.env.EVENTX_TEST_EMAIL || DEFAULT_TEST_EMAIL,
+    password: process.env.EVENTX_TEST_PASSWORD || DEFAULT_TEST_PASSWORD,
+    eventId: DEFAULT_EVENT_ID,
+  };
 };
 
 // Utility functions
@@ -113,7 +149,33 @@ async function testRegisterVisitor() {
       body: JSON.stringify(testVisitor),
     });
     
-    logSuccess('Visitor registration completed');
+    // Store credentials from registration response for login
+    registeredUserEmail = testVisitor.email;
+    
+    // Check if password is returned in response
+    if (result.password) {
+      registeredUserPassword = result.password;
+      logSuccess(`Visitor registration completed - Password received: ${result.password}`);
+    } else if (result.data && result.data.password) {
+      registeredUserPassword = result.data.password;
+      logSuccess(`Visitor registration completed - Password received: ${result.data.password}`);
+    } else if (result.visitor && result.visitor.password) {
+      registeredUserPassword = result.visitor.password;
+      logSuccess(`Visitor registration completed - Password received: ${result.visitor.password}`);
+    } else {
+      logSuccess('Visitor registration completed');
+      log('Registration response (checking for password field)', result);
+    }
+    
+    // If token is provided directly after registration, use it
+    if (result.token) {
+      authToken = result.token;
+      logSuccess(`Token obtained from registration: ${authToken.substring(0, 20)}...`);
+    } else if (result.access_token) {
+      authToken = result.access_token;
+      logSuccess(`Token obtained from registration: ${authToken.substring(0, 20)}...`);
+    }
+    
     return result;
   } catch (error) {
     logError('Registration failed', error);
@@ -122,14 +184,16 @@ async function testRegisterVisitor() {
 }
 
 async function testLoginVisitor() {
-  log('TEST: Login Visitor', { email: testLoginCredentials.email, eventId: testLoginCredentials.eventId });
+  const credentials = getLoginCredentials();
+  
+  log('TEST: Login Visitor', { email: credentials.email, eventId: credentials.eventId });
   
   try {
     // Use FormData for multipart/form-data (like Postman)
     const formData = new FormData();
-    formData.append('email', testLoginCredentials.email);
-    formData.append('password', testLoginCredentials.password);
-    formData.append('eventId', testLoginCredentials.eventId.toString());
+    formData.append('email', credentials.email);
+    formData.append('password', credentials.password);
+    formData.append('eventId', credentials.eventId.toString());
 
     const result = await apiRequest('/login-visitor', {
       method: 'POST',
@@ -328,11 +392,12 @@ async function runTests() {
   if (authToken) results.passed++; else results.failed++;
 
   if (!authToken) {
-    console.log('\n⚠ Login failed - using fallback token from Postman collection to test authenticated endpoints');
-    authToken = FALLBACK_TOKEN;
+    console.log('\n⚠ No valid token obtained - cannot test authenticated endpoints');
+    console.log('  Registration may not have returned a password, or login failed.');
+    console.log('  Please check the API response above for credentials.');
   }
   
-  {
+  if (authToken) {
     // Test 3: Get Exhibitors
     console.log('\n\n▶ PHASE 3: EXHIBITOR DATA');
     const exhibitorsResult = await testGetExhibitors();
