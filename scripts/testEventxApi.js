@@ -402,7 +402,7 @@ async function testToggleFavorite() {
     const result = await apiRequest('/exhibitor-favorites/toggle', {
       method: 'POST',
       body: JSON.stringify({
-        exhibitor_id: 78,
+        exhibitor_id: 543,
         event_id: DEFAULT_EVENT_ID
       }),
     });
@@ -418,7 +418,7 @@ async function testCreateSchedule() {
   log('TEST: Create Schedule/Meeting');
   
   const scheduleData = {
-    exhibitor_id: 78,
+    exhibitor_id: 543,
     date: '2026-03-15',
     time: '14:30',
     message: 'Test meeting request from API integration test'

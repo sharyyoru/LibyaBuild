@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { supabase, signIn, signOut, getCurrentUser } from '../lib/supabase'
+import { loginVisitor, getAuthToken, setAuthToken, clearAuthToken } from '../services/eventxApi'
 
 const AuthContext = createContext()
 
@@ -18,10 +18,14 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     // Check for existing session on mount
-    const initAuth = async () => {
+    const initAuth = () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
-        setUser(session?.user || null)
+        const token = getAuthToken()
+        const storedUser = localStorage.getItem('eventx_user')
+        
+        if (token && storedUser) {
+          setUser(JSON.parse(storedUser))
+        }
       } catch (err) {
         console.error('Auth init error:', err)
         setError(err.message)
@@ -31,34 +35,38 @@ export const AuthProvider = ({ children }) => {
     }
 
     initAuth()
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user || null)
-        setLoading(false)
-      }
-    )
-
-    return () => {
-      subscription?.unsubscribe()
-    }
   }, [])
 
   const login = async (email, password) => {
     setError(null)
     setLoading(true)
     try {
-      const { data, error: signInError } = await signIn(email, password)
-      if (signInError) {
-        setError(signInError.message)
-        return { success: false, error: signInError.message }
+      const result = await loginVisitor(email, password)
+      
+      if (result.token || result.access_token) {
+        const token = result.token || result.access_token
+        setAuthToken(token)
+        
+        const userData = {
+          email: email,
+          token: token,
+          ...result.user,
+          ...result.visitor
+        }
+        
+        localStorage.setItem('eventx_user', JSON.stringify(userData))
+        setUser(userData)
+        
+        return { success: true, user: userData }
+      } else {
+        const errorMsg = result.message || 'Login failed'
+        setError(errorMsg)
+        return { success: false, error: errorMsg }
       }
-      setUser(data.user)
-      return { success: true, user: data.user }
     } catch (err) {
-      setError(err.message)
-      return { success: false, error: err.message }
+      const errorMsg = err.message || 'Login failed'
+      setError(errorMsg)
+      return { success: false, error: errorMsg }
     } finally {
       setLoading(false)
     }
@@ -67,7 +75,8 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     setLoading(true)
     try {
-      await signOut()
+      clearAuthToken()
+      localStorage.removeItem('eventx_user')
       setUser(null)
       return { success: true }
     } catch (err) {

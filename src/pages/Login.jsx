@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, LogIn, Loader2 } from 'lucide-react'
+import { useNavigate, Link } from 'react-router-dom'
+import { Eye, EyeOff, LogIn, Loader2, UserPlus } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 const Login = () => {
@@ -119,7 +119,20 @@ const Login = () => {
             </button>
           </form>
 
-          <div className="mt-6 text-center">
+          <div className="mt-6 pt-6 border-t border-gray-200">
+            <p className="text-sm text-gray-600 text-center mb-4">
+              Don't have an account?
+            </p>
+            <Link
+              to="/register"
+              className="w-full bg-gray-100 text-gray-700 py-3 px-4 rounded-xl font-semibold hover:bg-gray-200 transition-all flex items-center justify-center gap-2"
+            >
+              <UserPlus className="w-5 h-5" />
+              Register Now
+            </Link>
+          </div>
+
+          <div className="mt-4 text-center">
             <p className="text-sm text-gray-500">
               March 15-17, 2026 • Tripoli International Fair Ground
             </p>
