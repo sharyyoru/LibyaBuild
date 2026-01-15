@@ -362,6 +362,191 @@ async function testGetExhibitorFavorites() {
   }
 }
 
+// ============================================================================
+// POST ENDPOINT TESTS
+// ============================================================================
+
+async function testUpdateProfile() {
+  log('TEST: Update Profile');
+  
+  const profileData = {
+    first_name: 'Test',
+    last_name: 'Updated',
+    email: getLoginCredentials().email,
+    company_text: 'Updated Company',
+    job_title: 'Senior Developer'
+  };
+  
+  try {
+    const formData = new FormData();
+    Object.entries(profileData).forEach(([key, value]) => {
+      formData.append(key, value);
+    });
+    
+    const result = await apiRequest('/profile/update', {
+      method: 'POST',
+      body: formData,
+    });
+    logSuccess('Profile updated successfully');
+    return result;
+  } catch (error) {
+    logError('Update profile failed', error);
+    return null;
+  }
+}
+
+async function testToggleFavorite() {
+  log('TEST: Toggle Favorite');
+  
+  try {
+    const result = await apiRequest('/exhibitor-favorites/toggle', {
+      method: 'POST',
+      body: JSON.stringify({
+        exhibitor_id: 78,
+        event_id: DEFAULT_EVENT_ID
+      }),
+    });
+    logSuccess('Favorite toggled successfully');
+    return result;
+  } catch (error) {
+    logError('Toggle favorite failed', error);
+    return null;
+  }
+}
+
+async function testCreateSchedule() {
+  log('TEST: Create Schedule/Meeting');
+  
+  const scheduleData = {
+    exhibitor_id: 78,
+    date: '2026-03-15',
+    time: '14:30',
+    message: 'Test meeting request from API integration test'
+  };
+  
+  try {
+    const result = await apiRequest('/schedule/store', {
+      method: 'POST',
+      body: JSON.stringify(scheduleData),
+    });
+    logSuccess('Schedule created successfully');
+    return result;
+  } catch (error) {
+    logError('Create schedule failed', error);
+    return null;
+  }
+}
+
+async function testStoreFlightDetails() {
+  log('TEST: Store Flight Details');
+  
+  const flightData = {
+    passenger_name: 'Test Visitor',
+    nationality: 'Libya',
+    airlines: 'Libyan Airlines',
+    flight_no: 'LN102',
+    arrival_date: '2026-03-14',
+    arrival_time: '14:30:00'
+  };
+  
+  try {
+    const formData = new FormData();
+    Object.entries(flightData).forEach(([key, value]) => {
+      formData.append(key, value);
+    });
+    
+    const result = await apiRequest('/store-flight-details', {
+      method: 'POST',
+      body: formData,
+    });
+    logSuccess('Flight details stored successfully');
+    return result;
+  } catch (error) {
+    logError('Store flight details failed', error);
+    return null;
+  }
+}
+
+async function testSubmitVisaApplication() {
+  log('TEST: Submit Visa Application');
+  
+  const visaData = {
+    company_name: 'Test Company',
+    applicants_name: 'Test Visitor',
+    nationality: 'Libya',
+    passport_no: 'P12345678',
+    mobile_no: '09123456789',
+    email: 'visa.test@example.com',
+    date_of_birth: '1990-01-15',
+    place_of_birth: 'Tripoli',
+    profession: 'Developer',
+    date_of_expiry: '2030-01-15',
+    date_of_issue: '2020-01-15',
+    invoice: 'pending',
+    status: 'pending',
+    type: 'visitor'
+  };
+  
+  try {
+    const formData = new FormData();
+    Object.entries(visaData).forEach(([key, value]) => {
+      formData.append(key, value);
+    });
+    
+    const result = await apiRequest('/form13-visitor', {
+      method: 'POST',
+      body: formData,
+    });
+    logSuccess('Visa application submitted successfully');
+    return result;
+  } catch (error) {
+    logError('Submit visa application failed', error);
+    return null;
+  }
+}
+
+async function testSubmitHotelRequest() {
+  log('TEST: Submit Hotel Request');
+  
+  const hotelData = {
+    guest_name: 'Test Visitor',
+    company_name: 'Test Company',
+    email: 'hotel.test@example.com',
+    mobile_no: '09123456789',
+    check_in_date: '2026-03-14',
+    check_out_date: '2026-03-18',
+    type: 'visitor',
+    rooms: [
+      { room_id: 1, quantity: 1 }
+    ]
+  };
+  
+  try {
+    const result = await apiRequest('/form15-visitor', {
+      method: 'POST',
+      body: JSON.stringify(hotelData),
+    });
+    logSuccess('Hotel request submitted successfully');
+    return result;
+  } catch (error) {
+    logError('Submit hotel request failed', error);
+    return null;
+  }
+}
+
+async function testMarkNotificationRead() {
+  log('TEST: Mark All Notifications Read');
+  
+  try {
+    const result = await apiRequest('/notifications/mark-all-read');
+    logSuccess('Notifications marked as read');
+    return result;
+  } catch (error) {
+    logError('Mark notifications read failed', error);
+    return null;
+  }
+}
+
 // Main test runner
 async function runTests() {
   console.log('\n');
@@ -459,6 +644,50 @@ async function runTests() {
     const favoritesResult = await testGetExhibitorFavorites();
     results.tests.push({ name: 'Get Exhibitor Favorites', passed: !!favoritesResult });
     if (favoritesResult) results.passed++; else results.failed++;
+
+    // ========== POST ENDPOINT TESTS ==========
+    
+    // Test 14: Update Profile
+    console.log('\n\n▶ PHASE 10: PROFILE UPDATE (POST)');
+    const profileResult = await testUpdateProfile();
+    results.tests.push({ name: 'Update Profile', passed: !!profileResult });
+    if (profileResult) results.passed++; else results.failed++;
+
+    // Test 15: Toggle Favorite
+    console.log('\n\n▶ PHASE 11: TOGGLE FAVORITE (POST)');
+    const toggleResult = await testToggleFavorite();
+    results.tests.push({ name: 'Toggle Favorite', passed: !!toggleResult });
+    if (toggleResult) results.passed++; else results.failed++;
+
+    // Test 16: Create Schedule
+    console.log('\n\n▶ PHASE 12: CREATE SCHEDULE (POST)');
+    const scheduleResult = await testCreateSchedule();
+    results.tests.push({ name: 'Create Schedule', passed: !!scheduleResult });
+    if (scheduleResult) results.passed++; else results.failed++;
+
+    // Test 17: Store Flight Details
+    console.log('\n\n▶ PHASE 13: FLIGHT DETAILS (POST)');
+    const flightResult = await testStoreFlightDetails();
+    results.tests.push({ name: 'Store Flight Details', passed: !!flightResult });
+    if (flightResult) results.passed++; else results.failed++;
+
+    // Test 18: Submit Visa Application
+    console.log('\n\n▶ PHASE 14: VISA APPLICATION (POST)');
+    const visaResult = await testSubmitVisaApplication();
+    results.tests.push({ name: 'Submit Visa Application', passed: !!visaResult });
+    if (visaResult) results.passed++; else results.failed++;
+
+    // Test 19: Submit Hotel Request
+    console.log('\n\n▶ PHASE 15: HOTEL REQUEST (POST)');
+    const hotelResult = await testSubmitHotelRequest();
+    results.tests.push({ name: 'Submit Hotel Request', passed: !!hotelResult });
+    if (hotelResult) results.passed++; else results.failed++;
+
+    // Test 20: Mark Notifications Read
+    console.log('\n\n▶ PHASE 16: NOTIFICATIONS (POST)');
+    const notifReadResult = await testMarkNotificationRead();
+    results.tests.push({ name: 'Mark Notifications Read', passed: !!notifReadResult });
+    if (notifReadResult) results.passed++; else results.failed++;
   }
 
   // Summary

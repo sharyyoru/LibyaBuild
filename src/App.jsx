@@ -29,6 +29,11 @@ import Matchmaking from './pages/Matchmaking'
 import ChatList from './pages/ChatList'
 import Chat from './pages/Chat'
 import HelpDesk from './pages/HelpDesk'
+import Registration from './pages/Registration'
+import TravelServices from './pages/TravelServices'
+import Notifications from './pages/Notifications'
+import MyMeetings from './pages/MyMeetings'
+import Favorites from './pages/Favorites'
 
 function App() {
   const [isLoading, setIsLoading] = useState(true)
@@ -42,6 +47,7 @@ function App() {
             <Routes>
               {/* Public Routes */}
               <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Registration />} />
 
               {/* Admin Portal Routes */}
               <Route path="/admin/*" element={<AdminApp />} />
@@ -76,6 +82,10 @@ function App() {
                 <Route path="help" element={<HelpDesk />} />
                 <Route path="profile" element={<Profile />} />
                 <Route path="scanner" element={<Scanner />} />
+                <Route path="travel" element={<TravelServices />} />
+                <Route path="notifications" element={<Notifications />} />
+                <Route path="my-meetings" element={<MyMeetings />} />
+                <Route path="favorites" element={<Favorites />} />
               </Route>
             </Routes>
           </Router>
