@@ -240,6 +240,49 @@ export const cancelMeeting = async (meetingId) => {
   });
 };
 
+/**
+ * Reject a meeting
+ * @param {number} meetingId - Meeting ID
+ */
+export const rejectMeeting = async (meetingId) => {
+  return apiRequest(`/schedule/${meetingId}/3`, {
+    method: 'PUT',
+  });
+};
+
+/**
+ * Get exhibitor's meeting requests (for exhibitor dashboard)
+ */
+export const getExhibitorMeetings = async () => {
+  return apiRequest('/exhibitor/meetings');
+};
+
+/**
+ * Get all user meetings (both as visitor and exhibitor)
+ */
+export const getAllMeetings = async () => {
+  return apiRequest('/meetings');
+};
+
+/**
+ * Get a single exhibitor by ID
+ * @param {number} exhibitorId - Exhibitor ID
+ */
+export const getExhibitorById = async (exhibitorId) => {
+  return apiRequest(`/exhibitor/${exhibitorId}`);
+};
+
+/**
+ * Send meeting notification
+ * @param {Object} notificationData - Notification data
+ */
+export const sendMeetingNotification = async (notificationData) => {
+  return apiRequest('/notifications/meeting', {
+    method: 'POST',
+    body: JSON.stringify(notificationData),
+  });
+};
+
 // ============================================================================
 // EXHIBITION & EXHIBITOR ENDPOINTS
 // ============================================================================
@@ -581,6 +624,11 @@ export default {
   createSchedule,
   approveMeeting,
   cancelMeeting,
+  rejectMeeting,
+  getExhibitorMeetings,
+  getAllMeetings,
+  getExhibitorById,
+  sendMeetingNotification,
   
   // Exhibition & Exhibitors
   getExhibitionEvents,
