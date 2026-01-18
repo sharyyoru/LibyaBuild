@@ -39,6 +39,9 @@ import TravelServices from './pages/TravelServices'
 import Notifications from './pages/Notifications'
 import MyMeetings from './pages/MyMeetings'
 import Favorites from './pages/Favorites'
+import FlightTickets from './pages/FlightTickets'
+import VisaApplication from './pages/VisaApplication'
+import HotelRequest from './pages/HotelRequest'
 
 function App() {
   const [isLoading, setIsLoading] = useState(true)
@@ -95,6 +98,9 @@ function App() {
                 <Route path="notifications" element={<Notifications />} />
                 <Route path="my-meetings" element={<MyMeetings />} />
                 <Route path="favorites" element={<Favorites />} />
+                <Route path="flight-tickets" element={<FlightTickets />} />
+                <Route path="visa-application" element={<VisaApplication />} />
+                <Route path="hotel-request" element={<HotelRequest />} />
               </Route>
             </Routes>
             </Router>

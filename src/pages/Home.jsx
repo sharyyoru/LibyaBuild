@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { QrCode, Sparkles } from 'lucide-react'
+import { QrCode, Sparkles, Plane, FileText, Hotel } from 'lucide-react'
 import Card from '../components/Card'
 import HeroBannerCarousel from '../components/HeroBannerCarousel'
 import PromotionalBanner from '../components/PromotionalBanner'
@@ -19,7 +20,21 @@ const QuickAction = ({ to, icon, title }) => (
   </Link>
 )
 
+const ExtraServiceAction = ({ to, icon: Icon, title, color }) => (
+  <Link to={to}>
+    <Card className="p-4 h-full hover:shadow-md transition-shadow">
+      <div className="flex flex-col items-center gap-3 text-center">
+        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${color}`}>
+          <Icon className="w-7 h-7 text-white" />
+        </div>
+        <span className="text-sm font-semibold text-gray-900">{title}</span>
+      </div>
+    </Card>
+  </Link>
+)
+
 const Home = () => {
+  const [activeTab, setActiveTab] = useState('quick')
   const latestNews = newsItems.slice(0, 3)
   const { userProfile } = useApp()
 
@@ -53,17 +68,67 @@ const Home = () => {
 
       <div className="bg-white rounded-t-[2rem] pt-6 pb-4">
         <div className="px-4 mb-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Quick Access</h2>
-          <div className="grid grid-cols-4 gap-3">
-            <QuickAction to="/exhibitors" icon="/media/PNG/App Icons-02.png" title="Exhibitors" />
-            <QuickAction to="/speakers" icon="/media/PNG/App Icons-11.png" title="Speakers" />
-            <QuickAction to="/floor-plan" icon="/media/PNG/App Icons-12.png" title="Floor Plan" />
-            <QuickAction to="/schedule" icon="/media/PNG/App Icons-09.png" title="Schedule" />
-            <QuickAction to="/tickets" icon="/media/PNG/App Icons-08.png" title="Tickets" />
-            <QuickAction to="/meetings" icon="/media/PNG/App Icons-15.png" title="Meetings" />
-            <QuickAction to="/business-cards" icon="/media/PNG/App Icons-01.png" title="Cards" />
-            <QuickAction to="/navigation" icon="/media/PNG/App Icons-03.png" title="Navigate" />
+          {/* Tab Headers */}
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={() => setActiveTab('quick')}
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                activeTab === 'quick'
+                  ? 'bg-primary-600 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Quick Access
+            </button>
+            <button
+              onClick={() => setActiveTab('extra')}
+              className={`px-4 py-2 rounded-full text-sm font-semibold transition-all ${
+                activeTab === 'extra'
+                  ? 'bg-primary-600 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              Extra Services
+            </button>
           </div>
+
+          {/* Quick Access Tab Content */}
+          {activeTab === 'quick' && (
+            <div className="grid grid-cols-4 gap-3">
+              <QuickAction to="/exhibitors" icon="/media/PNG/App Icons-02.png" title="Exhibitors" />
+              <QuickAction to="/speakers" icon="/media/PNG/App Icons-11.png" title="Speakers" />
+              <QuickAction to="/floor-plan" icon="/media/PNG/App Icons-12.png" title="Floor Plan" />
+              <QuickAction to="/schedule" icon="/media/PNG/App Icons-09.png" title="Schedule" />
+              <QuickAction to="/tickets" icon="/media/PNG/App Icons-08.png" title="Tickets" />
+              <QuickAction to="/meetings" icon="/media/PNG/App Icons-15.png" title="Meetings" />
+              <QuickAction to="/business-cards" icon="/media/PNG/App Icons-01.png" title="Cards" />
+              <QuickAction to="/navigation" icon="/media/PNG/App Icons-03.png" title="Navigate" />
+            </div>
+          )}
+
+          {/* Extra Services Tab Content */}
+          {activeTab === 'extra' && (
+            <div className="grid grid-cols-3 gap-4">
+              <ExtraServiceAction 
+                to="/flight-tickets" 
+                icon={Plane} 
+                title="Flight Tickets" 
+                color="bg-gradient-to-br from-blue-500 to-blue-600"
+              />
+              <ExtraServiceAction 
+                to="/visa-application" 
+                icon={FileText} 
+                title="Visa" 
+                color="bg-gradient-to-br from-emerald-500 to-emerald-600"
+              />
+              <ExtraServiceAction 
+                to="/hotel-request" 
+                icon={Hotel} 
+                title="Hotel" 
+                color="bg-gradient-to-br from-purple-500 to-purple-600"
+              />
+            </div>
+          )}
         </div>
 
         <div className="px-4 mb-6">
