@@ -60,7 +60,6 @@ export const AuthProvider = ({ children }) => {
           email: email,
           token: token,
           // Profile data contains the user_id and all user details
-          id: profileData?.id,
           first_name: profileData?.first_name,
           last_name: profileData?.last_name,
           company: profileData?.company_text || profileData?.company?.en_name,

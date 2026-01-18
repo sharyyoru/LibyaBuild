@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Calendar, Clock, MapPin, Users, Heart, Loader2, Star, ChevronRight, Sparkles, LayoutGrid, LayoutList, CalendarDays, Mic2, Wrench, UsersRound, Handshake, Building, Tag } from 'lucide-react'
+import { Calendar, Clock, MapPin, Users, Heart, Loader2, Star, ChevronRight, Sparkles, LayoutGrid, LayoutList, CalendarDays, Mic2, Wrench, UsersRound, Users2, Building, Tag } from 'lucide-react'
 import Card from '../components/Card'
 import Badge from '../components/Badge'
 import Loader from '../components/Loader'
@@ -22,7 +22,7 @@ const CATEGORY_CONFIG = {
   'Keynote': { icon: Mic2, color: 'from-purple-500 to-indigo-600', bg: 'bg-purple-500', light: 'bg-purple-50 text-purple-700 border-purple-200' },
   'Workshop': { icon: Wrench, color: 'from-amber-500 to-orange-600', bg: 'bg-amber-500', light: 'bg-amber-50 text-amber-700 border-amber-200' },
   'Panel': { icon: UsersRound, color: 'from-blue-500 to-cyan-600', bg: 'bg-blue-500', light: 'bg-blue-50 text-blue-700 border-blue-200' },
-  'Networking': { icon: Handshake, color: 'from-emerald-500 to-teal-600', bg: 'bg-emerald-500', light: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  'Networking': { icon: Users2, color: 'from-emerald-500 to-teal-600', bg: 'bg-emerald-500', light: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   'Exhibition': { icon: Building, color: 'from-cyan-500 to-blue-600', bg: 'bg-cyan-500', light: 'bg-cyan-50 text-cyan-700 border-cyan-200' },
   'default': { icon: Tag, color: 'from-gray-500 to-gray-600', bg: 'bg-gray-500', light: 'bg-gray-50 text-gray-700 border-gray-200' },
 }
