@@ -6,6 +6,10 @@ import Header from '../components/Header'
 import Card from '../components/Card'
 import Button from '../components/Button'
 import { fetchCurrentScanDay, recordUserAttendance, setCurrentScanDay } from '../lib/supabase'
+import { recordAttendance } from '../services/eventxApi'
+import { useAuth } from '../context/AuthContext'
+
+const LIBYA_BUILD_EVENT_ID = 11
 
 const EVENT_DAYS = [
   { key: 'day1', label: 'Day 1', date: '2026-03-15' },
@@ -21,14 +25,16 @@ const USER_TYPE_CONFIG = {
 }
 
 const SCAN_TYPES = {
-  gate: { label: 'Gate Entry', color: 'bg-primary-600' },
-  delegate: { label: 'Delegate Access', color: 'bg-purple-600' }
+  check_in: { label: 'Check In', color: 'bg-green-600', icon: 'LogIn' },
+  check_out: { label: 'Check Out', color: 'bg-orange-600', icon: 'LogOut' }
 }
 
 const Scanner = () => {
   const navigate = useNavigate()
+  const { isStaff, user } = useAuth()
   const [activeTab, setActiveTab] = useState('scan')
-  const [scanType, setScanType] = useState('gate')
+  const [scanType, setScanType] = useState('check_in')
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [scanning, setScanning] = useState(false)
   const [scanResult, setScanResult] = useState(null)
   const [scanError, setScanError] = useState(null)
@@ -180,57 +186,95 @@ const Scanner = () => {
   const processQRData = (qrString) => {
     try {
       const data = JSON.parse(qrString)
-      return data
+      // Extract user_id from badge data - could be in different formats
+      const userId = data.user_id || data.userId || data.id || data.visitor_id
+      return {
+        ...data,
+        user_id: userId,
+        id: userId,
+        name: data.name || data.first_name ? `${data.first_name || ''} ${data.last_name || ''}`.trim() : 'Unknown',
+        email: data.email || '',
+        types: data.types || ['visitor'],
+        attendance: data.attendance || {}
+      }
     } catch {
-      return { id: qrString, name: 'Unknown', types: ['visitor'], attendance: {} }
+      // If it's just a user ID string
+      const userId = parseInt(qrString, 10)
+      if (!isNaN(userId)) {
+        return { user_id: userId, id: userId, name: 'Visitor', types: ['visitor'], attendance: {} }
+      }
+      return { id: qrString, user_id: null, name: 'Unknown', types: ['visitor'], attendance: {} }
     }
   }
 
   const recordScan = async (userData) => {
-    const isDelegate = userData.types?.includes('delegate')
-    
-    // For delegate scans, check if user is actually a delegate
-    if (scanType === 'delegate' && !isDelegate) {
+    // Validate user_id is available
+    if (!userData.user_id) {
       return {
         success: false,
-        error: 'User is not a delegate. Access denied.',
+        error: 'Invalid QR code. No user ID found.',
         userData
       }
     }
+
+    setIsSubmitting(true)
+    
+    // Get the date for the current day
+    const dayConfig = EVENT_DAYS.find(d => d.key === currentDay)
+    const dateStr = dayConfig?.date || new Date().toISOString().split('T')[0]
 
     const scanRecord = {
       id: Date.now(),
       timestamp: new Date().toISOString(),
       scanType: scanType,
-      userId: userData.id,
+      userId: userData.user_id,
       userName: userData.name,
       userEmail: userData.email || '',
       userTypes: userData.types || ['visitor'],
       day: currentDay,
+      date: dateStr,
       attendanceBefore: { ...userData.attendance },
-      success: true
+      success: true,
+      reference: null
     }
 
-    // Record attendance to Supabase database
+    // Send attendance to API
     try {
-      await recordUserAttendance(userData.id, currentDay, scanType, 'scanner')
+      const response = await recordAttendance({
+        userId: userData.user_id,
+        scanType: scanType,
+        day: currentDay,
+        date: dateStr
+      }, LIBYA_BUILD_EVENT_ID)
+      
+      scanRecord.reference = response.reference || response.data?.reference
+      scanRecord.apiResponse = response
     } catch (err) {
-      console.error('Error recording attendance to database:', err)
+      console.error('Error sending attendance to API:', err)
+      setIsSubmitting(false)
+      return {
+        success: false,
+        error: `API Error: ${err.message}`,
+        userData
+      }
     }
 
-    // Also update localStorage for offline support
+    // Also record to Supabase for local tracking
+    try {
+      await recordUserAttendance(userData.user_id, currentDay, scanType, 'scanner')
+    } catch (err) {
+      console.error('Error recording attendance to Supabase:', err)
+    }
+
+    // Update localStorage for offline support
     const allUsers = JSON.parse(localStorage.getItem('scannedUsers') || '{}')
-    if (!allUsers[userData.id]) {
-      allUsers[userData.id] = { ...userData, attendance: {} }
+    if (!allUsers[userData.user_id]) {
+      allUsers[userData.user_id] = { ...userData, attendance: {} }
     }
     
-    if (scanType === 'gate') {
-      allUsers[userData.id].attendance[currentDay] = true
-      allUsers[userData.id].attendance[`${currentDay}_scans`] = (allUsers[userData.id].attendance[`${currentDay}_scans`] || 0) + 1
-    } else if (scanType === 'delegate') {
-      allUsers[userData.id].delegateAccess = allUsers[userData.id].delegateAccess || {}
-      allUsers[userData.id].delegateAccess[currentDay] = true
-    }
+    allUsers[userData.user_id].attendance[currentDay] = allUsers[userData.user_id].attendance[currentDay] || {}
+    allUsers[userData.user_id].attendance[currentDay][scanType] = true
+    allUsers[userData.user_id].attendance[`${currentDay}_${scanType}_time`] = new Date().toISOString()
     
     localStorage.setItem('scannedUsers', JSON.stringify(allUsers))
 
@@ -240,15 +284,16 @@ const Scanner = () => {
     localStorage.setItem('scanHistory', JSON.stringify(history.slice(0, 500)))
 
     loadScanHistory()
+    setIsSubmitting(false)
 
+    const actionLabel = scanType === 'check_in' ? 'Checked In' : 'Checked Out'
     return {
       success: true,
       day: currentDay,
       scanType: scanType,
-      userData: { ...userData, attendance: allUsers[userData.id].attendance },
-      message: scanType === 'gate' 
-        ? `Checked in for ${currentDay.replace('day', 'Day ')}`
-        : `Delegate access granted for ${currentDay.replace('day', 'Day ')}`
+      reference: scanRecord.reference,
+      userData: { ...userData, attendance: allUsers[userData.user_id].attendance },
+      message: `${actionLabel} for ${currentDay.replace('day', 'Day ')} (${dateStr})`
     }
   }
 
@@ -262,11 +307,14 @@ const Scanner = () => {
   }
 
   const simulateScan = async () => {
+    // Simulate with a test user ID (use a real test ID for production)
+    const testUserId = 692 // Test user ID from the API example
     const mockData = {
-      id: `USER-${Date.now()}`,
+      user_id: testUserId,
+      id: testUserId,
       email: 'test@example.com',
       name: 'Test User',
-      types: ['visitor', 'delegate'],
+      types: ['visitor'],
       attendance: {}
     }
     const result = await recordScan(mockData)
@@ -382,9 +430,9 @@ const Scanner = () => {
                 ))}
               </div>
               <p className="text-xs text-gray-500 mt-2">
-                {scanType === 'gate' 
-                  ? 'Scan for main event entry - marks daily attendance'
-                  : 'Scan for delegate-only areas - requires delegate status'}
+                {scanType === 'check_in' 
+                  ? 'Scan to record visitor entry for the selected day'
+                  : 'Scan to record visitor exit for the selected day'}
               </p>
             </Card>
 
@@ -535,9 +583,9 @@ const Scanner = () => {
                         <p className="text-xs text-gray-500">{scan.userEmail}</p>
                         <div className="flex gap-1 mt-1">
                           <span className={`text-xs px-2 py-0.5 rounded-full ${
-                            scan.scanType === 'gate' ? 'bg-primary-100 text-primary-700' : 'bg-purple-100 text-purple-700'
+                            scan.scanType === 'check_in' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
                           }`}>
-                            {SCAN_TYPES[scan.scanType]?.label || 'Gate Entry'}
+                            {SCAN_TYPES[scan.scanType]?.label || scan.scanType}
                           </span>
                           <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
                             {scan.day?.replace('day', 'Day ')}

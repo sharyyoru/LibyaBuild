@@ -7,6 +7,7 @@ import Layout from './components/Layout'
 import LoadingScreen from './components/LoadingScreen'
 import NativeWrapper from './components/NativeWrapper'
 import ProtectedRoute from './components/ProtectedRoute'
+import StaffRoute from './components/StaffRoute'
 import AdminApp from './admin/AdminApp'
 import Onboarding from './pages/Onboarding'
 import VisitorLogin from './pages/VisitorLogin'
@@ -89,7 +90,7 @@ function App() {
                 <Route path="chat/:userId" element={<Chat />} />
                 <Route path="help" element={<HelpDesk />} />
                 <Route path="profile" element={<Profile />} />
-                <Route path="scanner" element={<Scanner />} />
+                <Route path="scanner" element={<StaffRoute><Scanner /></StaffRoute>} />
                 <Route path="travel" element={<TravelServices />} />
                 <Route path="notifications" element={<Notifications />} />
                 <Route path="my-meetings" element={<MyMeetings />} />

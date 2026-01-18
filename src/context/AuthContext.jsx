@@ -51,7 +51,9 @@ export const AuthProvider = ({ children }) => {
           email: email,
           token: token,
           ...result.user,
-          ...result.visitor
+          ...result.visitor,
+          is_staff: result.is_staff || result.user?.is_staff || result.visitor?.is_staff || false,
+          user_level: result.user_level || result.user?.user_level || result.visitor?.user_level || 'visitor'
         }
         
         localStorage.setItem('eventx_user', JSON.stringify(userData))
@@ -93,7 +95,9 @@ export const AuthProvider = ({ children }) => {
     error,
     login,
     logout,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
+    isStaff: user?.is_staff || false,
+    userLevel: user?.user_level || 'visitor'
   }
 
   return (

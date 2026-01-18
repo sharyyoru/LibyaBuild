@@ -25,13 +25,10 @@ const countries = [
   'Turkey', 'Italy', 'Germany', 'China', 'USA', 'UK'
 ]
 
-const STAFF_EMAILS = ['wilson@mutant.ae', 'admin@libyabuild.com', 'staff@libyabuild.com']
-
 const Profile = () => {
   const navigate = useNavigate()
   const { userProfile, setUserProfile, favorites, tickets, meetings: localMeetings } = useApp()
-  const { user, logout } = useAuth()
-  const isStaff = user?.email && STAFF_EMAILS.includes(user.email.toLowerCase())
+  const { user, logout, isStaff, userLevel } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)

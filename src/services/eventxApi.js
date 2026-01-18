@@ -451,6 +451,89 @@ export const submitHotelRequest = async (hotelData) => {
 };
 
 // ============================================================================
+// STAFF ATTENDANCE ENDPOINTS
+// ============================================================================
+
+/**
+ * Generate a unique reference for attendance scan
+ * @param {number} userId - User/Visitor ID
+ * @param {string} day - Event day (day1, day2, etc.)
+ * @param {string} scanType - Type of scan (check_in, check_out)
+ */
+const generateAttendanceReference = (userId, day, scanType) => {
+  const timestamp = Date.now();
+  return `LB26-${day.toUpperCase()}-${scanType.toUpperCase()}-${userId}-${timestamp}`;
+};
+
+/**
+ * Record attendance via API (Staff only)
+ * Supports both check-in and check-out
+ * @param {Object} attendanceData - Attendance data
+ * @param {number} attendanceData.userId - User/Visitor ID from scanned badge
+ * @param {string} attendanceData.scanType - Type of scan ('check_in' or 'check_out')
+ * @param {string} attendanceData.day - Event day (day1, day2, day3, day4)
+ * @param {string} attendanceData.date - Date in YYYY-MM-DD format
+ * @param {number} eventId - Event ID (default: 11 for Libya Build)
+ */
+export const recordAttendance = async (attendanceData, eventId = DEFAULT_EVENT_ID) => {
+  const now = new Date();
+  const dateStr = attendanceData.date || now.toISOString().split('T')[0];
+  const timeStr = now.toISOString().replace('T', ' ').substring(0, 19);
+  
+  const reference = generateAttendanceReference(
+    attendanceData.userId,
+    attendanceData.day,
+    attendanceData.scanType
+  );
+
+  const payload = {
+    user_id: attendanceData.userId,
+    event_id: eventId,
+    check_in: attendanceData.scanType === 'check_in' ? timeStr : '',
+    check_out: attendanceData.scanType === 'check_out' ? timeStr : '',
+    date: dateStr,
+    reference: reference,
+  };
+
+  return apiRequest('/attendances', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};
+
+/**
+ * Check-in a visitor (Staff only)
+ * @param {number} userId - User/Visitor ID from scanned badge
+ * @param {string} day - Event day (day1, day2, day3, day4)
+ * @param {string} date - Date in YYYY-MM-DD format
+ * @param {number} eventId - Event ID
+ */
+export const checkInAttendance = async (userId, day, date, eventId = DEFAULT_EVENT_ID) => {
+  return recordAttendance({
+    userId,
+    scanType: 'check_in',
+    day,
+    date,
+  }, eventId);
+};
+
+/**
+ * Check-out a visitor (Staff only)
+ * @param {number} userId - User/Visitor ID from scanned badge
+ * @param {string} day - Event day (day1, day2, day3, day4)
+ * @param {string} date - Date in YYYY-MM-DD format
+ * @param {number} eventId - Event ID
+ */
+export const checkOutAttendance = async (userId, day, date, eventId = DEFAULT_EVENT_ID) => {
+  return recordAttendance({
+    userId,
+    scanType: 'check_out',
+    day,
+    date,
+  }, eventId);
+};
+
+// ============================================================================
 // UTILITY EXPORTS
 // ============================================================================
 
@@ -503,4 +586,9 @@ export default {
   storeFlightDetails,
   submitVisaApplication,
   submitHotelRequest,
+  
+  // Staff Attendance
+  recordAttendance,
+  checkInAttendance,
+  checkOutAttendance,
 };
