@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { loginVisitor, getAuthToken, setAuthToken, clearAuthToken } from '../services/eventxApi'
+import { loginVisitor, getAuthToken, setAuthToken, clearAuthToken, deleteUserAccount } from '../services/eventxApi'
 
 const AuthContext = createContext()
 
@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     setError(null)
-    setLoading(true)
+    // Note: Don't set global loading here - Login component manages its own loading state
     try {
       const result = await loginVisitor(email, password)
       
@@ -69,13 +69,10 @@ export const AuthProvider = ({ children }) => {
       const errorMsg = err.message || 'Login failed'
       setError(errorMsg)
       return { success: false, error: errorMsg }
-    } finally {
-      setLoading(false)
     }
   }
 
   const logout = async () => {
-    setLoading(true)
     try {
       clearAuthToken()
       localStorage.removeItem('eventx_user')
@@ -84,8 +81,30 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       setError(err.message)
       return { success: false, error: err.message }
-    } finally {
-      setLoading(false)
+    }
+  }
+
+  const deleteAccount = async () => {
+    try {
+      // Get user ID from current user data
+      const userId = user?.id || user?.user_id || user?.visitor_id
+      
+      if (!userId) {
+        return { success: false, error: 'User ID not found' }
+      }
+
+      // Call API to delete account
+      await deleteUserAccount(userId)
+      
+      // Clear local session
+      clearAuthToken()
+      localStorage.removeItem('eventx_user')
+      setUser(null)
+      
+      return { success: true }
+    } catch (err) {
+      setError(err.message)
+      return { success: false, error: err.message }
     }
   }
 
@@ -95,6 +114,7 @@ export const AuthProvider = ({ children }) => {
     error,
     login,
     logout,
+    deleteAccount,
     isAuthenticated: !!user,
     isStaff: user?.is_staff || false,
     userLevel: user?.user_level || 'visitor'

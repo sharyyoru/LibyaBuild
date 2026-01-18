@@ -132,6 +132,16 @@ export const loginVisitor = async (email, password, eventId = DEFAULT_EVENT_ID) 
 // ============================================================================
 
 /**
+ * Delete user account
+ * @param {number} userId - User ID to delete
+ */
+export const deleteUserAccount = async (userId) => {
+  return apiRequest(`/visitor/${userId}`, {
+    method: 'DELETE',
+  });
+};
+
+/**
  * Get visitor badge information
  * @param {string} badgeId - Badge ID
  */
@@ -548,6 +558,7 @@ export default {
   // Profile
   getVisitorBadge,
   updateProfile,
+  deleteUserAccount,
   
   // Meetings & Schedule
   getVisitorMeetings,

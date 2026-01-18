@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, Building2, Briefcase, Heart, Calendar, Mail, Settings, LogOut, Globe, Sparkles, QrCode, Shield, Loader2 } from 'lucide-react'
+import { User, Building2, Briefcase, Heart, Calendar, Mail, Settings, LogOut, Globe, Sparkles, QrCode, Shield, Loader2, Trash2, AlertTriangle, X } from 'lucide-react'
 import Header from '../components/Header'
 import Card from '../components/Card'
 import Button from '../components/Button'
@@ -28,13 +28,16 @@ const countries = [
 const Profile = () => {
   const navigate = useNavigate()
   const { userProfile, setUserProfile, favorites, tickets, meetings: localMeetings } = useApp()
-  const { user, logout, isStaff, userLevel } = useAuth()
+  const { user, logout, deleteAccount, isStaff, userLevel } = useAuth()
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [meetings, setMeetings] = useState([])
   const [apiFavorites, setApiFavorites] = useState([])
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState('')
   
   // Initialize form data from user or userProfile
   const initialData = {
@@ -127,6 +130,26 @@ const Profile = () => {
       ? current.filter(i => i !== interest)
       : [...current, interest]
     setFormData({ ...formData, interests: updated })
+  }
+
+  const handleDeleteAccount = async () => {
+    setIsDeleting(true)
+    setDeleteError('')
+    
+    try {
+      const result = await deleteAccount()
+      
+      if (result.success) {
+        // Navigate to login page after successful deletion
+        navigate('/login', { replace: true })
+      } else {
+        setDeleteError(result.error || 'Failed to delete account')
+      }
+    } catch (err) {
+      setDeleteError(err.message || 'Failed to delete account')
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   return (
@@ -362,6 +385,94 @@ const Profile = () => {
             </Card>
           </div>
         </div>
+
+        {/* Delete Account Section */}
+        <div>
+          <h3 className="font-bold text-gray-900 mb-3">Danger Zone</h3>
+          <Card className="p-4 border-red-200 bg-red-50">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-medium text-red-800">Delete Account</p>
+                <p className="text-sm text-red-600 mt-1">Permanently delete your account and all associated data. This action cannot be undone.</p>
+                <button
+                  onClick={() => setShowDeleteModal(true)}
+                  className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center gap-2"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete My Account
+                </button>
+              </div>
+            </div>
+          </Card>
+        </div>
+
+        {/* Delete Account Confirmation Modal */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-gray-900">Delete Account</h3>
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false)
+                    setDeleteError('')
+                  }}
+                  className="p-1 text-gray-400 hover:text-gray-600 transition-colors"
+                  disabled={isDeleting}
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+              
+              <div className="flex items-start gap-3 mb-6">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <AlertTriangle className="w-6 h-6 text-red-600" />
+                </div>
+                <div>
+                  <p className="text-gray-900 font-medium">Are you sure you want to delete your account?</p>
+                  <p className="text-sm text-gray-600 mt-1">This will permanently delete your profile, meetings, favorites, and all associated data. You will not be able to recover your account.</p>
+                </div>
+              </div>
+
+              {deleteError && (
+                <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm mb-4">
+                  {deleteError}
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  onClick={() => {
+                    setShowDeleteModal(false)
+                    setDeleteError('')
+                  }}
+                  disabled={isDeleting}
+                  className="py-3 px-4 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteAccount}
+                  disabled={isDeleting}
+                  className="py-3 px-4 bg-red-600 text-white rounded-xl font-semibold hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isDeleting ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Deleting...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-5 h-5" />
+                      Delete Account
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <Card className="p-4 text-center bg-gray-50">
           <p className="text-sm text-gray-600 mb-1">Libya Build Event App</p>
