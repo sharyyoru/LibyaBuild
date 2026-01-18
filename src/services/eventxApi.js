@@ -473,14 +473,14 @@ export const submitHotelRequest = async (hotelData) => {
 // ============================================================================
 
 /**
- * Generate a unique reference for attendance scan
+ * Generate a unique reference for attendance scan pair (check-in + check-out share same reference)
  * @param {number} userId - User/Visitor ID
  * @param {string} day - Event day (day1, day2, etc.)
- * @param {string} scanType - Type of scan (check_in, check_out)
+ * @param {string} date - Date in YYYY-MM-DD format
  */
-const generateAttendanceReference = (userId, day, scanType) => {
-  const timestamp = Date.now();
-  return `LB26-${day.toUpperCase()}-${scanType.toUpperCase()}-${userId}-${timestamp}`;
+export const generateAttendanceReference = (userId, day, date) => {
+  // Reference is based on user + day + date, so check-in and check-out share the same reference
+  return `LB26-${day.toUpperCase()}-${userId}-${date.replace(/-/g, '')}`;
 };
 
 /**
@@ -491,6 +491,7 @@ const generateAttendanceReference = (userId, day, scanType) => {
  * @param {string} attendanceData.scanType - Type of scan ('check_in' or 'check_out')
  * @param {string} attendanceData.day - Event day (day1, day2, day3, day4)
  * @param {string} attendanceData.date - Date in YYYY-MM-DD format
+ * @param {string} attendanceData.reference - Optional reference (if not provided, one will be generated)
  * @param {number} eventId - Event ID (default: 11 for Libya Build)
  */
 export const recordAttendance = async (attendanceData, eventId = DEFAULT_EVENT_ID) => {
@@ -498,10 +499,11 @@ export const recordAttendance = async (attendanceData, eventId = DEFAULT_EVENT_I
   const dateStr = attendanceData.date || now.toISOString().split('T')[0];
   const timeStr = now.toISOString().replace('T', ' ').substring(0, 19);
   
-  const reference = generateAttendanceReference(
+  // Use provided reference or generate one (same for check-in and check-out pair)
+  const reference = attendanceData.reference || generateAttendanceReference(
     attendanceData.userId,
     attendanceData.day,
-    attendanceData.scanType
+    dateStr
   );
 
   const payload = {
@@ -513,10 +515,13 @@ export const recordAttendance = async (attendanceData, eventId = DEFAULT_EVENT_I
     reference: reference,
   };
 
-  return apiRequest('/attendances', {
+  const result = await apiRequest('/attendances', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+  
+  // Return the reference so it can be stored for the paired check-out
+  return { ...result, reference };
 };
 
 /**
@@ -608,6 +613,7 @@ export default {
   submitHotelRequest,
   
   // Staff Attendance
+  generateAttendanceReference,
   recordAttendance,
   checkInAttendance,
   checkOutAttendance,
