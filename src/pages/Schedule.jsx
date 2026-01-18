@@ -448,7 +448,7 @@ const Schedule = () => {
           </div>
 
           {/* Featured Events Carousel */}
-          {featuredSessions.length > 0 && !showFeaturedOnly && (
+          {featuredSessions.length > 0 && eventFilter !== 'featured' && (
             <div className="mb-6">
               <div className="px-4 mb-3 flex items-center justify-between">
                 <h2 className="font-bold text-gray-900 flex items-center gap-2">
@@ -456,7 +456,7 @@ const Schedule = () => {
                   Featured Events
                 </h2>
                 <button 
-                  onClick={() => setShowFeaturedOnly(true)}
+                  onClick={() => setEventFilter('featured')}
                   className="text-sm text-primary-600 font-medium flex items-center gap-1"
                 >
                   See all <ChevronRight className="w-4 h-4" />
@@ -495,7 +495,7 @@ const Schedule = () => {
                   Try selecting a different day or category to find events
                 </p>
                 <button
-                  onClick={() => { setActiveDay('all'); setActiveCategory('all'); setShowFeaturedOnly(false) }}
+                  onClick={() => { setActiveDay('all'); setActiveCategory('all'); setEventFilter('all') }}
                   className="mt-4 px-6 py-2.5 bg-primary-600 text-white rounded-xl font-medium text-sm hover:bg-primary-700 transition-colors"
                 >
                   Clear Filters
