@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { MapPin, Mail, Phone, Globe, Heart, Calendar, Building2, ArrowLeft, Clock, Users, Package, CheckCircle, Loader2, ChevronDown, Send } from 'lucide-react'
+import { MapPin, Mail, Phone, Globe, Heart, Calendar, Building2, ArrowLeft, Clock, Users, Package, CheckCircle, Loader2, ChevronDown, Send, Star, Award, Crown, BadgeCheck, Briefcase, User } from 'lucide-react'
 import Header from '../components/Header'
 import Card from '../components/Card'
 import Button from '../components/Button'
@@ -72,19 +72,57 @@ const ExhibitorDetail = () => {
     }
   }
 
-  const getLogo = () => exhibitor?.logo_url || exhibitor?.logo || exhibitor?.image || DEFAULT_LOGO
-  const getName = () => exhibitor?.company_name || exhibitor?.name || exhibitor?.company || 'Unknown'
-  const getSector = () => exhibitor?.sector || exhibitor?.industry || exhibitor?.category || 'General'
-  const getDescription = () => exhibitor?.description || exhibitor?.about || ''
+  // Get logo from form3_data_entry or fallback
+  const getLogo = () => {
+    const form3Logo = exhibitor?.form3_data_entry?.company_logo
+    if (form3Logo) return form3Logo
+    return exhibitor?.logo_url || exhibitor?.logo || exhibitor?.image || DEFAULT_LOGO
+  }
+  
+  // Get company name - prefer en_name (English) with ar_name (Arabic) fallback
+  const getName = () => exhibitor?.en_name || exhibitor?.company_name || exhibitor?.name || exhibitor?.company || 'Unknown'
+  const getArabicName = () => exhibitor?.ar_name || ''
+  
+  // Get sector/industry from form3_data_entry or exhibitor data
+  const getSector = () => {
+    const form3 = exhibitor?.form3_data_entry
+    if (form3?.industries) {
+      const industries = Array.isArray(form3.industries) ? form3.industries : [form3.industries]
+      return industries.map(i => typeof i === 'string' ? i : i.name || i.en_name).join(', ')
+    }
+    return exhibitor?.sector || exhibitor?.industry || exhibitor?.category || 'General'
+  }
+  
+  const getDescription = () => exhibitor?.form3_data_entry?.company_description || exhibitor?.description || exhibitor?.about || ''
   const getBooth = () => exhibitor?.booth_number || exhibitor?.booth || 'TBA'
   const getHall = () => exhibitor?.hall || 'TBA'
   const getEmail = () => exhibitor?.email || exhibitor?.contact?.email || exhibitor?.company_email || ''
   const getPhone = () => exhibitor?.phone || exhibitor?.contact?.phone || exhibitor?.mobile || ''
-  const getWebsite = () => exhibitor?.website || exhibitor?.contact?.website || exhibitor?.company_website || ''
-  const getCountry = () => exhibitor?.country || 'Libya'
+  const getWebsite = () => exhibitor?.form3_data_entry?.website || exhibitor?.website || exhibitor?.contact?.website || exhibitor?.company_website || ''
+  const getCountry = () => exhibitor?.country || exhibitor?.form3_data_entry?.country || 'Libya'
   const getTags = () => exhibitor?.tags || exhibitor?.products || []
-  const getProducts = () => exhibitor?.products || exhibitor?.services || []
-  const getRepresentatives = () => exhibitor?.representatives || exhibitor?.contacts || exhibitor?.team || []
+  const getProducts = () => exhibitor?.form3_data_entry?.products || exhibitor?.products || exhibitor?.services || []
+  
+  // Get exhibitor badges (users/representatives)
+  const getExhibitorBadges = () => exhibitor?.exhibitor_badges || []
+  
+  // Check if exhibitor is a partner
+  const isPartner = () => exhibitor?.is_partner === 1 || exhibitor?.is_partner === true
+  
+  // Get sponsorship level from events_user
+  const getSponsorshipLevel = () => {
+    const eventsUser = exhibitor?.events_user || exhibitor
+    if (eventsUser?.is_platinum_sponsorship === 1 || eventsUser?.is_platinum_sponsorship === true) return 'platinum'
+    if (eventsUser?.gold_sponsorship === 1 || eventsUser?.gold_sponsorship === true) return 'gold'
+    if (eventsUser?.silver_sponsorship === 1 || eventsUser?.silver_sponsorship === true) return 'silver'
+    return null
+  }
+  
+  const sponsorshipConfig = {
+    platinum: { label: 'Platinum Sponsor', bg: 'bg-gradient-to-r from-slate-700 to-slate-900', icon: Crown },
+    gold: { label: 'Gold Sponsor', bg: 'bg-gradient-to-r from-amber-500 to-yellow-600', icon: Award },
+    silver: { label: 'Silver Sponsor', bg: 'bg-gradient-to-r from-gray-400 to-gray-500', icon: Star },
+  }
 
   const handleMeetingSubmit = async (e) => {
     e.preventDefault()
@@ -172,24 +210,54 @@ const ExhibitorDetail = () => {
         }
       />
       <div className="p-4 space-y-4">
+        {/* Sponsorship Banner */}
+        {getSponsorshipLevel() && (
+          <div className={`${sponsorshipConfig[getSponsorshipLevel()].bg} text-white rounded-2xl p-4 flex items-center gap-3`}>
+            {(() => {
+              const SponsorIcon = sponsorshipConfig[getSponsorshipLevel()].icon
+              return <SponsorIcon className="w-8 h-8" />
+            })()}
+            <div>
+              <p className="font-bold text-lg">{sponsorshipConfig[getSponsorshipLevel()].label}</p>
+              <p className="text-white/80 text-sm">Official Event Sponsor</p>
+            </div>
+          </div>
+        )}
+
         <Card className="p-6">
-          <div className="flex items-center gap-4 mb-4">
-            <img
-              src={getLogo()}
-              alt={getName()}
-              className="w-20 h-20 rounded-2xl object-cover bg-gray-100"
-              onError={(e) => { e.target.src = DEFAULT_LOGO }}
-            />
-            <div className="flex-1">
-              <h2 className="text-xl font-bold text-gray-900 mb-2">{getName()}</h2>
+          <div className="flex items-start gap-4 mb-4">
+            <div className="relative">
+              <img
+                src={getLogo()}
+                alt={getName()}
+                className="w-20 h-20 rounded-2xl object-cover bg-gray-100 border-2 border-gray-200"
+                onError={(e) => { e.target.src = DEFAULT_LOGO }}
+              />
+              {isPartner() && (
+                <div className="absolute -top-2 -right-2 w-7 h-7 bg-primary-600 rounded-full flex items-center justify-center">
+                  <BadgeCheck className="w-4 h-4 text-white" />
+                </div>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xl font-bold text-gray-900 mb-1">{getName()}</h2>
+              {getArabicName() && (
+                <p className="text-gray-500 text-sm mb-2" dir="rtl">{getArabicName()}</p>
+              )}
               <div className="flex flex-wrap gap-1.5">
-                <Badge variant="primary">{getSector()}</Badge>
-                <Badge>{getCountry()}</Badge>
+                {isPartner() && (
+                  <Badge variant="success" size="sm">
+                    <BadgeCheck className="w-3 h-3 mr-1" />
+                    Partner
+                  </Badge>
+                )}
+                <Badge variant="primary" size="sm">{getSector()}</Badge>
+                <Badge size="sm">{getCountry()}</Badge>
               </div>
             </div>
           </div>
           {getDescription() && (
-            <p className="text-gray-600 mb-4">{getDescription()}</p>
+            <p className="text-gray-600 mb-4 leading-relaxed">{getDescription()}</p>
           )}
           {getTags().length > 0 && (
             <div className="flex flex-wrap gap-2">
@@ -239,25 +307,40 @@ const ExhibitorDetail = () => {
           </Card>
         )}
 
-        {/* Representatives */}
-        {getRepresentatives().length > 0 && (
+        {/* Team Members / Exhibitor Badges */}
+        {getExhibitorBadges().length > 0 && (
           <Card className="p-4">
             <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
               <Users className="w-5 h-5 text-primary-600" />
-              Representatives
+              Team Members ({getExhibitorBadges().length})
             </h3>
             <div className="space-y-3">
-              {getRepresentatives().map((rep, idx) => (
-                <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                  <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
-                    <span className="text-primary-700 font-semibold">
-                      {(rep.name || rep.first_name || 'R').charAt(0).toUpperCase()}
-                    </span>
+              {getExhibitorBadges().map((badge, idx) => (
+                <div key={badge.id || idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                  <div className="w-12 h-12 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-bold">
+                    {(badge.first_name || badge.name || 'U').charAt(0).toUpperCase()}
                   </div>
-                  <div>
-                    <p className="font-semibold text-gray-900">{rep.name || `${rep.first_name} ${rep.last_name}`}</p>
-                    {rep.position && <p className="text-sm text-gray-500">{rep.position}</p>}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-gray-900">
+                      {badge.first_name && badge.last_name 
+                        ? `${badge.first_name} ${badge.last_name}`
+                        : badge.name || 'Team Member'}
+                    </p>
+                    <div className="flex items-center gap-2 text-sm text-gray-500">
+                      {badge.job_title && <span>{badge.job_title}</span>}
+                      {badge.email && (
+                        <span className="truncate text-xs">{badge.email}</span>
+                      )}
+                    </div>
                   </div>
+                  {badge.phone && (
+                    <a 
+                      href={`tel:${badge.phone}`} 
+                      className="p-2 bg-primary-100 rounded-lg text-primary-600 hover:bg-primary-200 transition-colors"
+                    >
+                      <Phone className="w-4 h-4" />
+                    </a>
+                  )}
                 </div>
               ))}
             </div>
