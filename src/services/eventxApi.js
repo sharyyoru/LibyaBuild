@@ -136,7 +136,7 @@ export const loginVisitor = async (email, password, eventId = DEFAULT_EVENT_ID) 
  * @param {number} userId - User ID to delete
  */
 export const deleteUserAccount = async (userId) => {
-  return apiRequest(`/visitor/${userId}`, {
+  return apiRequest(`/users/${userId}`, {
     method: 'DELETE',
   });
 };
