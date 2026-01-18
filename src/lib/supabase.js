@@ -224,3 +224,57 @@ export const deleteMeeting = async (meetingId) => {
     .eq('id', meetingId)
   return { error }
 }
+
+// Matchmaking functions
+export const saveUserPreferences = async (userId, preferences) => {
+  const { data, error } = await supabase
+    .from('user_preferences')
+    .upsert({
+      user_id: userId,
+      ...preferences,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' })
+    .select()
+  return { data: data?.[0], error }
+}
+
+export const getUserPreferences = async (userId) => {
+  const { data, error } = await supabase
+    .from('user_preferences')
+    .select('*')
+    .eq('user_id', userId)
+    .single()
+  return { data, error }
+}
+
+export const saveMatch = async (matchData) => {
+  const { data, error } = await supabase
+    .from('matches')
+    .insert({
+      ...matchData,
+      created_at: new Date().toISOString()
+    })
+    .select()
+  return { data: data?.[0], error }
+}
+
+export const getUserMatches = async (userId) => {
+  const { data, error } = await supabase
+    .from('matches')
+    .select('*')
+    .eq('user_id', userId)
+    .order('match_score', { ascending: false })
+  return { data: data || [], error }
+}
+
+export const updateMatchStatus = async (matchId, status) => {
+  const { data, error } = await supabase
+    .from('matches')
+    .update({ 
+      status,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', matchId)
+    .select()
+  return { data: data?.[0], error }
+}
