@@ -186,21 +186,36 @@ const Scanner = () => {
   const processQRData = (qrString) => {
     try {
       const data = JSON.parse(qrString)
-      // Extract user_id from badge data - could be in different formats
-      const userId = data.user_id || data.userId || data.id || data.visitor_id
+      // Extract user_id from badge data - must be numeric ID from database
+      // Priority: user_id (new format) > visitor_id > numeric id
+      let userId = data.user_id || data.visitor_id
+      
+      // If id is a number, use it as user_id (backwards compatibility)
+      if (!userId && typeof data.id === 'number') {
+        userId = data.id
+      }
+      
+      // Parse if it's a string number
+      if (!userId && data.id && !isNaN(parseInt(data.id, 10))) {
+        const parsedId = parseInt(data.id, 10)
+        // Only use if it looks like a database ID (not a QR code string like "LB26-001")
+        if (parsedId > 0 && String(parsedId) === String(data.id)) {
+          userId = parsedId
+        }
+      }
+
       return {
         ...data,
         user_id: userId,
-        id: userId,
-        name: data.name || data.first_name ? `${data.first_name || ''} ${data.last_name || ''}`.trim() : 'Unknown',
+        name: data.name || (data.first_name ? `${data.first_name || ''} ${data.last_name || ''}`.trim() : 'Unknown'),
         email: data.email || '',
         types: data.types || ['visitor'],
         attendance: data.attendance || {}
       }
     } catch {
-      // If it's just a user ID string
+      // If it's just a user ID string (numeric)
       const userId = parseInt(qrString, 10)
-      if (!isNaN(userId)) {
+      if (!isNaN(userId) && userId > 0) {
         return { user_id: userId, id: userId, name: 'Visitor', types: ['visitor'], attendance: {} }
       }
       return { id: qrString, user_id: null, name: 'Unknown', types: ['visitor'], attendance: {} }
@@ -208,11 +223,11 @@ const Scanner = () => {
   }
 
   const recordScan = async (userData) => {
-    // Validate user_id is available
-    if (!userData.user_id) {
+    // Validate user_id is available and is a valid number
+    if (!userData.user_id || typeof userData.user_id !== 'number') {
       return {
         success: false,
-        error: 'Invalid QR code. No user ID found.',
+        error: `Invalid QR code. No valid user ID found. The badge may need to be regenerated. (Got: ${userData.user_id || 'none'})`,
         userData
       }
     }

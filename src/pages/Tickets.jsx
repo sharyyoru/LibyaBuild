@@ -72,8 +72,12 @@ const Tickets = () => {
   const attendance = userProfile.attendance || {}
   const attendedDays = getAttendanceCount ? getAttendanceCount() : 0
 
+  // Get the actual numeric user_id from the API response
+  const userId = user?.id || user?.user_id || user?.visitor_id
+
   // Gate Entry QR - for main entrance
   const gateQRData = JSON.stringify({
+    user_id: userId,
     id: userProfile.qrCode,
     email: user?.email || '',
     name: userProfile.name || user?.email?.split('@')[0] || 'Guest',
@@ -84,6 +88,7 @@ const Tickets = () => {
 
   // Delegate Access QR - for conference areas (only for delegates)
   const delegateQRData = JSON.stringify({
+    user_id: userId,
     id: userProfile.qrCode,
     email: user?.email || '',
     name: userProfile.name || user?.email?.split('@')[0] || 'Guest',
