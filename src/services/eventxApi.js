@@ -142,6 +142,14 @@ export const deleteUserAccount = async (userId) => {
 };
 
 /**
+ * Get current user profile (includes user_id)
+ * Must be called after login with valid token
+ */
+export const getProfile = async () => {
+  return apiRequest('/profile');
+};
+
+/**
  * Get visitor badge information
  * @param {string} badgeId - Badge ID
  */
@@ -556,6 +564,7 @@ export default {
   clearAuthToken,
   
   // Profile
+  getProfile,
   getVisitorBadge,
   updateProfile,
   deleteUserAccount,

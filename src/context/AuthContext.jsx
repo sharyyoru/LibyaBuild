@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { loginVisitor, getAuthToken, setAuthToken, clearAuthToken, deleteUserAccount } from '../services/eventxApi'
+import { loginVisitor, getAuthToken, setAuthToken, clearAuthToken, deleteUserAccount, getProfile } from '../services/eventxApi'
 
 const AuthContext = createContext()
 
@@ -47,13 +47,39 @@ export const AuthProvider = ({ children }) => {
         const token = result.token || result.access_token
         setAuthToken(token)
         
+        // Fetch profile to get complete user data including user_id
+        let profileData = null
+        try {
+          const profileResponse = await getProfile()
+          profileData = profileResponse.data || profileResponse
+        } catch (profileErr) {
+          console.warn('Could not fetch profile:', profileErr)
+        }
+        
         const userData = {
           email: email,
           token: token,
+          // Profile data contains the user_id and all user details
+          id: profileData?.id,
+          first_name: profileData?.first_name,
+          last_name: profileData?.last_name,
+          company: profileData?.company_text || profileData?.company?.en_name,
+          job_title: profileData?.job_title,
+          phone: profileData?.phone,
+          mobile: profileData?.mobile,
+          country: profileData?.country,
+          city: profileData?.city,
+          ref_code: profileData?.ref_code,
+          vip: profileData?.vip,
+          company_sectors: profileData?.company_sectors,
+          // Fallback to login response data
           ...result.user,
           ...result.visitor,
+          // Ensure id is set from profile (most reliable source)
+          id: profileData?.id || result.user?.id || result.visitor?.id,
           is_staff: result.is_staff || result.user?.is_staff || result.visitor?.is_staff || false,
-          user_level: result.user_level || result.user?.user_level || result.visitor?.user_level || 'visitor'
+          user_level: result.user_level || result.user?.user_level || result.visitor?.user_level || 'visitor',
+          is_exhibitor: result.is_exhibitor || profileData?.company?.is_exhibitor || false
         }
         
         localStorage.setItem('eventx_user', JSON.stringify(userData))
