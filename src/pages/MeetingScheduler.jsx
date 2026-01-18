@@ -6,7 +6,8 @@ import Button from '../components/Button'
 import Badge from '../components/Badge'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
-import { getExhibitors, getVisitorMeetings, createSchedule, approveMeeting, cancelMeeting, rejectMeeting } from '../services/eventxApi'
+import { getExhibitors } from '../services/eventxApi'
+import { fetchMeetings, createMeeting, updateMeetingStatus } from '../lib/supabase'
 import { format, addMinutes, isAfter, isBefore, parseISO, isToday, isTomorrow } from 'date-fns'
 import { clsx } from 'clsx'
 
@@ -106,16 +107,24 @@ const MeetingScheduler = () => {
   const loadData = async () => {
     setIsLoading(true)
     try {
-      const [exhibitorsData, meetingsData] = await Promise.all([
-        getExhibitors(),
-        getVisitorMeetings(new Date().toISOString().split('T')[0])
-      ])
-      
+      // Load exhibitors from API
+      const exhibitorsData = await getExhibitors()
       const exhibitorList = exhibitorsData.data || exhibitorsData.exhibitors || exhibitorsData || []
       setExhibitors(Array.isArray(exhibitorList) ? exhibitorList : [])
       
-      const meetingList = meetingsData.data || meetingsData.meetings || meetingsData || []
-      setMeetings(Array.isArray(meetingList) ? meetingList : [...localMeetings])
+      // Load meetings from Supabase
+      const userId = user?.id || user?.user_id
+      if (userId) {
+        const { data: meetingsData, error } = await fetchMeetings(userId)
+        if (!error && meetingsData) {
+          setMeetings(meetingsData)
+        } else {
+          // Fallback to local meetings
+          setMeetings(localMeetings)
+        }
+      } else {
+        setMeetings(localMeetings)
+      }
       
       // Request notification permission
       if ('Notification' in window && Notification.permission === 'default') {
@@ -137,37 +146,51 @@ const MeetingScheduler = () => {
     
     try {
       const exhibitor = exhibitors.find(ex => ex.id === parseInt(formData.exhibitorId))
+      const userId = user?.id || user?.user_id
       
-      await createSchedule({
-        exhibitorId: parseInt(formData.exhibitorId),
-        date: formData.date,
-        time: formData.time,
-        message: formData.notes
-      })
-      
-      const newMeeting = {
-        id: Date.now(),
-        exhibitorId: formData.exhibitorId,
-        exhibitorName: exhibitor?.company_name || exhibitor?.name || 'Exhibitor',
-        exhibitorBooth: exhibitor?.booth_number || exhibitor?.booth || 'TBA',
-        exhibitorLogo: exhibitor?.logo_url || exhibitor?.logo,
-        visitorName: user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user?.email,
-        visitorCompany: user?.company || '',
+      const meetingData = {
+        visitor_id: userId,
+        exhibitor_id: parseInt(formData.exhibitorId),
+        exhibitor_name: exhibitor?.en_name || exhibitor?.company_name || exhibitor?.name || 'Exhibitor',
+        exhibitor_booth: exhibitor?.booth_number || exhibitor?.booth || 'TBA',
+        exhibitor_logo: exhibitor?.form3_data_entry?.company_logo || exhibitor?.logo_url || exhibitor?.logo,
+        visitor_name: user?.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user?.email,
+        visitor_company: user?.company || '',
         date: formData.date,
         time: formData.time,
         duration: 30,
         notes: formData.notes,
-        status: 'pending',
-        createdAt: new Date().toISOString(),
-        type: 'outgoing' // visitor sent this request
+        type: 'outgoing'
+      }
+      
+      // Create in Supabase
+      const { data: createdMeeting, error: createError } = await createMeeting(meetingData)
+      
+      if (createError) {
+        throw new Error(createError.message || 'Failed to create meeting')
+      }
+      
+      // Also add to local state
+      const newMeeting = createdMeeting || {
+        id: Date.now(),
+        ...meetingData,
+        status: 'pending'
       }
       
       setMeetings(prev => [...prev, newMeeting])
       addMeeting(newMeeting)
       
       setSuccess('Meeting request sent! You will be notified when the exhibitor responds.')
-      setFormData({ exhibitorId: '', date: EVENT_DATES[0].date, time: TIME_SLOTS[0], notes: '' })
+      setFormData({ exhibitorId: '', date: EVENT_DAYS[0].date, time: '', notes: '' })
       setShowForm(false)
+      
+      // Show notification
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('Meeting Requested', {
+          body: `Your meeting request with ${meetingData.exhibitor_name} has been sent!`,
+          icon: '/media/App Icons-14.svg'
+        })
+      }
     } catch (err) {
       setError(err.message || 'Failed to create meeting request')
     } finally {
@@ -177,14 +200,24 @@ const MeetingScheduler = () => {
 
   const handleApprove = async (meetingId) => {
     try {
-      await approveMeeting(meetingId)
+      await updateMeetingStatus(meetingId, 'approved')
       setMeetings(prev => prev.map(m => 
         m.id === meetingId ? { ...m, status: 'approved' } : m
       ))
       updateMeeting(meetingId, { status: 'approved' })
       setSuccess('Meeting approved! The visitor has been notified.')
+      
+      // Show notification
+      if ('Notification' in window && Notification.permission === 'granted') {
+        const meeting = meetings.find(m => m.id === meetingId)
+        new Notification('Meeting Approved', {
+          body: `Meeting with ${meeting?.visitor_name || 'visitor'} has been approved!`,
+          icon: '/media/App Icons-14.svg'
+        })
+      }
     } catch (err) {
       console.error('Failed to approve meeting:', err)
+      // Update locally anyway
       setMeetings(prev => prev.map(m => 
         m.id === meetingId ? { ...m, status: 'approved' } : m
       ))
@@ -194,7 +227,7 @@ const MeetingScheduler = () => {
 
   const handleReject = async (meetingId) => {
     try {
-      await rejectMeeting(meetingId)
+      await updateMeetingStatus(meetingId, 'rejected')
       setMeetings(prev => prev.map(m => 
         m.id === meetingId ? { ...m, status: 'rejected' } : m
       ))
@@ -210,7 +243,7 @@ const MeetingScheduler = () => {
 
   const handleCancel = async (meetingId) => {
     try {
-      await cancelMeeting(meetingId)
+      await updateMeetingStatus(meetingId, 'cancelled')
       setMeetings(prev => prev.map(m => 
         m.id === meetingId ? { ...m, status: 'cancelled' } : m
       ))
@@ -224,16 +257,16 @@ const MeetingScheduler = () => {
     }
   }
 
-  const getExhibitorName = (ex) => ex.company_name || ex.name || 'Unknown'
+  const getExhibitorName = (ex) => ex.en_name || ex.company_name || ex.name || 'Unknown'
   const getExhibitorBooth = (ex) => ex.booth_number || ex.booth || 'TBA'
-
-  const statusConfig = {
-    pending: { color: 'warning', icon: ClockIcon, label: 'Pending', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' },
-    approved: { color: 'success', icon: CheckCircle, label: 'Approved', bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700' },
-    confirmed: { color: 'success', icon: CheckCircle, label: 'Confirmed', bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700' },
-    rejected: { color: 'danger', icon: XCircle, label: 'Rejected', bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700' },
-    cancelled: { color: 'danger', icon: XCircle, label: 'Cancelled', bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-700' },
+  
+  // Helper to get meeting fields (supports both camelCase and snake_case)
+  const getMeetingField = (meeting, field) => {
+    const camelCase = field
+    const snakeCase = field.replace(/([A-Z])/g, '_$1').toLowerCase()
+    return meeting[camelCase] || meeting[snakeCase] || ''
   }
+
 
   // Filter meetings based on active filter
   const filteredMeetings = meetings.filter(m => {
@@ -587,7 +620,7 @@ const MeetingScheduler = () => {
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <h4 className="font-semibold text-gray-900 text-sm truncate">
-                                    {isIncoming ? (meeting.visitorName || 'Visitor') : (meeting.exhibitorName || 'Exhibitor')}
+                                    {isIncoming ? (meeting.visitor_name || meeting.visitorName || 'Visitor') : (meeting.exhibitor_name || meeting.exhibitorName || 'Exhibitor')}
                                   </h4>
                                   <div className="flex items-center gap-2 text-xs text-gray-500">
                                     <Clock className="w-3 h-3" />
@@ -610,24 +643,24 @@ const MeetingScheduler = () => {
                             <div className="p-4">
                               <div className="flex items-start justify-between gap-3 mb-3">
                                 <div className="flex items-center gap-3">
-                                  {meeting.exhibitorLogo ? (
+                                  {(meeting.exhibitor_logo || meeting.exhibitorLogo) ? (
                                     <img 
-                                      src={meeting.exhibitorLogo} 
+                                      src={meeting.exhibitor_logo || meeting.exhibitorLogo} 
                                       alt="" 
                                       className="w-12 h-12 rounded-xl object-cover bg-gray-100 border border-gray-200"
                                       onError={(e) => { e.target.src = DEFAULT_LOGO }}
                                     />
                                   ) : (
                                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center text-white font-bold">
-                                      {(isIncoming ? (meeting.visitorName || 'V') : (meeting.exhibitorName || 'E')).charAt(0)}
+                                      {(isIncoming ? (meeting.visitor_name || meeting.visitorName || 'V') : (meeting.exhibitor_name || meeting.exhibitorName || 'E')).charAt(0)}
                                     </div>
                                   )}
                                   <div className="min-w-0">
                                     <h4 className="font-bold text-gray-900">
-                                      {isIncoming ? (meeting.visitorName || 'Visitor') : (meeting.exhibitorName || 'Exhibitor')}
+                                      {isIncoming ? (meeting.visitor_name || meeting.visitorName || 'Visitor') : (meeting.exhibitor_name || meeting.exhibitorName || 'Exhibitor')}
                                     </h4>
                                     <p className="text-sm text-gray-500">
-                                      {isIncoming ? (meeting.visitorCompany || 'Meeting Request') : `Booth ${meeting.exhibitorBooth || 'TBA'}`}
+                                      {isIncoming ? (meeting.visitor_company || meeting.visitorCompany || 'Meeting Request') : `Booth ${meeting.exhibitor_booth || meeting.exhibitorBooth || 'TBA'}`}
                                     </p>
                                   </div>
                                 </div>
@@ -642,10 +675,10 @@ const MeetingScheduler = () => {
                                   <Clock className="w-3.5 h-3.5 text-primary-600" />
                                   {formatTimeSlot(meeting.time)} • 30 min
                                 </span>
-                                {meeting.exhibitorBooth && (
+                                {(meeting.exhibitor_booth || meeting.exhibitorBooth) && (
                                   <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-full text-xs font-medium text-gray-700">
                                     <MapPin className="w-3.5 h-3.5 text-primary-600" />
-                                    Booth {meeting.exhibitorBooth}
+                                    Booth {meeting.exhibitor_booth || meeting.exhibitorBooth}
                                   </span>
                                 )}
                               </div>

@@ -173,3 +173,54 @@ export const fetchAllAttendanceStats = async () => {
     .select('*')
   return { data, error }
 }
+
+// Meeting functions
+export const fetchMeetings = async (userId) => {
+  const { data, error } = await supabase
+    .from('meetings')
+    .select('*')
+    .or(`visitor_id.eq.${userId},exhibitor_id.eq.${userId}`)
+    .order('date', { ascending: true })
+  return { data: data || [], error }
+}
+
+export const fetchAllMeetings = async () => {
+  const { data, error } = await supabase
+    .from('meetings')
+    .select('*')
+    .order('date', { ascending: true })
+  return { data: data || [], error }
+}
+
+export const createMeeting = async (meetingData) => {
+  const { data, error } = await supabase
+    .from('meetings')
+    .insert({
+      ...meetingData,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    })
+    .select()
+  return { data: data?.[0], error }
+}
+
+export const updateMeetingStatus = async (meetingId, status) => {
+  const { data, error } = await supabase
+    .from('meetings')
+    .update({ 
+      status,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', meetingId)
+    .select()
+  return { data: data?.[0], error }
+}
+
+export const deleteMeeting = async (meetingId) => {
+  const { error } = await supabase
+    .from('meetings')
+    .delete()
+    .eq('id', meetingId)
+  return { error }
+}

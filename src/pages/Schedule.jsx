@@ -216,7 +216,7 @@ const Schedule = () => {
   const [activeDay, setActiveDay] = useState('all')
   const [activeCategory, setActiveCategory] = useState('all')
   const [viewMode, setViewMode] = useState('list') // 'list' or 'compact'
-  const [showFeaturedOnly, setShowFeaturedOnly] = useState(false)
+  const [eventFilter, setEventFilter] = useState('all') // 'all', 'featured', 'scheduled'
   const { isFavorite, toggleFavorite } = useApp()
 
   useEffect(() => {
@@ -289,9 +289,16 @@ const Schedule = () => {
 
   // Filter sessions
   const filteredSessions = sessions.filter(s => {
-    if (showFeaturedOnly && !s.featured) return false
+    // Filter by featured/scheduled
+    if (eventFilter === 'featured' && !s.featured) return false
+    if (eventFilter === 'scheduled' && s.featured) return false
+    
+    // Filter by day
     if (activeDay !== 'all' && getters.getDate(s) !== activeDay) return false
+    
+    // Filter by category
     if (activeCategory !== 'all' && getters.getCategory(s) !== activeCategory) return false
+    
     return true
   })
 
@@ -358,10 +365,10 @@ const Schedule = () => {
           {/* Day Selector - Calendar Style */}
           <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
             <button
-              onClick={() => { setActiveDay('all'); setShowFeaturedOnly(false) }}
+              onClick={() => { setActiveDay('all'); setEventFilter('all') }}
               className={clsx(
                 'flex flex-col items-center justify-center min-w-[70px] py-3 px-4 rounded-2xl font-medium transition-all',
-                activeDay === 'all' && !showFeaturedOnly
+                activeDay === 'all' && eventFilter === 'all'
                   ? 'bg-white text-primary-600 shadow-lg'
                   : 'bg-white/10 text-white hover:bg-white/20'
               )}
@@ -372,7 +379,7 @@ const Schedule = () => {
             {EVENT_DAYS.map(day => (
               <button
                 key={day.date}
-                onClick={() => { setActiveDay(day.date); setShowFeaturedOnly(false) }}
+                onClick={() => setActiveDay(day.date)}
                 className={clsx(
                   'flex flex-col items-center justify-center min-w-[60px] py-3 px-4 rounded-2xl transition-all',
                   activeDay === day.date
@@ -385,16 +392,28 @@ const Schedule = () => {
               </button>
             ))}
             <button
-              onClick={() => setShowFeaturedOnly(!showFeaturedOnly)}
+              onClick={() => setEventFilter(eventFilter === 'featured' ? 'all' : 'featured')}
               className={clsx(
                 'flex flex-col items-center justify-center min-w-[70px] py-3 px-4 rounded-2xl transition-all',
-                showFeaturedOnly
+                eventFilter === 'featured'
                   ? 'bg-amber-400 text-amber-900 shadow-lg'
                   : 'bg-white/10 text-white hover:bg-white/20'
               )}
             >
-              <Star className={clsx('w-5 h-5 mb-1', showFeaturedOnly && 'fill-current')} />
+              <Star className={clsx('w-5 h-5 mb-1', eventFilter === 'featured' && 'fill-current')} />
               <span className="text-xs">Featured</span>
+            </button>
+            <button
+              onClick={() => setEventFilter(eventFilter === 'scheduled' ? 'all' : 'scheduled')}
+              className={clsx(
+                'flex flex-col items-center justify-center min-w-[70px] py-3 px-4 rounded-2xl transition-all',
+                eventFilter === 'scheduled'
+                  ? 'bg-emerald-400 text-emerald-900 shadow-lg'
+                  : 'bg-white/10 text-white hover:bg-white/20'
+              )}
+            >
+              <Calendar className="w-5 h-5 mb-1" />
+              <span className="text-xs">Scheduled</span>
             </button>
           </div>
         </div>
