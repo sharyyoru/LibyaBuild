@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { MapPin, Heart, Mail, Phone, Globe, Building2, Crown, Award, Star, BadgeCheck, Search } from 'lucide-react'
+import { MapPin, Heart, Mail, Phone, Globe, Building2, Crown, Award, Star, BadgeCheck, Search, Calendar } from 'lucide-react'
 import Header from '../components/Header'
 import SearchBar from '../components/SearchBar'
 import Card from '../components/Card'
 import Badge from '../components/Badge'
 import Loader from '../components/Loader'
-import { getExhibitors } from '../services/eventxApi'
+import MeetingRequestModal from '../components/MeetingRequestModal'
+import { getExhibitors, getIndustries } from '../services/eventxApi'
 import { useApp } from '../context/AppContext'
+import { useAuth } from '../context/AuthContext'
 import { clsx } from 'clsx'
 
 const DEFAULT_LOGO = '/media/default-company.svg'
@@ -21,62 +23,144 @@ const SPONSOR_CONFIG = {
 
 const Exhibitors = () => {
   const [exhibitors, setExhibitors] = useState([])
+  const [industries, setIndustries] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('all')
   const [country, setCountry] = useState('all')
   const [sector, setSector] = useState('all')
+  const [showMeetingModal, setShowMeetingModal] = useState(false)
+  const [selectedExhibitor, setSelectedExhibitor] = useState(null)
   const { isFavorite, toggleFavorite } = useApp()
+  const { user } = useAuth()
 
   useEffect(() => {
-    loadExhibitors()
+    loadData()
   }, [])
 
-  const loadExhibitors = async () => {
+  const loadData = async () => {
     setIsLoading(true)
     setError('')
     try {
-      const data = await getExhibitors()
-      // Handle different API response structures
-      const exhibitorList = data.data || data.exhibitors || data || []
-      setExhibitors(Array.isArray(exhibitorList) ? exhibitorList : [])
+      const [exhibitorsData, industriesData] = await Promise.all([
+        getExhibitors(),
+        getIndustries()
+      ])
+      
+      // Handle different API response structures for exhibitors
+      const exhibitorList = exhibitorsData.data || exhibitorsData.exhibitors || exhibitorsData || []
+      
+      // Expand exhibitors to include each form3_data_entry as a separate card
+      const expandedExhibitors = []
+      if (Array.isArray(exhibitorList)) {
+        exhibitorList.forEach(exhibitor => {
+          if (exhibitor?.form3_data_entry && Array.isArray(exhibitor.form3_data_entry)) {
+            // Create a card for each form3_data_entry (main exhibitor + co-exhibitors)
+            exhibitor.form3_data_entry.forEach(form3Entry => {
+              expandedExhibitors.push({
+                ...exhibitor,
+                _form3Entry: form3Entry, // Store the specific form3 entry for this card
+                _isCoExhibitor: form3Entry.is_coexhibitor === 1
+              })
+            })
+          } else {
+            // No form3_data_entry, add exhibitor as-is
+            expandedExhibitors.push(exhibitor)
+          }
+        })
+      }
+      
+      setExhibitors(expandedExhibitors)
+      
+      // Handle different API response structures for industries
+      const industryList = industriesData.data || industriesData.industries || industriesData || []
+      setIndustries(Array.isArray(industryList) ? industryList : [])
     } catch (err) {
-      console.error('Failed to load exhibitors:', err)
-      setError('Failed to load exhibitors')
+      console.error('Failed to load data:', err)
+      setError('Failed to load exhibitors and industries')
       setExhibitors([])
+      setIndustries([])
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Get logo from form3_data_entry or fallback
+  // Get logo from the specific form3_data_entry item for this card
   const getExhibitorLogo = (exhibitor) => {
-    const form3Logo = exhibitor?.form3_data_entry?.company_logo
-    if (form3Logo) return form3Logo
-    return exhibitor.logo_url || exhibitor.logo || exhibitor.image || exhibitor.company_logo || DEFAULT_LOGO
+    // Priority 1: Check the specific _form3Entry for this card
+    const form3Entry = exhibitor?._form3Entry
+    if (form3Entry?.company_logo && typeof form3Entry.company_logo === 'string' && form3Entry.company_logo.trim() && form3Entry.company_logo !== 'null') {
+      const logoPath = form3Entry.company_logo.trim()
+      // If already full URL, return as is
+      if (logoPath.startsWith('http')) {
+        return logoPath
+      }
+      // Build full URL for relative paths
+      return `https://eventxtest.fxunlock.com/storage/${logoPath}`
+    }
+    
+    // Priority 2: Check other logo fields from main exhibitor
+    const alternativeLogos = [
+      exhibitor?.logo_url,
+      exhibitor?.logo,
+      exhibitor?.image,
+      exhibitor?.company_logo
+    ]
+    
+    for (const logo of alternativeLogos) {
+      if (logo && typeof logo === 'string' && logo.trim() && logo !== 'null') {
+        const logoPath = logo.trim()
+        if (logoPath.startsWith('http')) {
+          return logoPath
+        }
+        return `https://eventxtest.fxunlock.com/storage/${logoPath}`
+      }
+    }
+    
+    return DEFAULT_LOGO
   }
 
-  // Get company name - prefer en_name (English)
+  const handleMeetingRequest = (exhibitor) => {
+    setSelectedExhibitor(exhibitor)
+    setShowMeetingModal(true)
+  }
+
+  const closeMeetingModal = () => {
+    setShowMeetingModal(false)
+    setSelectedExhibitor(null)
+  }
+
+  // Get company name - check form3Entry first, then fallback to exhibitor
   const getExhibitorName = (exhibitor) => {
+    const form3Entry = exhibitor?._form3Entry
+    if (form3Entry?.company) {
+      return form3Entry.company
+    }
     return exhibitor.en_name || exhibitor.company_name || exhibitor.name || exhibitor.company || 'Unknown Company'
   }
 
-  // Get Arabic name
+  // Get Arabic name - check form3Entry first
   const getExhibitorArabicName = (exhibitor) => {
+    const form3Entry = exhibitor?._form3Entry
+    if (form3Entry?.ar_company) {
+      return form3Entry.ar_company
+    }
     return exhibitor.ar_name || ''
   }
 
-  // Get sector/industry from form3_data_entry
+  // Get sector/industry from the specific form3Entry for this card
   const getExhibitorSector = (exhibitor) => {
-    const form3 = exhibitor?.form3_data_entry
-    if (form3?.industries) {
-      const industries = Array.isArray(form3.industries) ? form3.industries : [form3.industries]
+    const form3Entry = exhibitor?._form3Entry
+    if (form3Entry?.company_industries) {
+      const industries = Array.isArray(form3Entry.company_industries) ? form3Entry.company_industries : [form3Entry.company_industries]
       if (industries.length > 0) {
         const first = industries[0]
         return typeof first === 'string' ? first : first.name || first.en_name || 'General'
       }
     }
+    
+    // Fallback to direct exhibitor properties
     return exhibitor.sector || exhibitor.industry || exhibitor.category || 'General'
   }
 
@@ -92,7 +176,11 @@ const Exhibitors = () => {
   }
 
   const getExhibitorDescription = (exhibitor) => {
-    return exhibitor?.form3_data_entry?.company_description || exhibitor.description || exhibitor.about || exhibitor.company_description || ''
+    const form3Entry = exhibitor?._form3Entry
+    if (form3Entry?.company_profile) {
+      return form3Entry.company_profile
+    }
+    return exhibitor.description || exhibitor.about || exhibitor.company_description || ''
   }
 
   // Check if partner
@@ -100,10 +188,10 @@ const Exhibitors = () => {
 
   // Get sponsorship level
   const getSponsorshipLevel = (exhibitor) => {
-    const eventsUser = exhibitor?.events_user || exhibitor
-    if (eventsUser?.is_platinum_sponsorship === 1 || eventsUser?.is_platinum_sponsorship === true) return 'platinum'
-    if (eventsUser?.gold_sponsorship === 1 || eventsUser?.gold_sponsorship === true) return 'gold'
-    if (eventsUser?.silver_sponsorship === 1 || eventsUser?.silver_sponsorship === true) return 'silver'
+    const eventUser = exhibitor?.event_user || exhibitor
+    if (eventUser?.is_platinum_sponsorship === 1 || eventUser?.is_platinum_sponsorship === true) return 'platinum'
+    if (eventUser?.gold_sponsorship === 1 || eventUser?.gold_sponsorship === true) return 'gold'
+    if (eventUser?.silver_sponsorship === 1 || eventUser?.silver_sponsorship === true) return 'silver'
     return null
   }
 
@@ -111,7 +199,12 @@ const Exhibitors = () => {
   const getTeamCount = (exhibitor) => exhibitor?.exhibitor_badges?.length || 0
 
   const countries = ['all', ...new Set(exhibitors.map(e => getExhibitorCountry(e)).filter(Boolean))]
-  const sectors = ['all', ...new Set(exhibitors.map(e => getExhibitorSector(e)).filter(Boolean))]
+  
+  // Use industries from API instead of extracting from exhibitor data
+  const sectors = ['all', ...industries.map(industry => {
+    // Handle different industry object structures
+    return industry.en_name || industry.name || industry.title || industry
+  }).filter(Boolean)]
 
   const filtered = exhibitors.filter(ex => {
     const name = getExhibitorName(ex).toLowerCase()
@@ -124,7 +217,17 @@ const Exhibitors = () => {
       desc.includes(searchLower) ||
       booth.includes(searchLower)
     const matchesCountry = country === 'all' || getExhibitorCountry(ex) === country
-    const matchesSector = sector === 'all' || getExhibitorSector(ex) === sector
+    
+    // Fix sector matching to properly compare with exhibitor's actual industries
+    const exhibitorSector = getExhibitorSector(ex)
+    const matchesSector = sector === 'all' || exhibitorSector === sector || 
+      // Also check if exhibitor has multiple industries that include the selected sector
+      (ex?.form3_data_entry?.[0]?.company_industries && 
+       Array.isArray(ex.form3_data_entry[0].company_industries) &&
+       ex.form3_data_entry[0].company_industries.some(industry => 
+         (typeof industry === 'string' ? industry : (industry.name || industry.en_name)) === sector
+       ))
+    
     return matchesSearch && matchesCountry && matchesSector
   })
 
@@ -264,16 +367,30 @@ const Exhibitors = () => {
                         {getExhibitorDescription(exhibitor) && (
                           <p className="text-sm text-gray-600 line-clamp-2">{getExhibitorDescription(exhibitor)}</p>
                         )}
-                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                          <span className="flex items-center gap-1">
-                            <MapPin className="w-3.5 h-3.5" />
-                            {getExhibitorBooth(exhibitor)}
-                          </span>
-                          {getTeamCount(exhibitor) > 0 && (
+                        <div className="flex items-center justify-between mt-3">
+                          <div className="flex items-center gap-4 text-xs text-gray-500">
                             <span className="flex items-center gap-1">
-                              <Building2 className="w-3.5 h-3.5" />
-                              {getTeamCount(exhibitor)} team
+                              <MapPin className="w-3.5 h-3.5" />
+                              {getExhibitorBooth(exhibitor)}
                             </span>
+                            {getTeamCount(exhibitor) > 0 && (
+                              <span className="flex items-center gap-1">
+                                <Building2 className="w-3.5 h-3.5" />
+                                {getTeamCount(exhibitor)} team
+                              </span>
+                            )}
+                          </div>
+                          {user && (
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault()
+                                handleMeetingRequest(exhibitor)
+                              }}
+                              className="flex items-center gap-1 px-3 py-1.5 bg-primary-600 text-white text-xs font-semibold rounded-lg hover:bg-primary-700 transition-colors"
+                            >
+                              <Calendar className="w-3.5 h-3.5" />
+                              Request Meeting
+                            </button>
                           )}
                         </div>
                       </div>
@@ -285,6 +402,14 @@ const Exhibitors = () => {
           </div>
         )}
       </div>
+      
+      {/* Meeting Request Modal */}
+      <MeetingRequestModal
+        isOpen={showMeetingModal}
+        onClose={closeMeetingModal}
+        recipient={selectedExhibitor}
+        recipientType="exhibitor"
+      />
     </>
   )
 }

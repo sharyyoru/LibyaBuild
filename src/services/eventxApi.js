@@ -202,6 +202,7 @@ export const getFeaturedSchedules = async () => {
   return apiRequest('/get-feature-schedule');
 };
 
+
 /**
  * Store/create a new meeting schedule
  * @param {Object} scheduleData - Schedule data
@@ -212,6 +213,28 @@ export const createSchedule = async (scheduleData) => {
     date: scheduleData.date,
     time: scheduleData.time,
     message: scheduleData.message || '',
+  };
+
+  return apiRequest('/schedule/store', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+};
+
+/**
+ * Schedule a meeting request (visitor to exhibitor or exhibitor to exhibitor)
+ * @param {Object} meetingData - Meeting request data
+ * @param {Array} meetingData.user_ids - Array of user IDs to request meeting with
+ * @param {string} meetingData.date - Meeting date (YYYY-MM-DD)
+ * @param {string} meetingData.time - Meeting time (HH:MM)
+ * @param {string} meetingData.message - Optional message
+ */
+export const scheduleMeeting = async (meetingData) => {
+  const payload = {
+    user_ids: meetingData.user_ids || meetingData.userIds || [],
+    date: meetingData.date,
+    time: meetingData.time,
+    message: meetingData.message || ''
   };
 
   return apiRequest('/schedule/store', {
@@ -235,17 +258,17 @@ export const approveMeeting = async (meetingId) => {
  * @param {number} meetingId - Meeting ID
  */
 export const cancelMeeting = async (meetingId) => {
-  return apiRequest(`/schedule/${meetingId}/2`, {
+  return apiRequest(`/schedule/cancel?meeting_id=${meetingId}`, {
     method: 'PUT',
   });
 };
 
 /**
- * Reject a meeting
+ * Reject/Cancel a meeting
  * @param {number} meetingId - Meeting ID
  */
 export const rejectMeeting = async (meetingId) => {
-  return apiRequest(`/schedule/${meetingId}/3`, {
+  return apiRequest(`/schedule/${meetingId}/2`, {
     method: 'PUT',
   });
 };
@@ -336,12 +359,6 @@ export const getProducts = async () => {
   return apiRequest('/get-products');
 };
 
-/**
- * Get all industries
- */
-export const getIndustries = async () => {
-  return apiRequest('/get-industry');
-};
 
 // ============================================================================
 // FAVORITES ENDPOINTS
@@ -417,10 +434,47 @@ export const markNotificationRead = async (notificationId) => {
 
 /**
  * Get partners for an event
- * @param {number} eventId - Event ID
+ * @param {number} eventId
  */
 export const getPartners = async (eventId = DEFAULT_EVENT_ID) => {
   return apiRequest(`/partners?event_id=${eventId}`);
+};
+
+/**
+ * Get a single partner by ID
+ * @param {number} partnerId
+ */
+export const getPartner = async (partnerId) => {
+  return apiRequest(`/get-partner?id=${partnerId}`);
+};
+
+/**
+ * Get a single exhibitor by ID
+ * @param {number} exhibitorId
+ */
+export const getExhibitor = async (exhibitorId) => {
+  return apiRequest(`/get-exhibitor?id=${exhibitorId}`);
+};
+
+/**
+ * Get industries for filtering
+ */
+export const getIndustries = async () => {
+  return apiRequest('/get-industry');
+};
+
+/**
+ * Get user meetings/schedules
+ */
+export const getUserMeetings = async () => {
+  return apiRequest('/meetings');
+};
+
+/**
+ * Get user scheduled meetings from schedule/index endpoint
+ */
+export const getUserScheduledMeetings = async () => {
+  return apiRequest('/schedule/index');
 };
 
 // ============================================================================
@@ -654,6 +708,10 @@ export default {
   
   // Partners
   getPartners,
+  getPartner,
+  
+  // Exhibitors
+  getExhibitor,
   
   // Travel & Accommodation
   storeFlightDetails,

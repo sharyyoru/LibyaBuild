@@ -42,6 +42,10 @@ import Favorites from './pages/Favorites'
 import FlightTickets from './pages/FlightTickets'
 import VisaApplication from './pages/VisaApplication'
 import HotelRequest from './pages/HotelRequest'
+import Partners from './pages/Partners'
+import PartnerDetail from './pages/PartnerDetail'
+import Sponsorship from './pages/Sponsorship'
+import SponsorshipDetail from './pages/SponsorshipDetail'
 
 function App() {
   const [isLoading, setIsLoading] = useState(true)
@@ -74,6 +78,10 @@ function App() {
                 </ProtectedRoute>
               }>
                 <Route index element={<Home />} />
+                <Route path="partners" element={<Partners />} />
+                <Route path="partners/:id" element={<PartnerDetail />} />
+                <Route path="sponsorships" element={<Sponsorship />} />
+                <Route path="sponsorships/:id" element={<SponsorshipDetail />} />
                 <Route path="exhibitors" element={<Exhibitors />} />
                 <Route path="exhibitors/:id" element={<ExhibitorDetail />} />
                 <Route path="floor-plan" element={<FloorPlan />} />

@@ -68,25 +68,30 @@ const Matchmaking = () => {
       setExhibitors(Array.isArray(exhibitorList) ? exhibitorList : [])
       
       // Load user preferences and saved matches from Supabase
-      const userId = user?.id || user?.user_id
+      const userId = user?.id || user?.user_id || user?.visitor_id
       if (userId) {
-        const [prefsResult, matchesResult] = await Promise.all([
-          getUserPreferences(userId),
-          getUserMatches(userId)
-        ])
+        try {
+          const [prefsResult, matchesResult] = await Promise.all([
+            getUserPreferences(userId),
+            getUserMatches(userId)
+          ])
         
-        if (prefsResult.data) {
-          setPreferences({
-            sectors: prefsResult.data.sectors || [],
-            interests: prefsResult.data.interests || [],
-            lookingFor: prefsResult.data.looking_for || 'all',
-            country: prefsResult.data.country || ''
-          })
-          setCurrentStep('results')
-        }
-        
-        if (matchesResult.data) {
-          setSavedMatches(matchesResult.data)
+          if (prefsResult.data) {
+            setPreferences({
+              sectors: prefsResult.data.sectors || [],
+              interests: prefsResult.data.interests || [],
+              lookingFor: prefsResult.data.looking_for || 'all',
+              country: prefsResult.data.country || ''
+            })
+            setCurrentStep('results')
+          }
+          
+          if (matchesResult.data) {
+            setSavedMatches(matchesResult.data)
+          }
+        } catch (supabaseErr) {
+          console.warn('Could not load user preferences or matches:', supabaseErr)
+          // Continue with default preferences
         }
       }
       
@@ -202,20 +207,25 @@ const Matchmaking = () => {
   }
 
   const handleSavePreferences = async () => {
-    const userId = user?.id || user?.user_id
+    const userId = user?.id || user?.user_id || user?.visitor_id
     if (userId) {
-      await saveUserPreferences(userId, {
-        sectors: preferences.sectors,
-        interests: preferences.interests,
-        looking_for: preferences.lookingFor,
-        country: preferences.country
-      })
+      try {
+        await saveUserPreferences(userId, {
+          sectors: preferences.sectors,
+          interests: preferences.interests,
+          looking_for: preferences.lookingFor,
+          country: preferences.country
+        })
+      } catch (err) {
+        console.warn('Could not save preferences:', err)
+        // Continue with match generation even if save fails
+      }
     }
     generateMatches()
   }
 
   const handleSaveMatch = async (exhibitor) => {
-    const userId = user?.id || user?.user_id
+    const userId = user?.id || user?.user_id || user?.visitor_id
     if (!userId) return
     
     const matchData = {
@@ -229,9 +239,15 @@ const Matchmaking = () => {
       status: 'saved'
     }
     
-    const { data, error } = await saveMatch(matchData)
-    if (!error && data) {
-      setSavedMatches(prev => [...prev, data])
+    try {
+      const { data, error } = await saveMatch(matchData)
+      if (!error && data) {
+        setSavedMatches(prev => [...prev, data])
+      } else {
+        console.warn('Could not save match:', error)
+      }
+    } catch (err) {
+      console.warn('Error saving match:', err)
     }
   }
 

@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { MapPin, Mail, Phone, Globe, Heart, Calendar, Building2, ArrowLeft, Clock, Users, Package, CheckCircle, Loader2, ChevronDown, Send, Star, Award, Crown, BadgeCheck, Briefcase, User } from 'lucide-react'
+import { MapPin, Mail, Phone, Globe, Heart, Calendar, Building2, ArrowLeft, Clock, Users, Package, CheckCircle, Loader2, ChevronDown, Send, Star, Award, Crown, BadgeCheck, Briefcase, User, Shield } from 'lucide-react'
 import Header from '../components/Header'
 import Card from '../components/Card'
 import Button from '../components/Button'
 import Badge from '../components/Badge'
 import Loader from '../components/Loader'
-import { getExhibitor, scheduleMeeting } from '../services/eventxApi'
+import { getPartner, scheduleMeeting } from '../services/eventxApi'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import { clsx } from 'clsx'
@@ -36,12 +36,12 @@ const formatTimeSlot = (time) => {
   return `${displayHour}:${minutes} ${ampm}`
 }
 
-const ExhibitorDetail = () => {
+const PartnerDetail = () => {
   const { id } = useParams()
   const navigate = useNavigate()
   const { isFavorite, toggleFavorite, addMeeting } = useApp()
   const { user } = useAuth()
-  const [exhibitor, setExhibitor] = useState(null)
+  const [partner, setPartner] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
   
@@ -49,50 +49,54 @@ const ExhibitorDetail = () => {
   const [showMeetingForm, setShowMeetingForm] = useState(false)
   const [selectedDate, setSelectedDate] = useState(EVENT_DATES[0].date)
   const [selectedTime, setSelectedTime] = useState('')
-  const [meetingNotes, setMeetingNotes] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [meetingPurpose, setMeetingPurpose] = useState('')
+  const [isSubmittingMeeting, setIsSubmittingMeeting] = useState(false)
   const [meetingSuccess, setMeetingSuccess] = useState(false)
   const [selectedUserIds, setSelectedUserIds] = useState([])
   const [availableUsers, setAvailableUsers] = useState([])
 
   useEffect(() => {
-    loadExhibitor()
+    if (id) {
+      loadPartner()
+    }
   }, [id])
 
-  // Load available users when exhibitor is loaded
+  // Load available users when partner is loaded
   useEffect(() => {
-    if (exhibitor) {
-      const users = getExhibitorUsers()
+    if (partner) {
+      const users = getPartnerUsers()
       setAvailableUsers(users)
-      setSelectedUserIds([]) // Reset selection when exhibitor changes
+      setSelectedUserIds([]) // Reset selection when partner changes
     }
-  }, [exhibitor])
+  }, [partner])
 
-  const loadExhibitor = async () => {
+  const loadPartner = async () => {
     setIsLoading(true)
     setError('')
     try {
-      const response = await getExhibitor(id)
-      // Handle different response structures
+      const response = await getPartner(id)
+      // Handle API response structure - data is an array
       const dataArray = response.data || []
-      const exhibitorData = Array.isArray(dataArray) ? dataArray.find(e => e.id == id) || dataArray[0] : dataArray
+      const partnerData = Array.isArray(dataArray) ? dataArray.find(p => p.id == id) || dataArray[0] : dataArray
       
-      if (exhibitorData) {
-        setExhibitor(exhibitorData)
+      if (partnerData) {
+        setPartner(partnerData)
       } else {
-        setError('Exhibitor not found')
+        setError('Partner not found')
       }
     } catch (err) {
-      console.error('Failed to load exhibitor:', err)
-      setError('Failed to load exhibitor details')
+      console.error('Failed to load partner:', err)
+      setError('Failed to load partner details')
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Helper functions to get exhibitor data
-  const getExhibitorLogo = () => {
-    const form3Logo = exhibitor?.form3_data_entry?.company_logo
+  // Helper functions to get partner data
+  const getPartnerLogo = () => {
+    // Priority 1: Check form3_data_entry[0].company_logo
+    const form3Data = partner?.form3_data_entry?.[0]
+    const form3Logo = form3Data?.company_logo
     if (form3Logo && typeof form3Logo === 'string' && form3Logo.trim() && form3Logo !== 'null') {
       const logoPath = form3Logo.trim()
       if (logoPath.startsWith('http')) {
@@ -101,11 +105,21 @@ const ExhibitorDetail = () => {
       return `https://eventxtest.fxunlock.com/storage/${logoPath}`
     }
     
+    // Priority 2: Check root logo field
+    const rootLogo = partner?.logo
+    if (rootLogo && typeof rootLogo === 'string' && rootLogo.trim() && rootLogo !== 'null') {
+      const logoPath = rootLogo.trim()
+      if (logoPath.startsWith('http')) {
+        return logoPath
+      }
+      return `https://eventxtest.fxunlock.com/storage/${logoPath}`
+    }
+    
+    // Priority 3: Check other logo fields
     const alternativeLogos = [
-      exhibitor?.logo_url,
-      exhibitor?.logo,
-      exhibitor?.image,
-      exhibitor?.company_logo
+      partner?.logo_url,
+      partner?.image,
+      partner?.company_logo
     ]
     
     for (const logo of alternativeLogos) {
@@ -121,138 +135,102 @@ const ExhibitorDetail = () => {
     return DEFAULT_LOGO
   }
 
-  const getName = () => exhibitor?.en_name || exhibitor?.company_name || exhibitor?.name || exhibitor?.company || 'Unknown Company'
-  const getArabicName = () => exhibitor?.ar_name || ''
-  const getCountry = () => exhibitor?.country || exhibitor?.form3_data_entry?.country || exhibitor?.location || 'Libya'
-  const getSector = () => {
-    // Check direct company_industries from API response first
-    if (exhibitor?.company_industries?.length > 0) {
-      return exhibitor.company_industries[0].name || exhibitor.company_industries[0].en_name || 'General'
-    }
-    
-    // Fallback to form3_data_entry (it's an array!)
-    const form3Array = exhibitor?.form3_data_entry
-    if (Array.isArray(form3Array) && form3Array.length > 0) {
-      for (const form3 of form3Array) {
-        if (form3?.company_industries?.length > 0) {
-          return form3.company_industries[0].name || form3.company_industries[0].en_name || 'General'
-        }
-      }
-    }
-    
-    return exhibitor?.sector || exhibitor?.industry || exhibitor?.category || 'General'
+  const getPartnerName = () => {
+    const form3Data = partner?.form3_data_entry?.[0]
+    return form3Data?.company || partner?.en_name || partner?.company_name || partner?.name || 'Partner'
   }
   
-  const getExhibitorIndustries = () => {
-    // Check direct company_industries from API response first
-    if (exhibitor?.company_industries?.length > 0) {
-      return exhibitor.company_industries
-    }
-    
-    // Fallback to form3_data_entry (it's an array - use first entry only, max 5 industries)
-    const form3Array = exhibitor?.form3_data_entry
-    if (Array.isArray(form3Array) && form3Array.length > 0) {
-      const firstForm3 = form3Array[0]
-      if (firstForm3?.company_industries?.length > 0) {
-        return firstForm3.company_industries
-      }
-    }
-    
-    return []
+  const getPartnerArabicName = () => {
+    const form3Data = partner?.form3_data_entry?.[0]
+    return form3Data?.ar_company || partner?.ar_name || ''
   }
   
-  const getExhibitorProfile = () => {
-    const form3Array = exhibitor?.form3_data_entry
-    if (Array.isArray(form3Array) && form3Array.length > 0) {
-      return form3Array[0]?.company_profile || form3Array[0]?.ar_company_profile || ''
-    }
-    return exhibitor?.description || exhibitor?.about || exhibitor?.company_description || ''
+  const getPartnerCountry = () => {
+    const form3Data = partner?.form3_data_entry?.[0]
+    return form3Data?.country || partner?.country || partner?.location || 'Libya'
   }
   
-  const getHall = () => exhibitor?.hall || 'TBA'
-  const getBooth = () => {
-    if (exhibitor?.booth_number && exhibitor?.hall) {
-      return `${exhibitor.hall} - ${exhibitor.booth_number}`
+  const getPartnerSector = () => {
+    const form3Data = partner?.form3_data_entry?.[0]
+    if (form3Data?.company_industries?.length > 0) {
+      return form3Data.company_industries[0].name || form3Data.company_industries[0].en_name || 'General'
     }
-    return exhibitor?.booth_number || exhibitor?.booth || exhibitor?.stand || 'TBA'
+    return partner?.sector || partner?.industry || partner?.category || 'General'
   }
-  const getDescription = () => exhibitor?.form3_data_entry?.company_description || exhibitor?.description || exhibitor?.about || exhibitor?.company_description || ''
-  const getTags = () => exhibitor?.tags || []
+  
+  const getPartnerIndustries = () => {
+    const form3Data = partner?.form3_data_entry?.[0]
+    return form3Data?.company_industries || []
+  }
+  
+  const getPartnerDescription = () => {
+    const form3Data = partner?.form3_data_entry?.[0]
+    return form3Data?.company_profile || partner?.description || partner?.about || partner?.company_description || ''
+  }
+  
+  const getPartnerBooth = () => {
+    const form3Data = partner?.form3_data_entry?.[0]
+    const standNo = form3Data?.stand_no || partner?.event_user?.stand_no
+    if (standNo) {
+      return standNo
+    }
+    if (partner?.booth_number && partner?.hall) {
+      return `${partner.hall} - ${partner.booth_number}`
+    }
+    return partner?.booth_number || partner?.booth || partner?.stand || 'TBA'
+  }
+  const getTags = () => partner?.tags || []
   const getProducts = () => {
-    const form3 = exhibitor?.form3_data_entry
-    return form3?.products || exhibitor?.products || []
+    const form3Data = partner?.form3_data_entry?.[0]
+    return form3Data?.products || partner?.products || []
   }
-  const getExhibitorBadges = () => exhibitor?.exhibitor_badges || []
+  const getPartnerBadges = () => partner?.partner_badges || []
   
   const getMainContact = () => {
-    return exhibitor?.contacts?.find(contact => contact.contact_type === 'main_contact') || exhibitor?.contacts?.[0]
+    return partner?.contacts?.find(contact => contact.contact_type === 'main_contact') || partner?.contacts?.[0]
   }
   
   const getEmail = () => {
-    const form3 = exhibitor?.form3_data_entry
+    const form3Data = partner?.form3_data_entry?.[0]
     const mainContact = getMainContact()
-    return form3?.email || mainContact?.email || exhibitor?.email || exhibitor?.contact_email || ''
+    return form3Data?.email || mainContact?.email || partner?.email || partner?.contact_email || ''
   }
   
   const getPhone = () => {
-    const form3 = exhibitor?.form3_data_entry
+    const form3Data = partner?.form3_data_entry?.[0]
     const mainContact = getMainContact()
-    return form3?.mobile || mainContact?.mobile || mainContact?.phone || exhibitor?.phone || exhibitor?.contact_phone || ''
+    return form3Data?.mobile || mainContact?.mobile || mainContact?.phone || partner?.phone || partner?.contact_phone || ''
   }
   
   const getWebsite = () => {
-    const form3 = exhibitor?.form3_data_entry
-    return form3?.website || exhibitor?.website || exhibitor?.company_website || ''
+    const form3Data = partner?.form3_data_entry?.[0]
+    return form3Data?.website || partner?.website || partner?.company_website || ''
   }
   
   const getAllContacts = () => {
-    return exhibitor?.contacts || []
+    return partner?.contacts || []
   }
 
-  // Check if exhibitor is a partner
-  const isPartner = () => exhibitor?.is_partner === 1 || exhibitor?.is_partner === true
-  const getSponsorshipLevel = () => {
-    const eventUser = exhibitor?.event_user || exhibitor
-    if (eventUser?.is_platinum_sponsorship === 1 || eventUser?.is_platinum_sponsorship === true) return 'platinum'
-    if (eventUser?.gold_sponsorship === 1 || eventUser?.gold_sponsorship === true) return 'gold'
-    if (eventUser?.silver_sponsorship === 1 || eventUser?.silver_sponsorship === true) return 'silver'
-    return null
-  }
-  
-  const getSponsorConfig = () => {
-    const level = getSponsorshipLevel()
-    if (!level) return null
-    const configs = {
-      platinum: { label: 'Platinum', icon: Crown, bg: 'bg-gradient-to-r from-slate-600 to-slate-800', theme: 'slate' },
-      gold: { label: 'Gold', icon: Award, bg: 'bg-gradient-to-r from-amber-400 to-yellow-500', theme: 'amber' },
-      silver: { label: 'Silver', icon: Star, bg: 'bg-gradient-to-r from-gray-300 to-gray-400', theme: 'gray' },
-    }
-    return configs[level]
-  }
+  // Check if partner is official
+  const isOfficialPartner = () => partner?.is_partner === 1 || partner?.is_partner === true
 
-  const sponsorshipConfig = {
-    platinum: { label: 'Platinum Sponsor', bg: 'bg-gradient-to-r from-slate-700 to-slate-900', icon: Crown },
-    gold: { label: 'Gold Sponsor', bg: 'bg-gradient-to-r from-amber-500 to-yellow-600', icon: Award },
-    silver: { label: 'Silver Sponsor', bg: 'bg-gradient-to-r from-gray-400 to-gray-500', icon: Star },
-  }
-
-  const getExhibitorUsers = () => {
+  const getPartnerUsers = () => {
     const users = []
     
-    // Add main user if exists (from exhibitor.user field)
-    if (exhibitor?.user && exhibitor.user.id) {
+    // Add main user if exists (from partner.user field)
+    if (partner?.user && partner.user.id) {
       users.push({
-        id: exhibitor.user.id, // This is the actual user ID we need
-        name: `${exhibitor.user.first_name || ''} ${exhibitor.user.last_name || ''}`.trim(),
-        email: exhibitor.user.email,
-        job_title: exhibitor.user.job_title,
+        id: partner.user.id, // This is the actual user ID we need
+        name: `${partner.user.first_name || ''} ${partner.user.last_name || ''}`.trim(),
+        email: partner.user.email,
+        job_title: partner.user.job_title,
         type: 'main_user'
       })
     }
 
     // Add users from exhibitor_badges if available
-    if (exhibitor?.exhibitor_badges && Array.isArray(exhibitor.exhibitor_badges)) {
-      exhibitor.exhibitor_badges.forEach(badge => {
+    if (partner?.exhibitor_badges && Array.isArray(partner.exhibitor_badges)) {
+      partner.exhibitor_badges.forEach(badge => {
         if (badge.user && badge.user.id) {
           users.push({
             id: badge.user.id, // This is the actual user ID we need
@@ -266,8 +244,8 @@ const ExhibitorDetail = () => {
     }
 
     // Add users from form3_data_entry if available (this is where the actual users are)
-    if (exhibitor?.form3_data_entry && Array.isArray(exhibitor.form3_data_entry)) {
-      exhibitor.form3_data_entry.forEach(entry => {
+    if (partner?.form3_data_entry && Array.isArray(partner.form3_data_entry)) {
+      partner.form3_data_entry.forEach(entry => {
         if (entry.user && entry.user.id) {
           users.push({
             id: entry.user.id, // This is the actual user ID we need
@@ -302,26 +280,26 @@ const ExhibitorDetail = () => {
   const handleMeetingSubmit = async (e) => {
     e.preventDefault()
     if (!selectedTime) return
-    
+
     // Require user selection if users are available
     if (availableUsers.length > 0 && selectedUserIds.length === 0) {
       setError('Please select at least one user for the meeting request')
       return
     }
-    
-    setIsSubmitting(true)
+
+    setIsSubmittingMeeting(true)
     setError('')
     try {
       // Use selected users or fallback if no users available
       const userIds = selectedUserIds.length > 0 ? selectedUserIds : 
-                     availableUsers.length > 0 ? [availableUsers[0].id] : [parseInt(id)]
-      
+                     availableUsers.length > 0 ? [availableUsers[0].id] : [partner.id]
+
       // Use scheduleMeeting API with user_ids instead of createSchedule
       const meetingData = {
         user_ids: userIds,
         date: selectedDate,
         time: selectedTime,
-        message: `BUSINESS MEETING: ${meetingNotes}\n\nDuration: 30 minutes\nRequested by: ${user?.first_name || user?.name || 'User'}\nWith: ${getName()}`
+        message: `PARTNERSHIP MEETING: ${meetingPurpose || 'Partnership discussion'}\n\nDuration: 30 minutes\nRequested by: ${user?.first_name || user?.name || 'User'}\nWith: ${getPartnerName()}`
       }
 
       const response = await scheduleMeeting(meetingData)
@@ -330,124 +308,120 @@ const ExhibitorDetail = () => {
         throw new Error(response.message || 'Failed to create meeting')
       }
       
-      // Add to local meetings
+      // Add to local state for immediate UI feedback
       addMeeting({
         id: Date.now(),
-        exhibitorId: id,
-        exhibitorName: getName(),
-        exhibitorBooth: getBooth(),
-        exhibitorLogo: getLogo(),
+        partner_id: partner.id,
+        partner_name: getPartnerName(),
         date: selectedDate,
         time: selectedTime,
-        duration: 30,
-        notes: meetingNotes,
-        status: 'pending',
-        type: 'outgoing'
+        purpose: meetingPurpose || 'Partnership discussion',
+        status: 'pending'
       })
-      
+
       setMeetingSuccess(true)
       setShowMeetingForm(false)
+      setMeetingPurpose('')
       setSelectedTime('')
-      setMeetingNotes('')
       
-      // Auto-hide success after 5 seconds
-      setTimeout(() => setMeetingSuccess(false), 5000)
+      setTimeout(() => setMeetingSuccess(false), 3000)
     } catch (err) {
-      console.error('Failed to create meeting:', err)
+      console.error('Failed to schedule meeting:', err)
     } finally {
-      setIsSubmitting(false)
+      setIsSubmittingMeeting(false)
     }
   }
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader size="lg" />
+        <div className="text-center">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center animate-pulse">
+            <Shield className="w-8 h-8 text-white" />
+          </div>
+          <p className="text-gray-600 font-medium">Loading partner details...</p>
+        </div>
       </div>
     )
   }
 
-  if (error || !exhibitor) {
+  if (error) {
     return (
-      <>
-        <Header title="Exhibitor" />
-        <div className="p-4 text-center py-12">
-          <Building2 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-500 mb-4">{error || 'Exhibitor not found'}</p>
-          <Link to="/exhibitors" className="text-primary-600 font-medium">
-            Back to Exhibitors
-          </Link>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center px-4">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-red-100 flex items-center justify-center">
+            <Shield className="w-8 h-8 text-red-500" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Partner Not Found</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <Button
+            onClick={() => navigate('/partners')}
+            variant="primary"
+          >
+            Back to Partners
+          </Button>
         </div>
-      </>
+      </div>
     )
   }
 
-  const sponsorConfig = getSponsorConfig()
-  const SponsorIcon = sponsorConfig?.icon
+  if (!partner) {
+    return null
+  }
 
   return (
     <>
       <Header 
-        title="Exhibitor Details" 
+        title="Partner Details" 
         showBack={true} 
-        onBack={() => navigate('/exhibitors')}
+        onBack={() => navigate('/partners')}
       />
       
       <div className="min-h-screen bg-gray-50">
         {/* Hero Section - Simplified */}
-        <div className={clsx(
-          "px-4 pt-4 pb-6",
-          sponsorConfig ? sponsorConfig.bg : 'bg-gradient-to-br from-primary-500 to-primary-600'
-        )}>
+        <div className="bg-gradient-to-br from-purple-500 to-purple-600 px-4 pt-4 pb-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
               <div className="relative">
                 <img
-                  src={getExhibitorLogo()}
-                  alt={getName()}
+                  src={getPartnerLogo()}
+                  alt={getPartnerName()}
                   className="w-16 h-16 rounded-2xl bg-white/10 border border-white/20 object-cover"
                   onError={(e) => { e.target.src = DEFAULT_LOGO }}
                 />
-                {sponsorConfig && (
-                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center border-2 border-white">
-                    <SponsorIcon className="w-3 h-3 text-primary-600" />
-                  </div>
-                )}
-                {isPartner() && (
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center border-2 border-white">
+                {isOfficialPartner() && (
+                  <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center border-2 border-white">
                     <BadgeCheck className="w-3 h-3 text-white" />
                   </div>
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <h1 className="text-xl font-bold text-white mb-1">{getName()}</h1>
-                {getArabicName() && getArabicName() !== getName() && (
-                  <p className="text-white/80 text-sm mb-2" dir="rtl">{getArabicName()}</p>
+                <h1 className="text-xl font-bold text-white mb-1">{getPartnerName()}</h1>
+                {getPartnerArabicName() && getPartnerArabicName() !== getPartnerName() && (
+                  <p className="text-purple-100 text-sm mb-2" dir="rtl">{getPartnerArabicName()}</p>
                 )}
-                <div className="flex items-center gap-3 text-sm text-white/80">
-                  {sponsorConfig && (
-                    <span className="flex items-center gap-1">
-                      <SponsorIcon className="w-4 h-4" />
-                      {sponsorConfig.label} Sponsor
-                    </span>
-                  )}
-                  {getBooth() !== 'TBA' && (
+                <div className="flex items-center gap-3 text-sm text-purple-100">
+                  <span className="flex items-center gap-1">
+                    <Shield className="w-4 h-4" />
+                    Official Partner
+                  </span>
+                  {getPartnerBooth() !== 'TBA' && (
                     <span className="flex items-center gap-1">
                       <MapPin className="w-4 h-4" />
-                      {getBooth()}
+                      {getPartnerBooth()}
                     </span>
                   )}
                 </div>
               </div>
             </div>
             <button
-              onClick={() => toggleFavorite('exhibitors', exhibitor.id)}
+              onClick={() => toggleFavorite('partners', partner.id)}
               className="p-2 bg-white/10 rounded-xl border border-white/20"
             >
               <Heart
                 className={clsx(
                   'w-5 h-5',
-                  isFavorite('exhibitors', exhibitor.id)
+                  isFavorite('partners', partner.id)
                     ? 'fill-red-400 text-red-400'
                     : 'text-white'
                 )}
@@ -462,7 +436,7 @@ const ExhibitorDetail = () => {
             <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0" />
             <div>
               <p className="font-semibold text-green-900">Meeting Request Sent!</p>
-              <p className="text-sm text-green-700">Your meeting request has been submitted to {getName()}.</p>
+              <p className="text-sm text-green-700">Your meeting request has been submitted to {getPartnerName()}.</p>
             </div>
           </div>
         )}
@@ -471,30 +445,30 @@ const ExhibitorDetail = () => {
         <div className="p-4 space-y-4">
           
           {/* Company Profile */}
-          {getExhibitorProfile() && (
+          {getPartnerDescription() && (
             <Card className="p-4">
               <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                <Briefcase className="w-5 h-5 text-primary-600" />
+                <Briefcase className="w-5 h-5 text-purple-600" />
                 Company Profile
               </h3>
               <p className="text-gray-600 leading-relaxed text-sm">
-                {getExhibitorProfile()}
+                {getPartnerDescription()}
               </p>
             </Card>
           )}
           
           {/* Industries */}
-          {getExhibitorIndustries().length > 0 && (
+          {getPartnerIndustries().length > 0 && (
             <Card className="p-4">
               <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                <Building2 className="w-5 h-5 text-primary-600" />
+                <Building2 className="w-5 h-5 text-purple-600" />
                 Industries
               </h3>
               <div className="flex flex-wrap gap-2">
-                {getExhibitorIndustries().map((industry, index) => (
+                {getPartnerIndustries().map((industry, index) => (
                   <span 
                     key={index} 
-                    className="px-3 py-1.5 bg-primary-100 text-primary-700 text-xs font-medium rounded-full border border-primary-200 hover:bg-primary-200 transition-colors"
+                    className="px-3 py-1.5 bg-purple-100 text-purple-700 text-xs font-medium rounded-full border border-purple-200 hover:bg-purple-200 transition-colors"
                   >
                     {industry.name || industry.en_name || 'Industry'}
                   </span>
@@ -506,17 +480,17 @@ const ExhibitorDetail = () => {
           {/* Location */}
           <Card className="p-4">
             <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-              <MapPin className="w-5 h-5 text-primary-600" />
+              <MapPin className="w-5 h-5 text-purple-600" />
               Location
             </h3>
             <div className="grid grid-cols-2 gap-4">
-              <div className="p-3 bg-primary-50 rounded-xl text-center">
-                <p className="text-xs text-gray-500 mb-1">Hall</p>
-                <p className="font-bold text-primary-700 text-lg">{getHall()}</p>
+              <div className="p-3 bg-purple-50 rounded-xl text-center">
+                <p className="text-xs text-gray-500 mb-1">Stand</p>
+                <p className="font-bold text-purple-700 text-lg">{getPartnerBooth() !== 'TBA' ? getPartnerBooth() : 'TBA'}</p>
               </div>
-              <div className="p-3 bg-primary-50 rounded-xl text-center">
-                <p className="text-xs text-gray-500 mb-1">Booth</p>
-                <p className="font-bold text-primary-700 text-sm">{getBooth() !== 'TBA' ? getBooth() : 'TBA'}</p>
+              <div className="p-3 bg-purple-50 rounded-xl text-center">
+                <p className="text-xs text-gray-500 mb-1">Country</p>
+                <p className="font-bold text-purple-700 text-sm">{getPartnerCountry()}</p>
               </div>
             </div>
             {getWebsite() && (
@@ -524,7 +498,7 @@ const ExhibitorDetail = () => {
                 onClick={() => window.open(getWebsite(), '_blank')}
                 variant="outline" 
                 fullWidth 
-                className="mt-4 border-primary-200 text-primary-600 hover:bg-primary-50"
+                className="mt-4 border-purple-200 text-purple-600 hover:bg-purple-50"
               >
                 <Globe className="w-4 h-4 mr-2" />
                 Visit Website
@@ -532,58 +506,10 @@ const ExhibitorDetail = () => {
             )}
           </Card>
 
-          {/* Products & Services */}
-          {getProducts().length > 0 && (
-            <Card className="p-4">
-              <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                <Package className="w-5 h-5 text-primary-600" />
-                Products & Services
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {getProducts().map((product, index) => (
-                  <span 
-                    key={index} 
-                    className="px-3 py-1.5 bg-accent-100 text-accent-700 text-xs font-medium rounded-full border border-accent-200 hover:bg-accent-200 transition-colors"
-                  >
-                    {typeof product === 'string' ? product : product.name || product.title || 'Product'}
-                  </span>
-                ))}
-              </div>
-            </Card>
-          )}
-
-          {/* Team Members */}
-          {getExhibitorBadges().length > 0 && (
-            <Card className="p-4">
-              <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                <Users className="w-5 h-5 text-primary-600" />
-                Team Members ({getExhibitorBadges().length})
-              </h3>
-              <div className="space-y-2">
-                {getExhibitorBadges().slice(0, 3).map((badge, index) => (
-                  <div key={badge.id || index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                    <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
-                      <User className="w-5 h-5 text-primary-600" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900 text-sm">{badge.name || 'Team Member'}</p>
-                      <p className="text-xs text-gray-500">{badge.job_title || badge.position || 'Representative'}</p>
-                    </div>
-                  </div>
-                ))}
-                {getExhibitorBadges().length > 3 && (
-                  <p className="text-center text-sm text-gray-500 pt-2">
-                    +{getExhibitorBadges().length - 3} more team members
-                  </p>
-                )}
-              </div>
-            </Card>
-          )}
-
-          {/* Contact Information */}
+              {/* Contact Information */}
           <Card className="p-4">
             <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-              <User className="w-5 h-5 text-primary-600" />
+              <User className="w-5 h-5 text-purple-600" />
               Contact Information
             </h3>
             
@@ -591,12 +517,12 @@ const ExhibitorDetail = () => {
             <div className="space-y-3 mb-4">
               {getEmail() && (
                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                  <Mail className="w-5 h-5 text-primary-600 flex-shrink-0" />
+                  <Mail className="w-5 h-5 text-purple-600 flex-shrink-0" />
                   <div>
                     <p className="text-sm font-medium text-gray-900">Primary Email</p>
                     <a
                       href={`mailto:${getEmail()}`}
-                      className="text-primary-600 hover:text-primary-700 text-sm break-all"
+                      className="text-purple-600 hover:text-purple-700 text-sm break-all"
                     >
                       {getEmail()}
                     </a>
@@ -605,12 +531,12 @@ const ExhibitorDetail = () => {
               )}
               {getPhone() && (
                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                  <Phone className="w-5 h-5 text-primary-600 flex-shrink-0" />
+                  <Phone className="w-5 h-5 text-purple-600 flex-shrink-0" />
                   <div>
                     <p className="text-sm font-medium text-gray-900">Primary Phone</p>
                     <a
                       href={`tel:${getPhone()}`}
-                      className="text-primary-600 hover:text-primary-700 text-sm"
+                      className="text-purple-600 hover:text-purple-700 text-sm"
                     >
                       {getPhone()}
                     </a>
@@ -639,13 +565,13 @@ const ExhibitorDetail = () => {
                       )}
                       <div className="space-y-1 text-xs">
                         {contact.email && (
-                          <p className="text-primary-600 hover:text-primary-700">
+                          <p className="text-purple-600 hover:text-purple-700">
                             <a href={`mailto:${contact.email}`}>{contact.email}</a>
                           </p>
                         )}
                         {contact.phone && (
                           <p className="text-gray-600">
-                            <a href={`tel:${contact.phone}`} className="hover:text-primary-600">
+                            <a href={`tel:${contact.phone}`} className="hover:text-purple-600">
                               {contact.phone}
                             </a>
                           </p>
@@ -662,7 +588,7 @@ const ExhibitorDetail = () => {
           {user && (
             <Card className="p-4">
               <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-primary-600" />
+                <Calendar className="w-5 h-5 text-purple-600" />
                 Schedule Meeting
               </h3>
               
@@ -670,7 +596,7 @@ const ExhibitorDetail = () => {
                 <Button
                   onClick={() => setShowMeetingForm(true)}
                   fullWidth
-                  className="bg-primary-600 hover:bg-primary-700"
+                  className="bg-purple-600 hover:bg-purple-700"
                 >
                   <Calendar className="w-4 h-4 mr-2" />
                   Request Meeting
@@ -689,7 +615,7 @@ const ExhibitorDetail = () => {
                           className={clsx(
                             'py-2 px-3 rounded-lg text-sm font-medium transition-all',
                             selectedDate === date
-                              ? 'bg-primary-600 text-white'
+                              ? 'bg-purple-600 text-white'
                               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                           )}
                         >
@@ -715,7 +641,7 @@ const ExhibitorDetail = () => {
                               type="checkbox"
                               checked={selectedUserIds.includes(user.id)}
                               onChange={() => handleUserSelect(user.id)}
-                              className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                              className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
                             />
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center space-x-2">
@@ -733,7 +659,7 @@ const ExhibitorDetail = () => {
                       </div>
                       {availableUsers.length === 0 && (
                         <div className="text-center py-4 text-sm text-amber-600 bg-amber-50 rounded-lg">
-                          No user contacts found for this exhibitor.
+                          No user contacts found for this partner.
                           You may still request a meeting, but it will be sent to the company directly.
                         </div>
                       )}
@@ -752,7 +678,7 @@ const ExhibitorDetail = () => {
                           className={clsx(
                             'py-2 px-2 rounded-lg text-xs font-medium transition-all',
                             selectedTime === time
-                              ? 'bg-primary-600 text-white'
+                              ? 'bg-purple-600 text-white'
                               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                           )}
                         >
@@ -762,14 +688,14 @@ const ExhibitorDetail = () => {
                     </div>
                   </div>
 
-                  {/* Notes */}
+                  {/* Purpose */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Message</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Meeting Purpose</label>
                     <textarea
-                      value={meetingNotes}
-                      onChange={(e) => setMeetingNotes(e.target.value)}
-                      placeholder="What would you like to discuss?"
-                      className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none text-sm"
+                      value={meetingPurpose}
+                      onChange={(e) => setMeetingPurpose(e.target.value)}
+                      placeholder="Describe the purpose of your meeting..."
+                      className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none text-sm"
                       rows={3}
                     />
                   </div>
@@ -783,19 +709,19 @@ const ExhibitorDetail = () => {
                       onClick={() => {
                         setShowMeetingForm(false)
                         setSelectedTime('')
-                        setMeetingNotes('')
+                        setMeetingPurpose('')
                       }}
-                      disabled={isSubmitting}
+                      disabled={isSubmittingMeeting}
                     >
                       Cancel
                     </Button>
                     <Button
                       type="submit"
                       fullWidth
-                      disabled={!selectedTime || isSubmitting}
-                      className="bg-primary-600 hover:bg-primary-700"
+                      disabled={!selectedTime || isSubmittingMeeting}
+                      className="bg-purple-600 hover:bg-purple-700"
                     >
-                      {isSubmitting ? (
+                      {isSubmittingMeeting ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                           Sending...
@@ -815,21 +741,22 @@ const ExhibitorDetail = () => {
 
           {/* Other Actions */}
           <div className="grid grid-cols-2 gap-3">
-            <Link to="/exhibitors">
-              <Button variant="outline" fullWidth className="border-primary-200 text-primary-600 hover:bg-primary-50">
-                <Building2 className="w-4 h-4 mr-2" />
-                All Exhibitors
+            <Link to="/partners">
+              <Button variant="outline" fullWidth className="border-purple-200 text-purple-600 hover:bg-purple-50">
+                <Users className="w-4 h-4 mr-2" />
+                All Partners
               </Button>
             </Link>
-            <Button fullWidth className="bg-primary-600 hover:bg-primary-700">
+            <Button fullWidth className="bg-purple-600 hover:bg-purple-700">
               <User className="w-4 h-4 mr-2" />
               Exchange Card
             </Button>
           </div>
         </div>
+
       </div>
     </>
   )
 }
 
-export default ExhibitorDetail
+export default PartnerDetail

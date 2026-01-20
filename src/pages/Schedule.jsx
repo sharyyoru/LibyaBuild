@@ -216,7 +216,7 @@ const Schedule = () => {
   const [activeDay, setActiveDay] = useState('all')
   const [activeCategory, setActiveCategory] = useState('all')
   const [viewMode, setViewMode] = useState('list') // 'list' or 'compact'
-  const [eventFilter, setEventFilter] = useState('all') // 'all', 'featured', 'scheduled'
+  // Removed eventFilter state since we're separating featured and scheduled events
   const { isFavorite, toggleFavorite } = useApp()
 
   useEffect(() => {
@@ -226,30 +226,16 @@ const Schedule = () => {
   const loadSchedules = async () => {
     setIsLoading(true)
     try {
-      const [schedulesData, featuredData] = await Promise.all([
-        getSchedules(),
-        getFeaturedSchedules()
-      ])
+      // Use single API endpoint that returns all events with type property
+      const response = await getFeaturedSchedules()
+      const allEvents = response.data || response.schedules || response || []
       
-      const scheduleList = schedulesData.data || schedulesData.schedules || schedulesData || []
-      const featuredList = featuredData.data || featuredData.schedules || featuredData || []
+      // Filter events by type property
+      const featuredEvents = allEvents.filter(event => event.type === 'featured')
+      const scheduleEvents = allEvents.filter(event => event.type === 'schedule')
       
-      // Mark featured sessions
-      const featuredIds = new Set(featuredList.map(f => f.id))
-      const allSessions = scheduleList.map(s => ({
-        ...s,
-        featured: featuredIds.has(s.id)
-      }))
-      
-      // Add any featured items not in main list
-      featuredList.forEach(f => {
-        if (!allSessions.find(s => s.id === f.id)) {
-          allSessions.push({ ...f, featured: true })
-        }
-      })
-      
-      setSessions(Array.isArray(allSessions) ? allSessions : [])
-      setFeaturedSessions(featuredList)
+      setSessions(Array.isArray(scheduleEvents) ? scheduleEvents : [])
+      setFeaturedSessions(Array.isArray(featuredEvents) ? featuredEvents : [])
     } catch (err) {
       console.error('Failed to load schedules:', err)
       setSessions([])
@@ -287,12 +273,8 @@ const Schedule = () => {
   // Get unique categories
   const categories = ['all', ...new Set(sessions.map(s => getters.getCategory(s)).filter(Boolean))]
 
-  // Filter sessions
-  const filteredSessions = sessions.filter(s => {
-    // Filter by featured/scheduled
-    if (eventFilter === 'featured' && !s.featured) return false
-    if (eventFilter === 'scheduled' && s.featured) return false
-    
+  // Filter sessions for scheduled events (already filtered by type='schedule' from API)
+  const scheduledSessions = sessions.filter(s => {
     // Filter by day
     if (activeDay !== 'all' && getters.getDate(s) !== activeDay) return false
     
@@ -302,8 +284,8 @@ const Schedule = () => {
     return true
   })
 
-  // Group by date
-  const groupedByDate = filteredSessions.reduce((acc, session) => {
+  // Group scheduled sessions by date
+  const groupedByDate = scheduledSessions.reduce((acc, session) => {
     const date = getters.getDate(session)
     if (!acc[date]) acc[date] = []
     acc[date].push(session)
@@ -365,10 +347,10 @@ const Schedule = () => {
           {/* Day Selector - Calendar Style */}
           <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
             <button
-              onClick={() => { setActiveDay('all'); setEventFilter('all') }}
+              onClick={() => setActiveDay('all')}
               className={clsx(
                 'flex flex-col items-center justify-center min-w-[70px] py-3 px-4 rounded-2xl font-medium transition-all',
-                activeDay === 'all' && eventFilter === 'all'
+                activeDay === 'all'
                   ? 'bg-white text-primary-600 shadow-lg'
                   : 'bg-white/10 text-white hover:bg-white/20'
               )}
@@ -391,30 +373,6 @@ const Schedule = () => {
                 <span className="text-xs opacity-80">{day.month}</span>
               </button>
             ))}
-            <button
-              onClick={() => setEventFilter(eventFilter === 'featured' ? 'all' : 'featured')}
-              className={clsx(
-                'flex flex-col items-center justify-center min-w-[70px] py-3 px-4 rounded-2xl transition-all',
-                eventFilter === 'featured'
-                  ? 'bg-amber-400 text-amber-900 shadow-lg'
-                  : 'bg-white/10 text-white hover:bg-white/20'
-              )}
-            >
-              <Star className={clsx('w-5 h-5 mb-1', eventFilter === 'featured' && 'fill-current')} />
-              <span className="text-xs">Featured</span>
-            </button>
-            <button
-              onClick={() => setEventFilter(eventFilter === 'scheduled' ? 'all' : 'scheduled')}
-              className={clsx(
-                'flex flex-col items-center justify-center min-w-[70px] py-3 px-4 rounded-2xl transition-all',
-                eventFilter === 'scheduled'
-                  ? 'bg-emerald-400 text-emerald-900 shadow-lg'
-                  : 'bg-white/10 text-white hover:bg-white/20'
-              )}
-            >
-              <Calendar className="w-5 h-5 mb-1" />
-              <span className="text-xs">Scheduled</span>
-            </button>
           </div>
         </div>
       </div>
@@ -448,22 +406,17 @@ const Schedule = () => {
           </div>
 
           {/* Featured Events Carousel */}
-          {featuredSessions.length > 0 && eventFilter !== 'featured' && (
+          {featuredSessions.length > 0 && (
             <div className="mb-6">
-              <div className="px-4 mb-3 flex items-center justify-between">
+              <div className="px-4 mb-3">
                 <h2 className="font-bold text-gray-900 flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-amber-500" />
                   Featured Events
                 </h2>
-                <button 
-                  onClick={() => setEventFilter('featured')}
-                  className="text-sm text-primary-600 font-medium flex items-center gap-1"
-                >
-                  See all <ChevronRight className="w-4 h-4" />
-                </button>
+                <p className="text-sm text-gray-500 mt-1">Don't miss these highlighted events</p>
               </div>
               <div className="flex gap-4 overflow-x-auto px-4 pb-2 snap-x snap-mandatory">
-                {featuredSessions.slice(0, 5).map(event => (
+                {featuredSessions.map(event => (
                   <FeaturedEventCard 
                     key={event.id} 
                     event={event} 
@@ -476,8 +429,16 @@ const Schedule = () => {
             </div>
           )}
 
-          {/* Events List */}
+          {/* Schedule Events Section */}
           <div className="px-4">
+            <div className="mb-4">
+              <h2 className="font-bold text-gray-900 flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-primary-600" />
+                Schedule Events
+              </h2>
+              <p className="text-sm text-gray-500 mt-1">Complete event schedule</p>
+            </div>
+            
             {isLoading ? (
               <div className="flex flex-col items-center justify-center py-16">
                 <div className="w-16 h-16 rounded-2xl bg-primary-100 flex items-center justify-center mb-4 animate-pulse">
@@ -495,7 +456,7 @@ const Schedule = () => {
                   Try selecting a different day or category to find events
                 </p>
                 <button
-                  onClick={() => { setActiveDay('all'); setActiveCategory('all'); setEventFilter('all') }}
+                  onClick={() => { setActiveDay('all'); setActiveCategory('all') }}
                   className="mt-4 px-6 py-2.5 bg-primary-600 text-white rounded-xl font-medium text-sm hover:bg-primary-700 transition-colors"
                 >
                   Clear Filters

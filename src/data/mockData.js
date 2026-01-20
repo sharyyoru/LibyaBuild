@@ -27,19 +27,30 @@ export const countries = [
 export const heroBanners = [
   {
     id: 1,
-    title: "Libya Build 2026",
-    subtitle: "Building the Future Together",
-    image: "/media/Banner.jpg",
-    link: "/",
+    title: "Meet the Exhibitors",
+    subtitle: "Explore over 300 exhibitors at Libya Build Benghazi from over 15 countries.",
+    image: "/media/App Banner 1 - EN.jpg",
+    link: "/exhibitors",
+    category: "Exhibitors",
     priority: 1
   },
   {
     id: 2,
-    title: "Meet Industry Leaders",
-    subtitle: "Connect with 200+ exhibitors from 15 countries",
-    image: "/media/Banner 2.jpg",
-    link: "/exhibitors",
+    title: "Conference Agenda",
+    subtitle: "Explore expert-led sessions and panel talks designed to shape the future of construction and infrastructure in Libya.",
+    image: "/media/App Banner 2 - EN.jpg",
+    link: "/schedule",
+    category: "Conference",
     priority: 2
+  },
+  {
+    id: 3,
+    title: "Schedule your meetings",
+    subtitle: "Connect with exhibitors, brands, and decision-makers before and during the event and lock in your key meetings early.",
+    image: "/media/App Banner 3 - EN.jpg",
+    link: "/meetings",
+    category: "Networking",
+    priority: 3
   }
 ]
 
@@ -368,49 +379,33 @@ export const sessions = [
 export const newsItems = [
   {
     id: 1,
-    title: "Libya Build 2026 Opens Tomorrow!",
-    summary: "Get ready for three days of innovation, networking, and industry insights.",
-    content: "Libya Build 2026 officially opens its doors tomorrow morning at 9:00 AM. Don't miss the opening keynote by Dr. Ahmed Mansour on the Future of Urban Development.",
-    date: "2026-03-14T18:00:00",
-    category: "Announcement",
+    title: "Al Najm Alssaed Joins Libya Build Benghazi as Heavy Equipment Sponsor",
+    summary: "Al Najm Alssaed is an established company providing heavy equipment solutions for large-scale construction and infrastructure projects across Libya.",
+    content: "We are proud to welcome Al Najm Alssaed as our Heavy Equipment Sponsor for Libya Build Benghazi 2026.",
+    date: "2026-01-20T18:00:00",
+    category: "Sponsorship",
     priority: "high",
-    image: "https://via.placeholder.com/400x200/dc3b26/ffffff?text=Opening"
+    image: "/media/AlNajmAlssaed.jpeg"
   },
   {
     id: 2,
-    title: "VIP Lounge Access Now Available",
-    summary: "Upgrade your experience with exclusive VIP lounge access for just 250 AED.",
-    content: "Experience premium comfort with our VIP lounge featuring refreshments, high-speed WiFi, and private meeting spaces. Limited slots available.",
-    date: "2026-03-14T15:30:00",
-    category: "Ticket",
-    priority: "medium"
+    title: "Eithar Company Announced as HVAC Sponsor of Libya Build Benghazi 2026",
+    summary: "Eithar Company is a recognized provider of HVAC and home appliance solutions in Libya and the exclusive agent for Hisense in the local market.",
+    content: "We are delighted to announce Eithar Company's partnership as HVAC Sponsor for Libya Build Benghazi 2026.",
+    date: "2026-01-20T18:00:00",
+    category: "Sponsorship",
+    priority: "high",
+    image: "/media/Eitharcompany.jpeg"
   },
   {
     id: 3,
-    title: "Workshop: Advanced Materials - Last 2 Spots!",
-    summary: "Dr. Omar Khalil's workshop is almost full. Register now!",
-    content: "Only 2 spots remaining for the highly anticipated Advanced Materials workshop on March 16th. Secure your spot today for 150 AED.",
-    date: "2026-03-14T12:00:00",
-    category: "Workshop",
-    priority: "high"
-  },
-  {
-    id: 4,
-    title: "New Exhibitor: PowerGen Libya",
-    summary: "Leading renewable energy provider joins the expo at Booth B-220.",
-    content: "We're excited to welcome PowerGen Libya to this year's expo. Visit them at Hall B to learn about the latest in solar and renewable energy solutions.",
-    date: "2026-03-13T10:00:00",
-    category: "Exhibitor",
-    priority: "low"
-  },
-  {
-    id: 5,
-    title: "Parking Update: Additional Spaces Available",
-    summary: "New parking lot opened at Gate C with 200+ spaces.",
-    content: "Due to high attendance, we've opened an additional parking area at Gate C. Free shuttle service runs every 10 minutes to the main entrance.",
-    date: "2026-03-14T08:00:00",
-    category: "Logistics",
-    priority: "medium"
+    title: "Libya Build Benghazi 2026 Welcomes Silini Company as Paints Sponsor",
+    summary: "Silini Company is the exclusive agent for Scib Paints in Libya, providing high-quality coating solutions for residential and commercial projects.",
+    content: "We are excited to welcome Silini Company as our Paints Sponsor for Libya Build Benghazi 2026.",
+    date: "2026-01-20T18:00:00",
+    category: "Sponsorship",
+    priority: "high",
+    image: "/media/SiliniCompany.jpeg"
   }
 ]
 

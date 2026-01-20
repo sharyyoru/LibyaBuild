@@ -1,18 +1,20 @@
 import { Link } from 'react-router-dom'
-import { MessageSquare, Search } from 'lucide-react'
+import { MessageSquare, Search, Users } from 'lucide-react'
 import { useState } from 'react'
 import Header from '../components/Header'
 import Card from '../components/Card'
 import Badge from '../components/Badge'
 import { useApp } from '../context/AppContext'
+import { useAuth } from '../context/AuthContext'
 import { format } from 'date-fns'
 
 const ChatList = () => {
   const { chats } = useApp()
+  const { user } = useAuth()
   const [search, setSearch] = useState('')
 
-  const filtered = chats.filter(chat =>
-    chat.userName.toLowerCase().includes(search.toLowerCase())
+  const filtered = (chats || []).filter(chat =>
+    chat?.userName?.toLowerCase().includes(search.toLowerCase())
   )
 
   return (
@@ -33,16 +35,21 @@ const ChatList = () => {
         {filtered.length === 0 ? (
           <Card className="p-12 text-center">
             <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="font-bold text-gray-900 mb-2">No conversations yet</h3>
+            <h3 className="font-bold text-gray-900 mb-2">
+              {search ? 'No matching conversations' : 'No conversations yet'}
+            </h3>
             <p className="text-sm text-gray-500 mb-4">
-              Start networking with exhibitors to begin chatting
+              {search ? 'Try adjusting your search term' : 'Start networking with exhibitors to begin chatting'}
             </p>
-            <Link
-              to="/matchmaking"
-              className="inline-block px-6 py-2 bg-primary-600 text-white rounded-xl font-semibold"
-            >
-              Find Matches
-            </Link>
+            {!search && (
+              <Link
+                to="/matchmaking"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-xl font-semibold hover:bg-primary-700 transition-colors"
+              >
+                <Users className="w-5 h-5" />
+                Find Matches
+              </Link>
+            )}
           </Card>
         ) : (
           <div className="space-y-2">
@@ -66,7 +73,7 @@ const ChatList = () => {
                       <div className="flex items-center justify-between mb-1">
                         <h4 className="font-semibold text-gray-900">{chat.userName}</h4>
                         <span className="text-xs text-gray-500">
-                          {format(new Date(chat.lastMessageTime), 'h:mm a')}
+                          {chat.lastMessageTime ? format(new Date(chat.lastMessageTime), 'h:mm a') : ''}
                         </span>
                       </div>
                       <p className="text-sm text-gray-600 truncate">

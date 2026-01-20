@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     setError(null)
-    // Note: Don't set global loading here - Login component manages its own loading state
+    setLoading(true)
     try {
       const result = await loginVisitor(email, password)
       
@@ -47,52 +47,68 @@ export const AuthProvider = ({ children }) => {
         const token = result.token || result.access_token
         setAuthToken(token)
         
-        // Fetch profile to get complete user data including user_id
-        let profileData = null
-        try {
-          const profileResponse = await getProfile()
-          profileData = profileResponse.data || profileResponse
-        } catch (profileErr) {
-          console.warn('Could not fetch profile:', profileErr)
-        }
-        
-        const userData = {
+        // Create basic user data first to set state immediately
+        const basicUserData = {
           email: email,
           token: token,
-          // Profile data contains the user_id and all user details
-          first_name: profileData?.first_name,
-          last_name: profileData?.last_name,
-          company: profileData?.company_text || profileData?.company?.en_name,
-          job_title: profileData?.job_title,
-          phone: profileData?.phone,
-          mobile: profileData?.mobile,
-          country: profileData?.country,
-          city: profileData?.city,
-          ref_code: profileData?.ref_code,
-          vip: profileData?.vip,
-          company_sectors: profileData?.company_sectors,
-          // Fallback to login response data
+          // Use data from login response first
           ...result.user,
           ...result.visitor,
-          // Ensure id is set from profile (most reliable source)
-          id: profileData?.id || result.user?.id || result.visitor?.id,
+          id: result.user?.id || result.visitor?.id || result.id,
           is_staff: result.is_staff || result.user?.is_staff || result.visitor?.is_staff || false,
           user_level: result.user_level || result.user?.user_level || result.visitor?.user_level || 'visitor',
-          is_exhibitor: result.is_exhibitor || profileData?.company?.is_exhibitor || false
+          is_exhibitor: result.is_exhibitor || false
         }
         
-        localStorage.setItem('eventx_user', JSON.stringify(userData))
-        setUser(userData)
+        // Set user state immediately for quick redirect
+        setUser(basicUserData)
+        localStorage.setItem('eventx_user', JSON.stringify(basicUserData))
         
-        return { success: true, user: userData }
+        // Fetch profile in background to enhance user data
+        try {
+          const profileResponse = await getProfile()
+          const profileData = profileResponse.data || profileResponse
+          
+          if (profileData) {
+            const enhancedUserData = {
+              ...basicUserData,
+              // Profile data contains the user_id and all user details
+              first_name: profileData.first_name || basicUserData.first_name,
+              last_name: profileData.last_name || basicUserData.last_name,
+              company: profileData.company_text || profileData.company?.en_name || basicUserData.company,
+              job_title: profileData.job_title || basicUserData.job_title,
+              phone: profileData.phone || basicUserData.phone,
+              mobile: profileData.mobile || basicUserData.mobile,
+              country: profileData.country || basicUserData.country,
+              city: profileData.city || basicUserData.city,
+              ref_code: profileData.ref_code || basicUserData.ref_code,
+              vip: profileData.vip || basicUserData.vip,
+              company_sectors: profileData.company_sectors || basicUserData.company_sectors,
+              // Ensure id is set from profile (most reliable source)
+              id: profileData.id || basicUserData.id,
+              is_exhibitor: profileData.company?.is_exhibitor || basicUserData.is_exhibitor
+            }
+            
+            setUser(enhancedUserData)
+            localStorage.setItem('eventx_user', JSON.stringify(enhancedUserData))
+          }
+        } catch (profileErr) {
+          console.warn('Could not fetch profile, using basic user data:', profileErr)
+          // User is already set with basic data, so this is not a failure
+        }
+        
+        setLoading(false)
+        return { success: true, user: basicUserData }
       } else {
         const errorMsg = result.message || 'Login failed'
         setError(errorMsg)
+        setLoading(false)
         return { success: false, error: errorMsg }
       }
     } catch (err) {
       const errorMsg = err.message || 'Login failed'
       setError(errorMsg)
+      setLoading(false)
       return { success: false, error: errorMsg }
     }
   }
@@ -140,7 +156,7 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     deleteAccount,
-    isAuthenticated: !!user,
+    isAuthenticated: !!user && !!getAuthToken(),
     isStaff: user?.is_staff || false,
     userLevel: user?.user_level || 'visitor'
   }

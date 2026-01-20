@@ -68,57 +68,48 @@ const HeroBannerCarousel = () => {
           onClick={() => navigate(currentBanner.link)}
           className="relative h-52 cursor-pointer group overflow-hidden"
         >
-          {/* Image with Ken Burns Effect */}
+          {/* Image with Full Detail Visibility - No Cropping */}
           <div className="absolute inset-0">
             <img
               key={currentIndex}
-              src={currentBanner.image}
+              src={encodeURI(currentBanner.image)}
               alt={currentBanner.title}
-              className="w-full h-full object-cover transition-all duration-[6000ms] ease-linear scale-100 group-hover:scale-110 animate-kenburns"
+              className="w-full h-full object-contain transition-all duration-[6000ms] ease-linear scale-100 group-hover:scale-105"
+              onError={(e) => {
+                console.error('Banner image failed to load:', currentBanner.image)
+                console.error('Encoded URL:', encodeURI(currentBanner.image))
+                e.target.style.display = 'block'
+                e.target.style.backgroundColor = '#f3f4f6'
+                e.target.style.border = '2px dashed #d1d5db'
+              }}
+              onLoad={() => console.log('Banner image loaded successfully:', currentBanner.image)}
             />
           </div>
 
-          {/* Gradient Overlays */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-          <div className="absolute inset-0 bg-gradient-to-r from-primary-900/40 to-transparent" />
+          {/* Minimal Gradient Overlays - Maximum background visibility */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
           
-          {/* Animated Glow Effect */}
-          <div className="absolute -top-20 -right-20 w-40 h-40 bg-accent-500/30 rounded-full blur-3xl animate-pulse" />
-          <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-primary-500/30 rounded-full blur-3xl animate-pulse delay-1000" />
+          {/* Remove all other overlays and glow effects for maximum image visibility */}
 
-          {/* Content */}
-          <div className="absolute inset-0 flex flex-col justify-end p-5">
-            {/* Category Tag */}
-            <div className="mb-3">
+          {/* Content - Minimal Overlay with Category and CTA only */}
+          <div className="absolute inset-0">
+            {/* Category Tag - Top Right Corner */}
+            <div className="absolute top-4 right-4">
               <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-medium text-white border border-white/20">
                 <span className="w-1.5 h-1.5 bg-accent-400 rounded-full animate-pulse" />
                 {currentBanner.category || 'Featured'}
               </span>
             </div>
 
-            {/* Title with Animation */}
-            <h2 
-              key={`title-${currentIndex}`}
-              className="text-2xl font-bold text-white mb-2 leading-tight animate-slideUp"
-            >
-              {currentBanner.title}
-            </h2>
-            
-            {/* Subtitle */}
-            <p 
-              key={`sub-${currentIndex}`}
-              className="text-white/80 text-sm mb-3 line-clamp-2 animate-slideUp animation-delay-100"
-            >
-              {currentBanner.subtitle}
-            </p>
-
-            {/* CTA Button */}
-            <div className="flex items-center gap-2">
-              <span className="text-white/90 text-sm font-medium group-hover:text-white transition-colors">
-                Learn More
-              </span>
-              <div className="w-6 h-6 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center group-hover:bg-white/30 group-hover:translate-x-1 transition-all">
-                <ArrowRight className="w-3.5 h-3.5 text-white" />
+            {/* Learn More CTA - Bottom Right Corner */}
+            <div className="absolute bottom-4 right-4">
+              <div className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-md rounded-full border border-white/20 hover:bg-white/30 transition-all">
+                <span className="text-white text-sm font-medium">
+                  Learn More
+                </span>
+                <div className="w-5 h-5 rounded-full bg-white/30 flex items-center justify-center group-hover:translate-x-1 transition-all">
+                  <ArrowRight className="w-3 h-3 text-white" />
+                </div>
               </div>
             </div>
           </div>

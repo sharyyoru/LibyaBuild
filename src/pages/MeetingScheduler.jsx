@@ -7,7 +7,7 @@ import Badge from '../components/Badge'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import { getExhibitors } from '../services/eventxApi'
-import { fetchMeetings, createMeeting, updateMeetingStatus } from '../lib/supabase'
+import { getUserScheduledMeetings, scheduleMeeting, approveMeeting, rejectMeeting } from '../services/eventxApi'
 import { format, addMinutes, isAfter, isBefore, parseISO, isToday, isTomorrow } from 'date-fns'
 import { clsx } from 'clsx'
 
@@ -66,10 +66,15 @@ const MeetingScheduler = () => {
   
   const [formData, setFormData] = useState({
     exhibitorId: preselectedExhibitor || '',
+    selectedUserIds: [], // Array of selected user IDs
     date: EVENT_DAYS[0].date,
     time: '',
-    notes: ''
+    notes: '',
+    message: '',
+    type: 'business',
+    duration: 30
   })
+  const [availableUsers, setAvailableUsers] = useState([]) // Users from selected exhibitor
 
   // Check if user is an exhibitor
   const isExhibitor = user?.user_level === 'exhibitor' || user?.is_exhibitor || user?.type === 'exhibitor'
@@ -77,6 +82,16 @@ const MeetingScheduler = () => {
   useEffect(() => {
     loadData()
   }, [])
+
+  // Load users when exhibitor is selected
+  useEffect(() => {
+    if (formData.exhibitorId) {
+      loadExhibitorUsers(formData.exhibitorId)
+    } else {
+      setAvailableUsers([])
+      setFormData(prev => ({ ...prev, selectedUserIds: [] }))
+    }
+  }, [formData.exhibitorId])
 
   useEffect(() => {
     // Set up reminder checks every minute
@@ -112,15 +127,16 @@ const MeetingScheduler = () => {
       const exhibitorList = exhibitorsData.data || exhibitorsData.exhibitors || exhibitorsData || []
       setExhibitors(Array.isArray(exhibitorList) ? exhibitorList : [])
       
-      // Load meetings from Supabase
+      // Load meetings from API
       const userId = user?.id || user?.user_id
       if (userId) {
-        const { data: meetingsData, error } = await fetchMeetings(userId)
-        if (!error && meetingsData) {
-          setMeetings(meetingsData)
-        } else {
-          // Fallback to local meetings
-          setMeetings(localMeetings)
+        try {
+          const response = await getUserScheduledMeetings()
+          const meetingsData = response.data || response.meetings || response || []
+          setMeetings(Array.isArray(meetingsData) ? meetingsData : [])
+        } catch (error) {
+          console.error('Failed to load meetings:', error)
+          setMeetings([])
         }
       } else {
         setMeetings(localMeetings)
@@ -138,6 +154,67 @@ const MeetingScheduler = () => {
     }
   }
 
+  const loadExhibitorUsers = async (exhibitorId) => {
+    try {
+      const exhibitor = exhibitors.find(ex => ex.id === parseInt(exhibitorId))
+      if (!exhibitor) return
+
+      // Extract users from user, exhibitor_badges, and form3_data_entry (actual user IDs)
+      const users = []
+      
+      // Add main user if exists (from exhibitor.user field)
+      if (exhibitor.user && exhibitor.user.id) {
+        users.push({
+          id: exhibitor.user.id, // This is the actual user ID we need
+          name: `${exhibitor.user.first_name || ''} ${exhibitor.user.last_name || ''}`.trim(),
+          email: exhibitor.user.email,
+          job_title: exhibitor.user.job_title,
+          type: 'main_user'
+        })
+      }
+
+      // Add users from exhibitor_badges if available
+      if (exhibitor.exhibitor_badges && Array.isArray(exhibitor.exhibitor_badges)) {
+        exhibitor.exhibitor_badges.forEach(badge => {
+          if (badge.user && badge.user.id) {
+            users.push({
+              id: badge.user.id, // This is the actual user ID we need
+              name: `${badge.user.first_name || ''} ${badge.user.last_name || ''}`.trim(),
+              email: badge.user.email,
+              job_title: badge.user.job_title,
+              type: 'badge_user'
+            })
+          }
+        })
+      }
+
+      // Add users from form3_data_entry if available (this is where the actual users are)
+      if (exhibitor.form3_data_entry && Array.isArray(exhibitor.form3_data_entry)) {
+        exhibitor.form3_data_entry.forEach(entry => {
+          if (entry.user && entry.user.id) {
+            users.push({
+              id: entry.user.id, // This is the actual user ID we need
+              name: `${entry.user.first_name || ''} ${entry.user.last_name || ''}`.trim(),
+              email: entry.user.email,
+              job_title: entry.user.job_title,
+              type: 'form3_user'
+            })
+          }
+        })
+      }
+
+      // Remove duplicates by user ID (not email)
+      const uniqueUsers = users.filter((user, index, self) => 
+        index === self.findIndex(u => u.id === user.id)
+      )
+
+      setAvailableUsers(uniqueUsers)
+    } catch (error) {
+      console.error('Failed to load exhibitor users:', error)
+      setAvailableUsers([])
+    }
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -145,6 +222,12 @@ const MeetingScheduler = () => {
     setSuccess('')
     
     try {
+      // Validate that users are selected (if available) or allow fallback to company
+      if (availableUsers.length > 0 && !formData.selectedUserIds.length) {
+        setError('Please select at least one user to request a meeting with.')
+        return
+      }
+      
       const exhibitor = exhibitors.find(ex => ex.id === parseInt(formData.exhibitorId))
       const userId = user?.id || user?.user_id
       
@@ -163,16 +246,26 @@ const MeetingScheduler = () => {
         type: 'outgoing'
       }
       
-      // Create in Supabase
-      const { data: createdMeeting, error: createError } = await createMeeting(meetingData)
+      // Create via API with correct user_ids
+      const selectedUsers = availableUsers.filter(u => formData.selectedUserIds.includes(u.id))
+      const userNames = selectedUsers.map(u => u.name).join(', ')
       
-      if (createError) {
-        throw new Error(createError.message || 'Failed to create meeting')
+      const apiMeetingData = {
+        user_ids: formData.selectedUserIds.length > 0 ? formData.selectedUserIds : [parseInt(formData.exhibitorId)], // Use selected user IDs or fallback to exhibitor ID
+        date: formData.date,
+        time: formData.time,
+        message: `${formData.type.toUpperCase()} MEETING: ${formData.message || formData.notes}\n\nDuration: ${formData.duration} minutes\nRequested by: ${user?.first_name || user?.name || 'User'}${userNames ? `\nWith: ${userNames}` : ''}`
+      }
+      
+      const response = await scheduleMeeting(apiMeetingData)
+      
+      if (response.error || !response.success) {
+        throw new Error(response.message || 'Failed to create meeting')
       }
       
       // Also add to local state
-      const newMeeting = createdMeeting || {
-        id: Date.now(),
+      const newMeeting = {
+        id: response.id || Date.now(),
         ...meetingData,
         status: 'pending'
       }
@@ -181,7 +274,7 @@ const MeetingScheduler = () => {
       addMeeting(newMeeting)
       
       setSuccess('Meeting request sent! You will be notified when the exhibitor responds.')
-      setFormData({ exhibitorId: '', date: EVENT_DAYS[0].date, time: '', notes: '' })
+      setFormData({ exhibitorId: '', date: EVENT_DAYS[0].date, time: '', notes: '', message: '', type: 'business', duration: 30 })
       setShowForm(false)
       
       // Show notification
@@ -200,11 +293,10 @@ const MeetingScheduler = () => {
 
   const handleApprove = async (meetingId) => {
     try {
-      await updateMeetingStatus(meetingId, 'approved')
+      await approveMeeting(meetingId)
       setMeetings(prev => prev.map(m => 
         m.id === meetingId ? { ...m, status: 'approved' } : m
       ))
-      updateMeeting(meetingId, { status: 'approved' })
       setSuccess('Meeting approved! The visitor has been notified.')
       
       // Show notification
@@ -227,11 +319,10 @@ const MeetingScheduler = () => {
 
   const handleReject = async (meetingId) => {
     try {
-      await updateMeetingStatus(meetingId, 'rejected')
+      await rejectMeeting(meetingId)
       setMeetings(prev => prev.map(m => 
         m.id === meetingId ? { ...m, status: 'rejected' } : m
       ))
-      updateMeeting(meetingId, { status: 'rejected' })
     } catch (err) {
       console.error('Failed to reject meeting:', err)
       setMeetings(prev => prev.map(m => 
@@ -243,11 +334,20 @@ const MeetingScheduler = () => {
 
   const handleCancel = async (meetingId) => {
     try {
-      await updateMeetingStatus(meetingId, 'cancelled')
+      await rejectMeeting(meetingId) // Using rejectMeeting for cancellation as per API
       setMeetings(prev => prev.map(m => 
         m.id === meetingId ? { ...m, status: 'cancelled' } : m
       ))
-      updateMeeting(meetingId, { status: 'cancelled' })
+      setSuccess('Meeting cancelled')
+      
+      // Show notification
+      if ('Notification' in window && Notification.permission === 'granted') {
+        const meeting = meetings.find(m => m.id === meetingId)
+        new Notification('Meeting Cancelled', {
+          body: `Meeting with ${meeting?.visitor_name || 'visitor'} has been cancelled!`,
+          icon: '/media/App Icons-14.svg'
+        })
+      }
     } catch (err) {
       console.error('Failed to cancel meeting:', err)
       setMeetings(prev => prev.map(m => 
@@ -479,7 +579,7 @@ const MeetingScheduler = () => {
                       <select
                         required
                         value={formData.exhibitorId}
-                        onChange={(e) => setFormData({ ...formData, exhibitorId: e.target.value })}
+                        onChange={(e) => setFormData({ ...formData, exhibitorId: e.target.value, selectedUserIds: [] })}
                         className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none"
                       >
                         <option value="">Choose an exhibitor...</option>
@@ -492,6 +592,61 @@ const MeetingScheduler = () => {
                       <ChevronDown className="w-5 h-5 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
                   </div>
+
+                  {/* Users Selection - Shows when exhibitor is selected */}
+                  {formData.exhibitorId && availableUsers.length > 0 && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Select Users to Meet *</label>
+                      <div className="space-y-2 max-h-40 overflow-y-auto bg-gray-50 border border-gray-200 rounded-xl p-3">
+                        {availableUsers.map(user => (
+                          <label key={user.id} className="flex items-center gap-3 p-2 hover:bg-white rounded-lg cursor-pointer transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={formData.selectedUserIds.includes(user.id)}
+                              onChange={(e) => {
+                                const userIds = e.target.checked 
+                                  ? [...formData.selectedUserIds, user.id]
+                                  : formData.selectedUserIds.filter(id => id !== user.id)
+                                setFormData({ ...formData, selectedUserIds: userIds })
+                              }}
+                              className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500 border-gray-300"
+                            />
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <User className="w-4 h-4 text-gray-400" />
+                                <span className="font-medium text-gray-900">{user.name}</span>
+                                {user.contact_type && (
+                                  <Badge variant="secondary" size="sm">{user.contact_type}</Badge>
+                                )}
+                                {user.type === 'badge_user' && (
+                                  <Badge variant="accent" size="sm">Badge User</Badge>
+                                )}
+                              </div>
+                              {user.job_title && (
+                                <p className="text-xs text-gray-500 ml-6">{user.job_title}</p>
+                              )}
+                              {user.email && (
+                                <p className="text-xs text-gray-500 ml-6">{user.email}</p>
+                              )}
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                      {formData.selectedUserIds.length > 0 && (
+                        <p className="text-xs text-primary-600 mt-1">
+                          {formData.selectedUserIds.length} user{formData.selectedUserIds.length !== 1 ? 's' : ''} selected
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {formData.exhibitorId && availableUsers.length === 0 && (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
+                      <p className="text-amber-700 text-sm">
+                        No user contacts found for this exhibitor. You may still request a meeting, but it will be sent to the company directly.
+                      </p>
+                    </div>
+                  )}
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Select Date *</label>
