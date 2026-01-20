@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react'
-import { Calendar, Clock, MapPin, User, Loader2, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
-import { getVisitorMeetings, getSchedules, createSchedule } from '../services/eventxApi'
+import { Calendar, Clock, MapPin, User, Loader2, ChevronLeft, ChevronRight, Plus, Check, X } from 'lucide-react'
+import { getVisitorMeetings, getSchedules, createSchedule, approveMeeting, rejectMeeting } from '../services/eventxApi'
+import { useAuth } from '../context/AuthContext'
 
 const MyMeetings = () => {
+  const { user } = useAuth()
   const [meetings, setMeetings] = useState([])
   const [schedules, setSchedules] = useState([])
+  const [exhibitorMeetings, setExhibitorMeetings] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [activeTab, setActiveTab] = useState('meetings')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [error, setError] = useState('')
+  const [actionLoading, setActionLoading] = useState(null)
 
   useEffect(() => {
     loadData()
@@ -25,7 +29,20 @@ const MyMeetings = () => {
       ])
       
       setMeetings(Array.isArray(meetingsData) ? meetingsData : meetingsData.data || [])
-      setSchedules(schedulesData.data || [])
+      
+      const allSchedules = schedulesData.data || []
+      setSchedules(allSchedules)
+      
+      // Filter meetings assigned to current user (for exhibitors)
+      if (user?.id) {
+        const userAssignedMeetings = allSchedules.filter(schedule => {
+          // Check if user_id matches or if user is in the assigned users
+          return schedule.user_id === user.id || 
+                 schedule.assigned_user_id === user.id ||
+                 (schedule.attendees && schedule.attendees.some(a => a.user_id === user.id))
+        })
+        setExhibitorMeetings(userAssignedMeetings)
+      }
     } catch (err) {
       setError('Failed to load meetings')
       console.error(err)
@@ -42,6 +59,32 @@ const MyMeetings = () => {
     const newDate = new Date(selectedDate)
     newDate.setDate(newDate.getDate() + days)
     setSelectedDate(newDate)
+  }
+
+  const handleApproveMeeting = async (meetingId) => {
+    setActionLoading(meetingId)
+    try {
+      await approveMeeting(meetingId)
+      await loadData()
+      setError('')
+    } catch (err) {
+      setError('Failed to approve meeting: ' + err.message)
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleRejectMeeting = async (meetingId) => {
+    setActionLoading(meetingId)
+    try {
+      await rejectMeeting(meetingId)
+      await loadData()
+      setError('')
+    } catch (err) {
+      setError('Failed to reject meeting: ' + err.message)
+    } finally {
+      setActionLoading(null)
+    }
   }
 
   const getStatusColor = (status) => {
@@ -108,6 +151,21 @@ const MyMeetings = () => {
             My Meetings
           </button>
           <button
+            onClick={() => setActiveTab('assigned')}
+            className={`flex-1 py-3 text-sm font-medium transition-all ${
+              activeTab === 'assigned'
+                ? 'text-primary-600 border-b-2 border-primary-600'
+                : 'text-gray-500'
+            }`}
+          >
+            Meeting Requests
+            {exhibitorMeetings.filter(m => m.status?.toLowerCase() === 'pending').length > 0 && (
+              <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">
+                {exhibitorMeetings.filter(m => m.status?.toLowerCase() === 'pending').length}
+              </span>
+            )}
+          </button>
+          <button
             onClick={() => setActiveTab('schedules')}
             className={`flex-1 py-3 text-sm font-medium transition-all ${
               activeTab === 'schedules'
@@ -131,6 +189,96 @@ const MyMeetings = () => {
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
           </div>
+        ) : activeTab === 'assigned' ? (
+          exhibitorMeetings.length === 0 ? (
+            <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Calendar className="w-8 h-8 text-gray-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">No meeting requests</h3>
+              <p className="text-gray-500">You don't have any meeting requests assigned to you.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {exhibitorMeetings.map((meeting, index) => {
+                const isPending = meeting.status?.toLowerCase() === 'pending'
+                return (
+                  <div key={meeting.id || index} className="bg-white rounded-xl p-4 shadow-sm">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
+                          <User className="w-5 h-5 text-primary-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-gray-900">
+                            {meeting.visitor_name || meeting.requester_name || meeting.title || 'Meeting Request'}
+                          </h3>
+                          <p className="text-sm text-gray-500">
+                            {meeting.visitor_company || meeting.company_name || ''}
+                          </p>
+                        </div>
+                      </div>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(meeting.status)}`}>
+                        {meeting.status || 'Pending'}
+                      </span>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-3">
+                      <div className="flex items-center gap-1">
+                        <Calendar className="w-4 h-4" />
+                        {meeting.date || 'TBD'}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4" />
+                        {meeting.time || meeting.start_time || 'TBD'}
+                      </div>
+                      {meeting.location && (
+                        <div className="flex items-center gap-1">
+                          <MapPin className="w-4 h-4" />
+                          {meeting.location}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {meeting.message && (
+                      <p className="text-sm text-gray-600 mb-3 bg-gray-50 rounded-lg p-3">
+                        {meeting.message}
+                      </p>
+                    )}
+
+                    {isPending && (
+                      <div className="flex gap-2 mt-3">
+                        <button
+                          onClick={() => handleApproveMeeting(meeting.id)}
+                          disabled={actionLoading === meeting.id}
+                          className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 transition-all"
+                        >
+                          {actionLoading === meeting.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Check className="w-4 h-4" />
+                          )}
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleRejectMeeting(meeting.id)}
+                          disabled={actionLoading === meeting.id}
+                          className="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 disabled:opacity-50 transition-all"
+                        >
+                          {actionLoading === meeting.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <X className="w-4 h-4" />
+                          )}
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )
         ) : activeTab === 'meetings' ? (
           meetings.length === 0 ? (
             <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
