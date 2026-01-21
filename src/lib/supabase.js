@@ -293,3 +293,66 @@ export const getUserProfile = async (userId) => {
     .single()
   return { data, error }
 }
+
+// Get public profile info for business cards (respects privacy settings)
+export const getPublicUserProfile = async (userId) => {
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('user_id, profile_photo_url, email, email_public, mobile, mobile_public')
+    .eq('user_id', userId)
+    .single()
+  
+  if (error || !data) return { data: null, error }
+  
+  // Filter based on privacy settings
+  return {
+    data: {
+      user_id: data.user_id,
+      profile_photo_url: data.profile_photo_url,
+      email: data.email_public ? data.email : null,
+      mobile: data.mobile_public ? data.mobile : null,
+      email_public: data.email_public,
+      mobile_public: data.mobile_public
+    },
+    error: null
+  }
+}
+
+// Save scanned business card to database
+export const saveScannedCard = async (userId, cardData) => {
+  const { data, error } = await supabase
+    .from('scanned_cards')
+    .insert({
+      user_id: userId,
+      scanned_user_id: cardData.scannedUserId || null,
+      name: cardData.name,
+      company: cardData.company,
+      role: cardData.role,
+      email: cardData.email,
+      phone: cardData.phone,
+      source: cardData.source, // 'qr' or 'ocr'
+      raw_data: cardData.rawData,
+      created_at: new Date().toISOString()
+    })
+    .select()
+  return { data: data?.[0], error }
+}
+
+// Get user's scanned cards
+export const getScannedCards = async (userId) => {
+  const { data, error } = await supabase
+    .from('scanned_cards')
+    .select('*')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+  return { data: data || [], error }
+}
+
+// Delete a scanned card
+export const deleteScannedCard = async (cardId) => {
+  const { error } = await supabase
+    .from('scanned_cards')
+    .delete()
+    .eq('id', cardId)
+  return { error }
+}

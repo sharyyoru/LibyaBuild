@@ -95,3 +95,47 @@ USING (
 
 -- Create index for faster lookups
 CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id);
+
+-- =====================================================
+-- SCANNED CARDS TABLE
+-- =====================================================
+
+-- Create scanned_cards table to store business cards collected by users
+CREATE TABLE IF NOT EXISTS scanned_cards (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  scanned_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  name TEXT NOT NULL,
+  company TEXT,
+  role TEXT,
+  email TEXT,
+  phone TEXT,
+  source TEXT CHECK (source IN ('qr', 'ocr')),
+  raw_data TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS on scanned_cards
+ALTER TABLE scanned_cards ENABLE ROW LEVEL SECURITY;
+
+-- Users can read their own scanned cards
+CREATE POLICY "Users can read own scanned cards"
+ON scanned_cards FOR SELECT
+TO authenticated
+USING (user_id = auth.uid());
+
+-- Users can insert their own scanned cards
+CREATE POLICY "Users can insert own scanned cards"
+ON scanned_cards FOR INSERT
+TO authenticated
+WITH CHECK (user_id = auth.uid());
+
+-- Users can delete their own scanned cards
+CREATE POLICY "Users can delete own scanned cards"
+ON scanned_cards FOR DELETE
+TO authenticated
+USING (user_id = auth.uid());
+
+-- Create indexes for faster lookups
+CREATE INDEX IF NOT EXISTS idx_scanned_cards_user_id ON scanned_cards(user_id);
+CREATE INDEX IF NOT EXISTS idx_scanned_cards_scanned_user_id ON scanned_cards(scanned_user_id);
