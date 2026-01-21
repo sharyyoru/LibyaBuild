@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, Building2, Briefcase, Heart, Calendar, Mail, Settings, LogOut, Globe, Sparkles, QrCode, Shield, Loader2, Trash2, AlertTriangle, X } from 'lucide-react'
+import { User, Building2, Briefcase, Heart, Calendar, Mail, Settings, LogOut, Globe, Sparkles, QrCode, Shield, Loader2, Trash2, AlertTriangle, X, Camera, Phone, Eye, EyeOff, Check } from 'lucide-react'
 import Header from '../components/Header'
 import Card from '../components/Card'
 import Button from '../components/Button'
@@ -8,6 +8,8 @@ import Badge from '../components/Badge'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import { updateProfile, getVisitorMeetings, getExhibitorFavorites } from '../services/eventxApi'
+import { uploadProfilePhoto, deleteProfilePhoto, saveUserProfile, getUserProfile } from '../lib/supabase'
+import { clsx } from 'clsx'
 
 const sectors = [
   'Architecture',
@@ -25,6 +27,23 @@ const countries = [
   'Turkey', 'Italy', 'Germany', 'China', 'USA', 'UK'
 ]
 
+// Visibility Toggle Component
+const VisibilityToggle = ({ isPublic, onChange, label }) => (
+  <button
+    type="button"
+    onClick={onChange}
+    className={clsx(
+      'flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all',
+      isPublic 
+        ? 'bg-green-100 text-green-700 border border-green-200' 
+        : 'bg-gray-100 text-gray-500 border border-gray-200'
+    )}
+  >
+    {isPublic ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+    {isPublic ? 'Public' : 'Private'}
+  </button>
+)
+
 const Profile = () => {
   const navigate = useNavigate()
   const { userProfile, setUserProfile, favorites, tickets, meetings: localMeetings } = useApp()
@@ -38,6 +57,21 @@ const Profile = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  
+  // Profile photo state
+  const fileInputRef = useRef(null)
+  const [profilePhoto, setProfilePhoto] = useState(null)
+  const [profilePhotoUrl, setProfilePhotoUrl] = useState(null)
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
+  
+  // Extended profile state
+  const [extendedProfile, setExtendedProfile] = useState({
+    email: user?.email || '',
+    emailPublic: false,
+    mobile: '',
+    mobilePublic: false,
+    profilePhotoPath: null
+  })
   
   // Initialize form data from user or userProfile
   const initialData = {
@@ -70,10 +104,104 @@ const Profile = () => {
       
       const favList = favoritesData.data || favoritesData.favorites || []
       setApiFavorites(Array.isArray(favList) ? favList : [])
+      
+      // Load extended profile from Supabase
+      if (user?.id) {
+        const { data: profileData } = await getUserProfile(user.id)
+        if (profileData) {
+          setExtendedProfile({
+            email: profileData.email || user?.email || '',
+            emailPublic: profileData.email_public || false,
+            mobile: profileData.mobile || '',
+            mobilePublic: profileData.mobile_public || false,
+            profilePhotoPath: profileData.profile_photo_path || null
+          })
+          if (profileData.profile_photo_url) {
+            setProfilePhotoUrl(profileData.profile_photo_url)
+          }
+        }
+      }
     } catch (err) {
       console.error('Failed to load profile data:', err)
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  // Handle profile photo selection
+  const handlePhotoSelect = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please select an image file')
+      return
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be less than 5MB')
+      return
+    }
+
+    setIsUploadingPhoto(true)
+    setError('')
+
+    try {
+      // Delete old photo if exists
+      if (extendedProfile.profilePhotoPath) {
+        await deleteProfilePhoto(extendedProfile.profilePhotoPath)
+      }
+
+      // Upload new photo
+      const { data, error: uploadError } = await uploadProfilePhoto(user.id, file)
+      
+      if (uploadError) throw uploadError
+
+      setProfilePhotoUrl(data.url)
+      setExtendedProfile(prev => ({
+        ...prev,
+        profilePhotoPath: data.path
+      }))
+
+      // Save to database
+      await saveUserProfile(user.id, {
+        profile_photo_path: data.path,
+        profile_photo_url: data.url
+      })
+    } catch (err) {
+      console.error('Failed to upload photo:', err)
+      setError('Failed to upload photo. Please try again.')
+    } finally {
+      setIsUploadingPhoto(false)
+    }
+  }
+
+  // Handle removing profile photo
+  const handleRemovePhoto = async () => {
+    if (!extendedProfile.profilePhotoPath) return
+
+    setIsUploadingPhoto(true)
+    try {
+      await deleteProfilePhoto(extendedProfile.profilePhotoPath)
+      
+      setProfilePhotoUrl(null)
+      setExtendedProfile(prev => ({
+        ...prev,
+        profilePhotoPath: null
+      }))
+
+      // Update database
+      await saveUserProfile(user.id, {
+        profile_photo_path: null,
+        profile_photo_url: null
+      })
+    } catch (err) {
+      console.error('Failed to remove photo:', err)
+      setError('Failed to remove photo')
+    } finally {
+      setIsUploadingPhoto(false)
     }
   }
 
@@ -99,6 +227,18 @@ const Profile = () => {
         company: formData.company,
         jobTitle: formData.role
       })
+      
+      // Save extended profile to Supabase
+      if (user?.id) {
+        await saveUserProfile(user.id, {
+          email: extendedProfile.email,
+          email_public: extendedProfile.emailPublic,
+          mobile: extendedProfile.mobile,
+          mobile_public: extendedProfile.mobilePublic,
+          profile_photo_path: extendedProfile.profilePhotoPath,
+          profile_photo_url: profilePhotoUrl
+        })
+      }
       
       setUserProfile(formData)
       setIsEditing(false)
@@ -158,9 +298,52 @@ const Profile = () => {
       <div className="p-4 space-y-4">
         <Card className="p-6">
           <div className="flex flex-col items-center text-center mb-6">
-            <div className="w-24 h-24 bg-gradient-to-br from-primary-600 to-accent-600 rounded-3xl flex items-center justify-center mb-4">
-              <User className="w-12 h-12 text-white" />
+            {/* Profile Photo */}
+            <div className="relative mb-4">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoSelect}
+                className="hidden"
+              />
+              {profilePhotoUrl ? (
+                <div className="relative">
+                  <img 
+                    src={profilePhotoUrl} 
+                    alt="Profile" 
+                    className="w-24 h-24 rounded-3xl object-cover border-4 border-white shadow-lg"
+                  />
+                  {isEditing && (
+                    <button
+                      onClick={handleRemovePhoto}
+                      disabled={isUploadingPhoto}
+                      className="absolute -top-2 -right-2 w-7 h-7 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md hover:bg-red-600 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="w-24 h-24 bg-gradient-to-br from-primary-600 to-accent-600 rounded-3xl flex items-center justify-center">
+                  <User className="w-12 h-12 text-white" />
+                </div>
+              )}
+              {isEditing && (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingPhoto}
+                  className="absolute -bottom-2 -right-2 w-9 h-9 bg-primary-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+                >
+                  {isUploadingPhoto ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Camera className="w-4 h-4" />
+                  )}
+                </button>
+              )}
             </div>
+
             {!isEditing ? (
               <>
                 <h2 className="text-2xl font-bold text-gray-900 mb-1">
@@ -168,6 +351,33 @@ const Profile = () => {
                 </h2>
                 <p className="text-gray-600 mb-1">{userProfile.role || 'Your Role'}</p>
                 <p className="text-gray-500 text-sm mb-2">{userProfile.company || 'Your Company'}</p>
+                
+                {/* Contact Info Display */}
+                <div className="flex flex-wrap justify-center gap-2 mb-3">
+                  {extendedProfile.email && (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-full text-sm text-gray-600">
+                      <Mail className="w-3.5 h-3.5" />
+                      <span className="truncate max-w-[150px]">{extendedProfile.email}</span>
+                      {extendedProfile.emailPublic ? (
+                        <span className="text-green-600 text-xs">(Public)</span>
+                      ) : (
+                        <span className="text-gray-400 text-xs">(Private)</span>
+                      )}
+                    </div>
+                  )}
+                  {extendedProfile.mobile && (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 rounded-full text-sm text-gray-600">
+                      <Phone className="w-3.5 h-3.5" />
+                      <span>{extendedProfile.mobile}</span>
+                      {extendedProfile.mobilePublic ? (
+                        <span className="text-green-600 text-xs">(Public)</span>
+                      ) : (
+                        <span className="text-gray-400 text-xs">(Private)</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 {userProfile.sector && (
                   <div className="flex gap-2">
                     <Badge variant="primary" size="sm">{userProfile.sector}</Badge>
@@ -198,6 +408,59 @@ const Profile = () => {
                   placeholder="Your Company"
                   className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
+
+                {/* Email with Visibility Toggle */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                      <Mail className="w-4 h-4" />
+                      Email
+                    </label>
+                    <VisibilityToggle
+                      isPublic={extendedProfile.emailPublic}
+                      onChange={() => setExtendedProfile(prev => ({ ...prev, emailPublic: !prev.emailPublic }))}
+                    />
+                  </div>
+                  <input
+                    type="email"
+                    value={extendedProfile.email}
+                    onChange={(e) => setExtendedProfile({ ...extendedProfile, email: e.target.value })}
+                    placeholder="your@email.com"
+                    className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                  <p className="text-xs text-gray-500">
+                    {extendedProfile.emailPublic 
+                      ? '✓ Visible on your business card' 
+                      : 'Hidden from your business card'}
+                  </p>
+                </div>
+
+                {/* Mobile with Visibility Toggle */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-gray-700 flex items-center gap-2">
+                      <Phone className="w-4 h-4" />
+                      Mobile Number
+                    </label>
+                    <VisibilityToggle
+                      isPublic={extendedProfile.mobilePublic}
+                      onChange={() => setExtendedProfile(prev => ({ ...prev, mobilePublic: !prev.mobilePublic }))}
+                    />
+                  </div>
+                  <input
+                    type="tel"
+                    value={extendedProfile.mobile}
+                    onChange={(e) => setExtendedProfile({ ...extendedProfile, mobile: e.target.value })}
+                    placeholder="+218 91 123 4567"
+                    className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                  <p className="text-xs text-gray-500">
+                    {extendedProfile.mobilePublic 
+                      ? '✓ Visible on your business card' 
+                      : 'Hidden from your business card'}
+                  </p>
+                </div>
+
                 <select
                   value={formData.sector}
                   onChange={(e) => setFormData({ ...formData, sector: e.target.value })}

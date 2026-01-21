@@ -230,3 +230,66 @@ export const updateMatchStatus = async (matchId, status) => {
     .select()
   return { data: data?.[0], error }
 }
+
+// Profile photo functions
+export const uploadProfilePhoto = async (userId, file) => {
+  const fileExt = file.name.split('.').pop()
+  const fileName = `${userId}-${Date.now()}.${fileExt}`
+  const filePath = `${userId}/${fileName}`
+
+  // Upload file to storage
+  const { data, error } = await supabase.storage
+    .from('profile-photos')
+    .upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: true
+    })
+
+  if (error) {
+    return { data: null, error }
+  }
+
+  // Get public URL
+  const { data: { publicUrl } } = supabase.storage
+    .from('profile-photos')
+    .getPublicUrl(filePath)
+
+  return { data: { path: filePath, url: publicUrl }, error: null }
+}
+
+export const deleteProfilePhoto = async (filePath) => {
+  const { error } = await supabase.storage
+    .from('profile-photos')
+    .remove([filePath])
+  return { error }
+}
+
+export const getProfilePhotoUrl = (filePath) => {
+  if (!filePath) return null
+  const { data: { publicUrl } } = supabase.storage
+    .from('profile-photos')
+    .getPublicUrl(filePath)
+  return publicUrl
+}
+
+// User profile functions (for extended profile data)
+export const saveUserProfile = async (userId, profileData) => {
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .upsert({
+      user_id: userId,
+      ...profileData,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' })
+    .select()
+  return { data: data?.[0], error }
+}
+
+export const getUserProfile = async (userId) => {
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('*')
+    .eq('user_id', userId)
+    .single()
+  return { data, error }
+}
