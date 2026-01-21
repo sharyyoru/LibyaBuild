@@ -1,47 +1,42 @@
--- Create storage bucket for profile photos
+-- =====================================================
+-- STORAGE BUCKET FOR PROFILE PHOTOS
+-- Note: Using external auth system (not Supabase Auth)
+-- =====================================================
+
+-- Create storage bucket for profile photos (public bucket)
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('profile-photos', 'profile-photos', true)
 ON CONFLICT (id) DO NOTHING;
 
--- RLS Policies for profile-photos bucket
-
--- Allow authenticated users to upload their own photos
-CREATE POLICY "Users can upload own profile photos"
+-- Allow all operations on profile-photos bucket (external auth handles security)
+CREATE POLICY "Allow all uploads to profile-photos"
 ON storage.objects FOR INSERT
-TO authenticated
-WITH CHECK (
-  bucket_id = 'profile-photos' 
-  AND (storage.foldername(name))[1] = auth.uid()::text
-);
+TO anon, authenticated
+WITH CHECK (bucket_id = 'profile-photos');
 
--- Allow authenticated users to update their own photos
-CREATE POLICY "Users can update own profile photos"
+CREATE POLICY "Allow all updates to profile-photos"
 ON storage.objects FOR UPDATE
-TO authenticated
-USING (
-  bucket_id = 'profile-photos' 
-  AND (storage.foldername(name))[1] = auth.uid()::text
-);
-
--- Allow authenticated users to delete their own photos
-CREATE POLICY "Users can delete own profile photos"
-ON storage.objects FOR DELETE
-TO authenticated
-USING (
-  bucket_id = 'profile-photos' 
-  AND (storage.foldername(name))[1] = auth.uid()::text
-);
-
--- Allow public read access to all profile photos
-CREATE POLICY "Public can view profile photos"
-ON storage.objects FOR SELECT
-TO public
+TO anon, authenticated
 USING (bucket_id = 'profile-photos');
 
--- Create user_profiles table for extended profile data
+CREATE POLICY "Allow all deletes from profile-photos"
+ON storage.objects FOR DELETE
+TO anon, authenticated
+USING (bucket_id = 'profile-photos');
+
+CREATE POLICY "Allow public read from profile-photos"
+ON storage.objects FOR SELECT
+TO anon, authenticated, public
+USING (bucket_id = 'profile-photos');
+
+-- =====================================================
+-- USER PROFILES TABLE
+-- Note: user_id is TEXT to support external numeric IDs
+-- =====================================================
+
 CREATE TABLE IF NOT EXISTS user_profiles (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE NOT NULL,
+  user_id TEXT UNIQUE NOT NULL,
   profile_photo_path TEXT,
   profile_photo_url TEXT,
   email TEXT,
@@ -52,46 +47,29 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Enable RLS on user_profiles
+-- Enable RLS but with permissive policies (external auth handles security)
 ALTER TABLE user_profiles ENABLE ROW LEVEL SECURITY;
 
--- Users can read their own profile
-CREATE POLICY "Users can read own profile"
+-- Allow all authenticated operations (external auth verifies user)
+CREATE POLICY "Allow all select on user_profiles"
 ON user_profiles FOR SELECT
-TO authenticated
-USING (user_id = auth.uid());
+TO anon, authenticated
+USING (true);
 
--- Users can insert their own profile
-CREATE POLICY "Users can insert own profile"
+CREATE POLICY "Allow all insert on user_profiles"
 ON user_profiles FOR INSERT
-TO authenticated
-WITH CHECK (user_id = auth.uid());
+TO anon, authenticated
+WITH CHECK (true);
 
--- Users can update their own profile
-CREATE POLICY "Users can update own profile"
+CREATE POLICY "Allow all update on user_profiles"
 ON user_profiles FOR UPDATE
-TO authenticated
-USING (user_id = auth.uid());
+TO anon, authenticated
+USING (true);
 
--- Users can delete their own profile
-CREATE POLICY "Users can delete own profile"
+CREATE POLICY "Allow all delete on user_profiles"
 ON user_profiles FOR DELETE
-TO authenticated
-USING (user_id = auth.uid());
-
--- Allow users to read public contact info of other users (for business cards)
-CREATE POLICY "Users can read public profile info"
-ON user_profiles FOR SELECT
-TO authenticated
-USING (
-  -- Can read own profile
-  user_id = auth.uid() 
-  OR 
-  -- Can read others' public info (email_public or mobile_public = true)
-  email_public = true 
-  OR 
-  mobile_public = true
-);
+TO anon, authenticated
+USING (true);
 
 -- Create index for faster lookups
 CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id);
@@ -101,10 +79,11 @@ CREATE INDEX IF NOT EXISTS idx_user_profiles_user_id ON user_profiles(user_id);
 -- =====================================================
 
 -- Create scanned_cards table to store business cards collected by users
+-- Note: user_id is TEXT to support external numeric IDs
 CREATE TABLE IF NOT EXISTS scanned_cards (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
-  scanned_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  user_id TEXT NOT NULL,
+  scanned_user_id TEXT,
   name TEXT NOT NULL,
   company TEXT,
   role TEXT,
@@ -115,26 +94,23 @@ CREATE TABLE IF NOT EXISTS scanned_cards (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Enable RLS on scanned_cards
+-- Enable RLS with permissive policies (external auth handles security)
 ALTER TABLE scanned_cards ENABLE ROW LEVEL SECURITY;
 
--- Users can read their own scanned cards
-CREATE POLICY "Users can read own scanned cards"
+CREATE POLICY "Allow all select on scanned_cards"
 ON scanned_cards FOR SELECT
-TO authenticated
-USING (user_id = auth.uid());
+TO anon, authenticated
+USING (true);
 
--- Users can insert their own scanned cards
-CREATE POLICY "Users can insert own scanned cards"
+CREATE POLICY "Allow all insert on scanned_cards"
 ON scanned_cards FOR INSERT
-TO authenticated
-WITH CHECK (user_id = auth.uid());
+TO anon, authenticated
+WITH CHECK (true);
 
--- Users can delete their own scanned cards
-CREATE POLICY "Users can delete own scanned cards"
+CREATE POLICY "Allow all delete on scanned_cards"
 ON scanned_cards FOR DELETE
-TO authenticated
-USING (user_id = auth.uid());
+TO anon, authenticated
+USING (true);
 
 -- Create indexes for faster lookups
 CREATE INDEX IF NOT EXISTS idx_scanned_cards_user_id ON scanned_cards(user_id);

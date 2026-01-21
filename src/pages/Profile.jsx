@@ -145,6 +145,9 @@ const Profile = () => {
       return
     }
 
+    // Create preview URL immediately for instant feedback
+    const previewUrl = URL.createObjectURL(file)
+    setProfilePhotoUrl(previewUrl)
     setIsUploadingPhoto(true)
     setError('')
 
@@ -159,6 +162,7 @@ const Profile = () => {
       
       if (uploadError) throw uploadError
 
+      // Update with actual URL from server
       setProfilePhotoUrl(data.url)
       setExtendedProfile(prev => ({
         ...prev,
@@ -170,11 +174,19 @@ const Profile = () => {
         profile_photo_path: data.path,
         profile_photo_url: data.url
       })
+      
+      // Clean up preview URL
+      URL.revokeObjectURL(previewUrl)
     } catch (err) {
       console.error('Failed to upload photo:', err)
       setError('Failed to upload photo. Please try again.')
+      // Revert to previous photo on error
+      setProfilePhotoUrl(extendedProfile.profilePhotoPath ? null : null)
+      URL.revokeObjectURL(previewUrl)
     } finally {
       setIsUploadingPhoto(false)
+      // Reset file input
+      if (fileInputRef.current) fileInputRef.current.value = ''
     }
   }
 
@@ -312,9 +324,19 @@ const Profile = () => {
                   <img 
                     src={profilePhotoUrl} 
                     alt="Profile" 
-                    className="w-24 h-24 rounded-3xl object-cover border-4 border-white shadow-lg"
+                    className={clsx(
+                      "w-24 h-24 rounded-3xl object-cover border-4 border-white shadow-lg transition-all",
+                      isUploadingPhoto && "opacity-50"
+                    )}
                   />
-                  {isEditing && (
+                  {/* Upload overlay animation */}
+                  {isUploadingPhoto && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 rounded-3xl">
+                      <Loader2 className="w-8 h-8 text-white animate-spin mb-1" />
+                      <span className="text-white text-xs font-medium">Uploading...</span>
+                    </div>
+                  )}
+                  {isEditing && !isUploadingPhoto && (
                     <button
                       onClick={handleRemovePhoto}
                       disabled={isUploadingPhoto}
@@ -325,15 +347,30 @@ const Profile = () => {
                   )}
                 </div>
               ) : (
-                <div className="w-24 h-24 bg-gradient-to-br from-primary-600 to-accent-600 rounded-3xl flex items-center justify-center">
-                  <User className="w-12 h-12 text-white" />
+                <div className="relative">
+                  <div className={clsx(
+                    "w-24 h-24 bg-gradient-to-br from-primary-600 to-accent-600 rounded-3xl flex items-center justify-center",
+                    isUploadingPhoto && "opacity-50"
+                  )}>
+                    <User className="w-12 h-12 text-white" />
+                  </div>
+                  {/* Upload overlay animation for empty state */}
+                  {isUploadingPhoto && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 rounded-3xl">
+                      <Loader2 className="w-8 h-8 text-white animate-spin mb-1" />
+                      <span className="text-white text-xs font-medium">Uploading...</span>
+                    </div>
+                  )}
                 </div>
               )}
               {isEditing && (
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isUploadingPhoto}
-                  className="absolute -bottom-2 -right-2 w-9 h-9 bg-primary-600 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+                  className={clsx(
+                    "absolute -bottom-2 -right-2 w-9 h-9 bg-primary-600 text-white rounded-full flex items-center justify-center shadow-lg transition-colors",
+                    isUploadingPhoto ? "opacity-50 cursor-not-allowed" : "hover:bg-primary-700"
+                  )}
                 >
                   {isUploadingPhoto ? (
                     <Loader2 className="w-4 h-4 animate-spin" />

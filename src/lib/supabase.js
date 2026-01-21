@@ -233,9 +233,11 @@ export const updateMatchStatus = async (matchId, status) => {
 
 // Profile photo functions
 export const uploadProfilePhoto = async (userId, file) => {
+  // Convert userId to string to support numeric IDs from external auth
+  const userIdStr = String(userId)
   const fileExt = file.name.split('.').pop()
-  const fileName = `${userId}-${Date.now()}.${fileExt}`
-  const filePath = `${userId}/${fileName}`
+  const fileName = `${userIdStr}-${Date.now()}.${fileExt}`
+  const filePath = `${userIdStr}/${fileName}`
 
   // Upload file to storage
   const { data, error } = await supabase.storage
@@ -246,6 +248,7 @@ export const uploadProfilePhoto = async (userId, file) => {
     })
 
   if (error) {
+    console.error('Storage upload error:', error)
     return { data: null, error }
   }
 
@@ -273,11 +276,13 @@ export const getProfilePhotoUrl = (filePath) => {
 }
 
 // User profile functions (for extended profile data)
+// Note: userId is converted to string for external auth compatibility
 export const saveUserProfile = async (userId, profileData) => {
+  const userIdStr = String(userId)
   const { data, error } = await supabase
     .from('user_profiles')
     .upsert({
-      user_id: userId,
+      user_id: userIdStr,
       ...profileData,
       updated_at: new Date().toISOString()
     }, { onConflict: 'user_id' })
@@ -286,20 +291,22 @@ export const saveUserProfile = async (userId, profileData) => {
 }
 
 export const getUserProfile = async (userId) => {
+  const userIdStr = String(userId)
   const { data, error } = await supabase
     .from('user_profiles')
     .select('*')
-    .eq('user_id', userId)
+    .eq('user_id', userIdStr)
     .single()
   return { data, error }
 }
 
 // Get public profile info for business cards (respects privacy settings)
 export const getPublicUserProfile = async (userId) => {
+  const userIdStr = String(userId)
   const { data, error } = await supabase
     .from('user_profiles')
     .select('user_id, profile_photo_url, email, email_public, mobile, mobile_public')
-    .eq('user_id', userId)
+    .eq('user_id', userIdStr)
     .single()
   
   if (error || !data) return { data: null, error }
@@ -320,11 +327,12 @@ export const getPublicUserProfile = async (userId) => {
 
 // Save scanned business card to database
 export const saveScannedCard = async (userId, cardData) => {
+  const userIdStr = String(userId)
   const { data, error } = await supabase
     .from('scanned_cards')
     .insert({
-      user_id: userId,
-      scanned_user_id: cardData.scannedUserId || null,
+      user_id: userIdStr,
+      scanned_user_id: cardData.scannedUserId ? String(cardData.scannedUserId) : null,
       name: cardData.name,
       company: cardData.company,
       role: cardData.role,
@@ -340,10 +348,11 @@ export const saveScannedCard = async (userId, cardData) => {
 
 // Get user's scanned cards
 export const getScannedCards = async (userId) => {
+  const userIdStr = String(userId)
   const { data, error } = await supabase
     .from('scanned_cards')
     .select('*')
-    .eq('user_id', userId)
+    .eq('user_id', userIdStr)
     .order('created_at', { ascending: false })
   return { data: data || [], error }
 }
