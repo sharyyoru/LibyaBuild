@@ -230,3 +230,147 @@ export const updateMatchStatus = async (matchId, status) => {
     .select()
   return { data: data?.[0], error }
 }
+
+// Profile photo functions
+export const uploadProfilePhoto = async (userId, file) => {
+  // Convert userId to string to support numeric IDs from external auth
+  const userIdStr = String(userId)
+  const fileExt = file.name.split('.').pop()
+  const fileName = `${userIdStr}-${Date.now()}.${fileExt}`
+  const filePath = `${userIdStr}/${fileName}`
+
+  // Upload file to storage
+  const { data, error } = await supabase.storage
+    .from('profile-photos')
+    .upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: true
+    })
+
+  if (error) {
+    console.error('Storage upload error:', error)
+    return { data: null, error }
+  }
+
+  // Get public URL
+  const { data: { publicUrl } } = supabase.storage
+    .from('profile-photos')
+    .getPublicUrl(filePath)
+
+  return { data: { path: filePath, url: publicUrl }, error: null }
+}
+
+export const deleteProfilePhoto = async (filePath) => {
+  const { error } = await supabase.storage
+    .from('profile-photos')
+    .remove([filePath])
+  return { error }
+}
+
+export const getProfilePhotoUrl = (filePath) => {
+  if (!filePath) return null
+  const { data: { publicUrl } } = supabase.storage
+    .from('profile-photos')
+    .getPublicUrl(filePath)
+  return publicUrl
+}
+
+// User profile functions (for extended profile data)
+// Note: userId is converted to string for external auth compatibility
+export const saveUserProfile = async (userId, profileData) => {
+  const userIdStr = String(userId)
+  
+  // Filter out undefined values and convert empty strings to null
+  const cleanedData = {}
+  for (const [key, value] of Object.entries(profileData)) {
+    if (value !== undefined) {
+      cleanedData[key] = value === '' ? null : value
+    }
+  }
+  
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .upsert({
+      user_id: userIdStr,
+      ...cleanedData,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' })
+    .select()
+  return { data: data?.[0], error }
+}
+
+export const getUserProfile = async (userId) => {
+  const userIdStr = String(userId)
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('*')
+    .eq('user_id', userIdStr)
+    .single()
+  return { data, error }
+}
+
+// Get public profile info for business cards (respects privacy settings)
+export const getPublicUserProfile = async (userId) => {
+  const userIdStr = String(userId)
+  const { data, error } = await supabase
+    .from('user_profiles')
+    .select('user_id, profile_photo_url, email, email_public, mobile, mobile_public')
+    .eq('user_id', userIdStr)
+    .single()
+  
+  if (error || !data) return { data: null, error }
+  
+  // Filter based on privacy settings
+  return {
+    data: {
+      user_id: data.user_id,
+      profile_photo_url: data.profile_photo_url,
+      email: data.email_public ? data.email : null,
+      mobile: data.mobile_public ? data.mobile : null,
+      email_public: data.email_public,
+      mobile_public: data.mobile_public
+    },
+    error: null
+  }
+}
+
+// Save scanned business card to database
+export const saveScannedCard = async (userId, cardData) => {
+  const userIdStr = String(userId)
+  const { data, error } = await supabase
+    .from('scanned_cards')
+    .insert({
+      user_id: userIdStr,
+      scanned_user_id: cardData.scannedUserId ? String(cardData.scannedUserId) : null,
+      name: cardData.name,
+      company: cardData.company,
+      role: cardData.role,
+      email: cardData.email,
+      phone: cardData.phone,
+      source: cardData.source, // 'qr' or 'ocr'
+      raw_data: cardData.rawData,
+      created_at: new Date().toISOString()
+    })
+    .select()
+  return { data: data?.[0], error }
+}
+
+// Get user's scanned cards
+export const getScannedCards = async (userId) => {
+  const userIdStr = String(userId)
+  const { data, error } = await supabase
+    .from('scanned_cards')
+    .select('*')
+    .eq('user_id', userIdStr)
+    .order('created_at', { ascending: false })
+  return { data: data || [], error }
+}
+
+// Delete a scanned card
+export const deleteScannedCard = async (cardId) => {
+  const { error } = await supabase
+    .from('scanned_cards')
+    .delete()
+    .eq('id', cardId)
+  return { error }
+}
