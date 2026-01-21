@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { QrCode, User, Briefcase, Mail, Phone, Download, Camera, X, MessageCircle, Scan, CreditCard, Loader2, Eye, EyeOff, Trash2, Share2, Check, AlertCircle } from 'lucide-react'
+import { QrCode, User, Briefcase, Mail, Phone, Download, Camera, X, MessageCircle, Scan, CreditCard, Loader2, Eye, EyeOff, Trash2, Share2, Check, AlertCircle, ImageIcon } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import Header from '../components/Header'
 import Card from '../components/Card'
 import Button from '../components/Button'
+import QRScanner from '../components/QRScanner'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import { format } from 'date-fns'
@@ -184,6 +185,8 @@ const BusinessCards = () => {
   const [selectedUser, setSelectedUser] = useState(null)
   const [manualInput, setManualInput] = useState('')
   const [extendedProfile, setExtendedProfile] = useState(null)
+  const [ocrPreviewUrl, setOcrPreviewUrl] = useState(null)
+  const [extractedData, setExtractedData] = useState(null)
   
   // Load scanned cards and user's extended profile
   useEffect(() => {
@@ -290,8 +293,12 @@ const BusinessCards = () => {
     const file = e.target.files?.[0]
     if (!file) return
     
+    // Create preview URL
+    const previewUrl = URL.createObjectURL(file)
+    setOcrPreviewUrl(previewUrl)
     setIsProcessing(true)
     setError('')
+    setExtractedData(null)
     
     try {
       // Use OCR.space free API for text extraction
@@ -310,34 +317,68 @@ const BusinessCards = () => {
       
       if (result.ParsedResults && result.ParsedResults[0]) {
         const text = result.ParsedResults[0].ParsedText
-        const extractedData = extractBusinessCardData(text)
+        const extracted = extractBusinessCardData(text)
+        extracted.rawData = text
         
-        const cardData = {
-          ...extractedData,
-          source: 'ocr',
-          rawData: text
-        }
-        
-        await saveScannedCard(user.id, cardData)
-        addBusinessCard({
-          id: Date.now(),
-          ...cardData,
-          scannedAt: new Date().toISOString()
-        })
-        
-        await loadScannedCards()
-        setSuccess(`Card scanned! Found: ${extractedData.name}`)
-        setScanMode(null)
+        // Show extracted data for review
+        setExtractedData(extracted)
+        setIsProcessing(false)
+      } else if (result.ErrorMessage) {
+        setError(`OCR Error: ${result.ErrorMessage[0] || 'Could not read image'}`)
+        setIsProcessing(false)
       } else {
-        setError('Could not read text from image. Please try again.')
+        setError('Could not read text from image. Please try again with a clearer photo.')
+        setIsProcessing(false)
       }
     } catch (err) {
       console.error('OCR error:', err)
-      setError('Failed to scan business card. Please try again.')
-    } finally {
+      setError('Failed to scan business card. Please check your internet connection.')
       setIsProcessing(false)
+    } finally {
       if (fileInputRef.current) fileInputRef.current.value = ''
     }
+  }
+
+  // Save extracted OCR data
+  const handleSaveExtractedData = async () => {
+    if (!extractedData) return
+    
+    setIsProcessing(true)
+    try {
+      const cardData = {
+        ...extractedData,
+        source: 'ocr'
+      }
+      
+      await saveScannedCard(user.id, cardData)
+      addBusinessCard({
+        id: Date.now(),
+        ...cardData,
+        scannedAt: new Date().toISOString()
+      })
+      
+      await loadScannedCards()
+      setSuccess(`Contact saved: ${extractedData.name}`)
+      
+      // Clean up
+      if (ocrPreviewUrl) URL.revokeObjectURL(ocrPreviewUrl)
+      setOcrPreviewUrl(null)
+      setExtractedData(null)
+      setScanMode(null)
+    } catch (err) {
+      console.error('Save error:', err)
+      setError('Failed to save contact')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  // Cancel OCR and reset
+  const handleCancelOcr = () => {
+    if (ocrPreviewUrl) URL.revokeObjectURL(ocrPreviewUrl)
+    setOcrPreviewUrl(null)
+    setExtractedData(null)
+    setError('')
   }
   
   // Handle manual QR input
@@ -504,23 +545,14 @@ const BusinessCards = () => {
               </div>
             ) : scanMode === 'qr' ? (
               <Card className="p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-gray-900">Scan QR Code</h3>
-                  <button onClick={() => setScanMode(null)} className="p-2 hover:bg-gray-100 rounded-full">
-                    <X className="w-5 h-5 text-gray-500" />
-                  </button>
-                </div>
+                <QRScanner 
+                  onScan={handleQRScan}
+                  onClose={() => setScanMode(null)}
+                  isProcessing={isProcessing}
+                />
                 
-                <div className="aspect-square bg-gray-900 rounded-2xl mb-4 flex items-center justify-center relative overflow-hidden">
-                  <div className="absolute inset-4 border-2 border-white/50 rounded-xl" />
-                  <div className="text-center text-white">
-                    <QrCode className="w-16 h-16 opacity-30 mx-auto mb-2" />
-                    <p className="text-sm opacity-60">Position QR code in frame</p>
-                    <p className="text-xs opacity-40 mt-1">Camera integration coming soon</p>
-                  </div>
-                </div>
-                
-                <div className="space-y-3">
+                {/* Manual input fallback */}
+                <div className="mt-4 pt-4 border-t border-gray-200 space-y-3">
                   <p className="text-sm text-gray-600 text-center">Or enter the code manually:</p>
                   <input
                     type="text"
@@ -545,8 +577,16 @@ const BusinessCards = () => {
             ) : (
               <Card className="p-4">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-gray-900">Scan Business Card Photo</h3>
-                  <button onClick={() => setScanMode(null)} className="p-2 hover:bg-gray-100 rounded-full">
+                  <h3 className="font-bold text-gray-900">
+                    {extractedData ? 'Review Extracted Data' : 'Scan Business Card Photo'}
+                  </h3>
+                  <button 
+                    onClick={() => { 
+                      handleCancelOcr()
+                      if (!extractedData) setScanMode(null) 
+                    }} 
+                    className="p-2 hover:bg-gray-100 rounded-full"
+                  >
                     <X className="w-5 h-5 text-gray-500" />
                   </button>
                 </div>
@@ -559,30 +599,139 @@ const BusinessCards = () => {
                   onChange={handleImageUpload}
                   className="hidden"
                 />
-                
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isProcessing}
-                  className="w-full aspect-[4/3] bg-gray-100 rounded-2xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center hover:border-primary-400 hover:bg-primary-50 transition-all disabled:opacity-50"
-                >
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="w-12 h-12 text-primary-600 animate-spin mb-3" />
-                      <p className="font-medium text-gray-700">Processing image...</p>
-                      <p className="text-sm text-gray-500">Extracting contact info</p>
-                    </>
-                  ) : (
-                    <>
-                      <Camera className="w-12 h-12 text-gray-400 mb-3" />
-                      <p className="font-medium text-gray-700">Tap to take photo</p>
-                      <p className="text-sm text-gray-500">or upload from gallery</p>
-                    </>
-                  )}
-                </button>
-                
-                <p className="text-xs text-gray-500 text-center mt-3">
-                  We'll extract name, email, phone, and company from the card
-                </p>
+
+                {/* Show extracted data for review */}
+                {extractedData ? (
+                  <div className="space-y-4">
+                    {/* Image preview */}
+                    {ocrPreviewUrl && (
+                      <div className="relative rounded-xl overflow-hidden mb-4">
+                        <img 
+                          src={ocrPreviewUrl} 
+                          alt="Scanned card" 
+                          className="w-full h-40 object-cover"
+                        />
+                        <div className="absolute top-2 right-2 px-2 py-1 bg-green-500 text-white text-xs font-medium rounded-full flex items-center gap-1">
+                          <Check className="w-3 h-3" />
+                          Scanned
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Editable fields */}
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">Name</label>
+                        <input
+                          type="text"
+                          value={extractedData.name}
+                          onChange={(e) => setExtractedData({...extractedData, name: e.target.value})}
+                          className="w-full px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">Company</label>
+                        <input
+                          type="text"
+                          value={extractedData.company}
+                          onChange={(e) => setExtractedData({...extractedData, company: e.target.value})}
+                          className="w-full px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">Role / Title</label>
+                        <input
+                          type="text"
+                          value={extractedData.role}
+                          onChange={(e) => setExtractedData({...extractedData, role: e.target.value})}
+                          className="w-full px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">Email</label>
+                        <input
+                          type="email"
+                          value={extractedData.email}
+                          onChange={(e) => setExtractedData({...extractedData, email: e.target.value})}
+                          className="w-full px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 mb-1 block">Phone</label>
+                        <input
+                          type="tel"
+                          value={extractedData.phone}
+                          onChange={(e) => setExtractedData({...extractedData, phone: e.target.value})}
+                          className="w-full px-3 py-2 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Action buttons */}
+                    <div className="grid grid-cols-2 gap-3 pt-2">
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isProcessing}
+                        className="py-2.5 px-4 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors flex items-center justify-center gap-2"
+                      >
+                        <Camera className="w-4 h-4" />
+                        Retake
+                      </button>
+                      <button
+                        onClick={handleSaveExtractedData}
+                        disabled={isProcessing || !extractedData.name}
+                        className="py-2.5 px-4 bg-primary-600 text-white rounded-xl font-medium hover:bg-primary-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {isProcessing ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Check className="w-4 h-4" />
+                        )}
+                        Save Contact
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    {/* Camera/upload button */}
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isProcessing}
+                      className="w-full aspect-[4/3] bg-gray-100 rounded-2xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center hover:border-primary-400 hover:bg-primary-50 transition-all disabled:opacity-50 relative overflow-hidden"
+                    >
+                      {isProcessing && ocrPreviewUrl ? (
+                        <>
+                          <img 
+                            src={ocrPreviewUrl} 
+                            alt="Processing" 
+                            className="absolute inset-0 w-full h-full object-cover opacity-50"
+                          />
+                          <div className="relative z-10 flex flex-col items-center">
+                            <Loader2 className="w-12 h-12 text-primary-600 animate-spin mb-3" />
+                            <p className="font-medium text-gray-700 bg-white/80 px-3 py-1 rounded-full">Processing image...</p>
+                            <p className="text-sm text-gray-500 bg-white/80 px-3 py-1 rounded-full mt-1">Extracting contact info</p>
+                          </div>
+                        </>
+                      ) : isProcessing ? (
+                        <>
+                          <Loader2 className="w-12 h-12 text-primary-600 animate-spin mb-3" />
+                          <p className="font-medium text-gray-700">Processing image...</p>
+                          <p className="text-sm text-gray-500">Extracting contact info</p>
+                        </>
+                      ) : (
+                        <>
+                          <Camera className="w-12 h-12 text-gray-400 mb-3" />
+                          <p className="font-medium text-gray-700">Tap to take photo</p>
+                          <p className="text-sm text-gray-500">or upload from gallery</p>
+                        </>
+                      )}
+                    </button>
+                    
+                    <p className="text-xs text-gray-500 text-center mt-3">
+                      We'll extract name, email, phone, and company from the card
+                    </p>
+                  </>
+                )}
               </Card>
             )}
           </>
