@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, LogIn, Loader2, ArrowLeft, Lock, Building2 } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
 import { translations } from '../i18n/translations'
+import { useAuth } from '../context/AuthContext'
 import { setAuthToken } from '../services/eventxApi'
 
 const EVENTX_API_BASE_URL = 'https://eventxcrm.com/api'
@@ -11,6 +12,7 @@ const DEFAULT_EVENT_ID = 11
 const ExhibitorLogin = () => {
   const navigate = useNavigate()
   const { language, isRTL } = useLanguage()
+  const { login } = useAuth()
   const t = (key) => translations[language]?.[key] || translations.en[key] || key
 
   const [mode, setMode] = useState('login') // 'login', 'changePassword'
@@ -56,44 +58,18 @@ const ExhibitorLogin = () => {
     setIsLoading(true)
 
     try {
-      const result = await loginExhibitor(email, password)
+      // Use AuthContext login method to properly update auth state
+      localStorage.setItem('user_type', 'exhibitor')
+      const result = await login(email, password)
       
-      if (result.token || result.access_token) {
-        const token = result.token || result.access_token
-        setAuthToken(token)
-        
-        // Check if first time login (needs password change)
-        if (result.first_login || result.requires_password_change || result.temp_password) {
-          setTempUserData({ email, token, tempPassword: password, ...result })
-          setTempPassword(password)
-          setMode('changePassword')
-          setIsLoading(false)
-          return
-        }
-        
-        const userData = {
-          email,
-          token,
-          userType: 'exhibitor',
-          ...result.user,
-          ...result.exhibitor
-        }
-        
-        localStorage.setItem('eventx_user', JSON.stringify(userData))
-        localStorage.setItem('user_type', 'exhibitor')
-        navigate('/')
+      if (result.success) {
+        // AuthContext has updated user state, navigate to home
+        navigate('/', { replace: true })
       } else {
-        setError(result.message || t('invalidCredentials'))
+        setError(result.error || t('invalidCredentials'))
       }
     } catch (err) {
-      // Check if error indicates first-time login
-      if (err.message?.includes('change') || err.message?.includes('temporary')) {
-        setTempUserData({ email })
-        setTempPassword(password)
-        setMode('changePassword')
-      } else {
-        setError(err.message || t('invalidCredentials'))
-      }
+      setError(err.message || t('invalidCredentials'))
     } finally {
       setIsLoading(false)
     }

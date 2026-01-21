@@ -3,11 +3,13 @@ import { useNavigate, Link } from 'react-router-dom'
 import { Eye, EyeOff, LogIn, Loader2, UserPlus, ArrowLeft, Lock } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
 import { translations } from '../i18n/translations'
-import { loginVisitor, registerVisitor, setAuthToken } from '../services/eventxApi'
+import { useAuth } from '../context/AuthContext'
+import { registerVisitor, setAuthToken } from '../services/eventxApi'
 
 const VisitorLogin = () => {
   const navigate = useNavigate()
   const { language, isRTL } = useLanguage()
+  const { login } = useAuth()
   const t = (key) => translations[language]?.[key] || translations.en[key] || key
 
   const [mode, setMode] = useState('login') // 'login', 'register', 'createPassword'
@@ -44,33 +46,15 @@ const VisitorLogin = () => {
     setIsLoading(true)
 
     try {
-      const result = await loginVisitor(email, password)
+      // Use AuthContext login method to properly update auth state
+      localStorage.setItem('user_type', 'visitor')
+      const result = await login(email, password)
       
-      if (result.token || result.access_token) {
-        const token = result.token || result.access_token
-        setAuthToken(token)
-        
-        // Check if first time login (needs password creation)
-        if (result.first_login || result.requires_password_change) {
-          setTempUserData({ email, token, ...result })
-          setMode('createPassword')
-          setIsLoading(false)
-          return
-        }
-        
-        const userData = {
-          email,
-          token,
-          userType: 'visitor',
-          ...result.user,
-          ...result.visitor
-        }
-        
-        localStorage.setItem('eventx_user', JSON.stringify(userData))
-        localStorage.setItem('user_type', 'visitor')
-        navigate('/')
+      if (result.success) {
+        // AuthContext has updated user state, navigate to home
+        navigate('/', { replace: true })
       } else {
-        setError(result.message || t('invalidCredentials'))
+        setError(result.error || t('invalidCredentials'))
       }
     } catch (err) {
       setError(err.message || t('invalidCredentials'))
