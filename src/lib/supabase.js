@@ -279,11 +279,20 @@ export const getProfilePhotoUrl = (filePath) => {
 // Note: userId is converted to string for external auth compatibility
 export const saveUserProfile = async (userId, profileData) => {
   const userIdStr = String(userId)
+  
+  // Filter out undefined values and convert empty strings to null
+  const cleanedData = {}
+  for (const [key, value] of Object.entries(profileData)) {
+    if (value !== undefined) {
+      cleanedData[key] = value === '' ? null : value
+    }
+  }
+  
   const { data, error } = await supabase
     .from('user_profiles')
     .upsert({
       user_id: userIdStr,
-      ...profileData,
+      ...cleanedData,
       updated_at: new Date().toISOString()
     }, { onConflict: 'user_id' })
     .select()

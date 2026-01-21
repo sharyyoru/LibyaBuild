@@ -233,23 +233,33 @@ const Profile = () => {
       const firstName = nameParts[0] || ''
       const lastName = nameParts.slice(1).join(' ') || ''
       
-      await updateProfile({
-        firstName,
-        lastName,
-        company: formData.company,
-        jobTitle: formData.role
-      })
+      // Update main profile via API
+      try {
+        await updateProfile({
+          firstName,
+          lastName,
+          company: formData.company,
+          jobTitle: formData.role
+        })
+      } catch (apiErr) {
+        console.warn('API profile update failed, continuing with local save:', apiErr)
+      }
       
       // Save extended profile to Supabase
       if (user?.id) {
-        await saveUserProfile(user.id, {
-          email: extendedProfile.email,
+        const { error: supabaseError } = await saveUserProfile(user.id, {
+          email: extendedProfile.email || null,
           email_public: extendedProfile.emailPublic,
-          mobile: extendedProfile.mobile,
+          mobile: extendedProfile.mobile || null,
           mobile_public: extendedProfile.mobilePublic,
           profile_photo_path: extendedProfile.profilePhotoPath,
           profile_photo_url: profilePhotoUrl
         })
+        
+        if (supabaseError) {
+          console.error('Supabase save error:', supabaseError)
+          // Don't throw - continue with local save
+        }
       }
       
       setUserProfile(formData)
