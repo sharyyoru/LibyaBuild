@@ -8,6 +8,8 @@ import MeetingRequestModal from '../components/MeetingRequestModal'
 import { getPartners, getIndustries } from '../services/eventxApi'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
+import { useTranslation } from '../i18n/translations'
 import { clsx } from 'clsx'
 
 const Partners = () => {
@@ -22,6 +24,8 @@ const Partners = () => {
   const [selectedPartner, setSelectedPartner] = useState(null)
   const { toggleFavorite, isFavorite } = useApp()
   const { user } = useAuth()
+  const { language } = useLanguage()
+  const { t } = useTranslation(language)
 
   useEffect(() => {
     loadPartners()

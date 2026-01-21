@@ -7,6 +7,8 @@ import Button from '../components/Button'
 import Badge from '../components/Badge'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
+import { useTranslation } from '../i18n/translations'
 import { ticketUpgrades } from '../data/mockData'
 import { fetchUserAttendance } from '../lib/supabase'
 
@@ -26,6 +28,8 @@ const USER_TYPE_CONFIG = {
 const Tickets = () => {
   const { tickets, addTicket, userProfile, getAttendanceCount, recordAttendance } = useApp()
   const { user } = useAuth()
+  const { language } = useLanguage()
+  const { t } = useTranslation(language)
   const [showUpgrades, setShowUpgrades] = useState(false)
   const [activeQR, setActiveQR] = useState('gate')
   const [dbAttendance, setDbAttendance] = useState(null)
@@ -107,7 +111,7 @@ const Tickets = () => {
       <!DOCTYPE html>
       <html>
       <head>
-        <title>Libya Build 2026 - Badge</title>
+        <title>${t('libyaBuild')} - ${t('myBadge')}</title>
         <style>
           @page { size: 3.5in 5.5in; margin: 0; }
           body { 
@@ -149,8 +153,8 @@ const Tickets = () => {
       </head>
       <body>
         <div class="badge">
-          <div class="logo">LIBYA BUILD</div>
-          <div class="event">March 15-18, 2026 • Tripoli</div>
+          <div class="logo">${t('libyaBuild')}</div>
+          <div class="event">${t('event')}</div>
           <div class="name">${userName}</div>
           ${userCompany ? `<div class="company">${userCompany}</div>` : ''}
           ${userRole ? `<div class="role">${userRole}</div>` : ''}
@@ -158,21 +162,21 @@ const Tickets = () => {
             ${userTypes.map(t => `<span class="type type-${t}">${t.toUpperCase()}</span>`).join('')}
           </div>
           <div class="qr-section">
-            <div class="qr-label">GATE ENTRY</div>
+            <div class="qr-label">${t('gateEntry')}</div>
             <div class="qr-container">
               <svg id="qr-gate" class="qr-code"></svg>
             </div>
           </div>
           ${isDelegate ? `
           <div class="qr-section">
-            <div class="qr-label">DELEGATE ACCESS</div>
+            <div class="qr-label">${t('delegateAccess')}</div>
             <div class="qr-container">
               <svg id="qr-delegate" class="qr-code"></svg>
             </div>
           </div>
           ` : ''}
           <div class="user-id">${userProfile.qrCode}</div>
-          <div class="footer">Present this badge at all entry points</div>
+          <div class="footer">${t('presentBadge')}</div>
         </div>
         <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
         <script>
@@ -194,142 +198,66 @@ const Tickets = () => {
 
   return (
     <>
-      <Header title="My Tickets" showBack={false} />
+      <Header title={t('myBadge')} showBack={false} />
       <div className="p-4 space-y-4">
-        <Card className="p-6 bg-gradient-to-br from-primary-600 to-accent-500 text-white border-0">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-lg font-bold mb-1">Digital Entry Pass</h3>
-              <p className="text-white/80 text-sm">Libya Build 2026</p>
-            </div>
-            <img src="/media/PNG/App Icons-08.png" alt="Ticket" className="w-10 h-10" />
+        {/* Badge Design matching screenshot */}
+        <Card className="p-6 bg-white border-0 shadow-lg">
+          {/* Logo at top */}
+          <div className="flex justify-center mb-6">
+            <img src="/media/newdesign/Benghazi logo-01.png" alt="Libya Build" className="h-16" onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = '/media/newdesign/Benghazi logo-01.jpg';
+            }} />
           </div>
 
-          <div className="flex flex-wrap gap-2 mb-4">
+          {/* User Details - Name, Job Title, Company, Country */}
+          <div className="text-center mb-4">
+            <h2 className="text-2xl font-bold text-gray-900 mb-1 uppercase">
+              {userProfile.name || user?.first_name || user?.email?.split('@')[0] || 'Guest'}
+            </h2>
+            {userProfile.role && (
+              <p className="text-base font-semibold text-gray-700 uppercase">{userProfile.role}</p>
+            )}
+            {userProfile.company && (
+              <p className="text-base font-semibold text-gray-700 uppercase">{userProfile.company}</p>
+            )}
+            {userProfile.country && (
+              <p className="text-base font-semibold text-gray-700 uppercase">{userProfile.country}</p>
+            )}
+            <p className="text-sm text-gray-500 mt-2 font-mono">{userProfile.qrCode}</p>
+          </div>
+
+          {/* QR Code */}
+          <div className="flex justify-center mb-6">
+            <QRCodeSVG
+              value={gateQRData}
+              size={180}
+              level="H"
+            />
+          </div>
+
+          {/* User Type Badge - VISITOR/EXHIBITOR/DELEGATE */}
+          <div className="mt-6">
             {userTypes.map(type => {
               const config = USER_TYPE_CONFIG[type]
               if (!config) return null
-              const Icon = config.icon
               return (
-                <span 
+                <div 
                   key={type}
-                  className={`${config.color} text-white px-3 py-1 rounded-full text-sm font-medium flex items-center gap-1`}
+                  className="bg-gradient-to-r from-cyan-400 via-blue-500 to-gray-900 text-white py-4 rounded-2xl text-center"
                 >
-                  <Icon className="w-4 h-4" />
-                  {config.label}
-                </span>
+                  <p className="text-2xl font-bold uppercase tracking-wider">{t(type)}</p>
+                </div>
               )
             })}
           </div>
-
-          {/* QR Code Tabs for Delegates */}
-          {isDelegate && (
-            <div className="flex bg-white/20 rounded-xl p-1 mb-3">
-              <button
-                onClick={() => setActiveQR('gate')}
-                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                  activeQR === 'gate' ? 'bg-white text-primary-600' : 'text-white/80'
-                }`}
-              >
-                Gate Entry
-              </button>
-              <button
-                onClick={() => setActiveQR('delegate')}
-                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
-                  activeQR === 'delegate' ? 'bg-white text-purple-600' : 'text-white/80'
-                }`}
-              >
-                Delegate Access
-              </button>
-            </div>
-          )}
-          
-          <div className="bg-white rounded-2xl p-4 mb-4">
-            <QRCodeSVG
-              value={activeQR === 'delegate' && isDelegate ? delegateQRData : gateQRData}
-              size={200}
-              className="mx-auto"
-              level="H"
-            />
-            <p className={`text-center text-xs mt-2 font-medium ${
-              activeQR === 'delegate' ? 'text-purple-600' : 'text-primary-600'
-            }`}>
-              {activeQR === 'delegate' && isDelegate ? 'DELEGATE ACCESS' : 'GATE ENTRY'}
-            </p>
-          </div>
-
-          <div className="text-center mb-4">
-            <p className="text-sm text-primary-100 mb-1">
-              {activeQR === 'delegate' && isDelegate 
-                ? 'Scan at conference areas' 
-                : 'Scan at main entrance'}
-            </p>
-            <p className="font-mono text-xs opacity-75">{userProfile.qrCode}</p>
-          </div>
-
-          <div className="bg-white/10 rounded-xl p-3">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
-                Attendance Tracker
-                {loading && <RefreshCw className="w-3 h-3 animate-spin" />}
-              </span>
-              <span className="text-sm font-bold">{attendedDays}/4 Days</span>
-            </div>
-            <div className="grid grid-cols-4 gap-2">
-              {EVENT_DAYS.map(day => {
-                const isAttended = dbAttendance?.[day.key] || attendance[day.key]
-                const scanCount = dbAttendance?.[`${day.key}_scans`] || 0
-                return (
-                  <div 
-                    key={day.key}
-                    className={`text-center p-2 rounded-lg ${
-                      isAttended 
-                        ? 'bg-green-500 text-white' 
-                        : 'bg-white/20 text-white/60'
-                    }`}
-                  >
-                    <p className="text-xs font-medium">{day.label}</p>
-                    <p className="text-[10px]">{day.date}</p>
-                    {isAttended && (
-                      <>
-                        <Check className="w-3 h-3 mx-auto mt-1" />
-                        {scanCount > 0 && (
-                          <p className="text-[9px] mt-0.5 opacity-80">{scanCount}x scanned</p>
-                        )}
-                      </>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
         </Card>
 
-        {/* Print Badge Button */}
-        <Button
-          fullWidth
-          variant="primary"
-          onClick={handlePrintBadge}
-        >
-          <Printer className="w-5 h-5 mr-2" />
-          Print Badge
-        </Button>
-
-        {!showUpgrades && (
-          <Button
-            fullWidth
-            variant="outline"
-            icon={Sparkles}
-            onClick={() => setShowUpgrades(true)}
-          >
-            Upgrade Your Experience
-          </Button>
-        )}
+        {/* Buttons removed per user request */}
 
         {showUpgrades && (
           <div className="space-y-3">
-            <h3 className="font-bold text-gray-900">Available Upgrades</h3>
+            <h3 className="font-bold text-gray-900">{t('availableUpgrades')}</h3>
             {ticketUpgrades.map(upgrade => (
               <Card key={upgrade.id} className="p-4 border-2 border-primary-100">
                 <div className="flex items-start gap-3 mb-3">
@@ -364,7 +292,7 @@ const Tickets = () => {
                     <span className="text-gray-600 ml-1">{upgrade.currency}</span>
                   </div>
                   <Button onClick={() => handlePurchase(upgrade)}>
-                    Purchase
+                    {t('purchase')}
                   </Button>
                 </div>
               </Card>
@@ -374,14 +302,14 @@ const Tickets = () => {
 
         {tickets.length > 0 && (
           <div>
-            <h3 className="font-bold text-gray-900 mb-3">Purchase History</h3>
+            <h3 className="font-bold text-gray-900 mb-3">{t('purchaseHistory')}</h3>
             <div className="space-y-3">
               {tickets.map(ticket => (
                 <Card key={ticket.id} className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
                       <h4 className="font-semibold text-gray-900">{ticket.name}</h4>
-                      <p className="text-sm text-gray-600">{ticket.duration}</p>
+                      <p className="text-sm">{t('scanToCheckIn')}</p>
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-primary-600">{ticket.price} {ticket.currency}</p>

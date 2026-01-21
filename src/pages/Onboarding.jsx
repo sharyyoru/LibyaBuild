@@ -65,9 +65,9 @@ const Onboarding = () => {
             alt="Libya Build" 
             className="h-16 mx-auto mb-4"
           />
-          <h1 className="text-xl font-bold text-white">20-23 April 2026</h1>
-          <p className="text-white/90 mt-2 text-sm font-medium">Benghazi International</p>
-          <p className="text-white/90 text-sm font-medium">Conference & Exhibitions Centre</p>
+          <h1 className="text-xl font-bold text-white">{t('eventDates')}</h1>
+          <p className="text-white/90 mt-2 text-sm font-medium">{t('benghaziInternational')}</p>
+          <p className="text-white/90 text-sm font-medium">{t('conferenceExhibitionsCentre')}</p>
         </div>
 
         {/* Step 1: Language Selection */}
@@ -188,7 +188,7 @@ const Onboarding = () => {
         )}
 
         <p className="text-center text-white/70 text-sm mt-6">
-          2026 Libya Build. All rights reserved
+          {t('allRightsReserved')}
         </p>
       </div>
     </div>

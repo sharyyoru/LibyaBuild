@@ -10,6 +10,8 @@ import MeetingRequestModal from '../components/MeetingRequestModal'
 import { getExhibitors, getIndustries } from '../services/eventxApi'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
+import { useTranslation } from '../i18n/translations'
 import { clsx } from 'clsx'
 
 const DEFAULT_LOGO = '/media/default-company.svg'
@@ -35,6 +37,8 @@ const Sponsorship = () => {
   const [selectedExhibitor, setSelectedExhibitor] = useState(null)
   const { isFavorite, toggleFavorite } = useApp()
   const { user } = useAuth()
+  const { language } = useLanguage()
+  const { t } = useTranslation(language)
 
   useEffect(() => {
     loadData()

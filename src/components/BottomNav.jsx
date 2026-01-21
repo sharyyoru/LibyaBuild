@@ -2,18 +2,22 @@ import { NavLink } from 'react-router-dom'
 import { Home, Building2, Sparkles, MessageSquare, User } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useApp } from '../context/AppContext'
-
-const navItems = [
-  { path: '/', icon: Home, label: 'Home' },
-  { path: '/exhibitors', icon: Building2, label: 'Exhibitors' },
-  { path: '/matchmaking', icon: Sparkles, label: 'Match' },
-  { path: '/chats', icon: MessageSquare, label: 'Chats', hasBadge: true },
-  { path: '/profile', icon: User, label: 'Profile' },
-]
+import { useLanguage } from '../context/LanguageContext'
+import { useTranslation } from '../i18n/translations'
 
 const BottomNav = () => {
   const { chats } = useApp()
+  const { language } = useLanguage()
+  const { t } = useTranslation(language)
   const unreadCount = chats.reduce((sum, chat) => sum + (chat.unread || 0), 0)
+  
+  const navItems = [
+    { path: '/', icon: Home, label: t('home') },
+    { path: '/exhibitors', icon: Building2, label: t('exhibitors') },
+    { path: '/matchmaking', icon: Sparkles, label: t('match') },
+    { path: '/chats', icon: MessageSquare, label: t('chats'), hasBadge: true },
+    { path: '/profile', icon: User, label: t('profile') },
+  ]
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 safe-bottom z-50">
@@ -41,7 +45,7 @@ const BottomNav = () => {
                     </span>
                   )}
                 </div>
-                <span className="text-xs font-medium">{label}</span>
+                <span className="text-[10px] font-medium truncate max-w-[60px] leading-tight">{label}</span>
               </>
             )}
           </NavLink>

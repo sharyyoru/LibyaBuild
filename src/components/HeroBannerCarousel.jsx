@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, Sparkles, ArrowRight } from 'lucide-react'
 import { heroBanners } from '../data/mockData'
+import { useLanguage } from '../context/LanguageContext'
 
 const HeroBannerCarousel = () => {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isAnimating, setIsAnimating] = useState(false)
   const navigate = useNavigate()
+  const { language } = useLanguage()
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -30,6 +32,24 @@ const HeroBannerCarousel = () => {
   }
 
   const currentBanner = heroBanners[currentIndex]
+  
+  // Use Arabic images if language is Arabic
+  const getBannerImage = (banner) => {
+    console.log('🔍 getBannerImage called:')
+    console.log('  - Current language:', language)
+    console.log('  - Original image:', banner.image)
+    
+    if (language === 'ar' && banner.image) {
+      // Replace EN with AR and handle both .jpg and .png extensions
+      // App Banner 1 - EN.jpg -> App Banner 1 - AR.jpg
+      // App Banner 1 - EN.png -> App Banner 1 - AR.png
+      const arabicImage = banner.image.replace(/- EN\.(jpg|png)/i, '- AR.$1')
+      console.log('  - Converted to Arabic:', arabicImage)
+      return arabicImage
+    }
+    console.log('  - Using original (EN or no replacement needed)')
+    return banner.image
+  }
 
   return (
     <div className="relative">
@@ -49,17 +69,23 @@ const HeroBannerCarousel = () => {
           <div className="absolute inset-0">
             <img
               key={currentIndex}
-              src={encodeURI(currentBanner.image)}
+              src={encodeURI(getBannerImage(currentBanner))}
               alt={currentBanner.title}
               className="w-full h-full object-cover transition-all duration-[6000ms] ease-linear scale-100 group-hover:scale-105"
               onError={(e) => {
-                console.error('Banner image failed to load:', currentBanner.image)
-                console.error('Encoded URL:', encodeURI(currentBanner.image))
+                const attemptedImage = getBannerImage(currentBanner)
+                console.error('Banner image failed to load:', attemptedImage)
+                console.error('Language:', language)
+                console.error('Original image:', currentBanner.image)
                 e.target.style.display = 'block'
                 e.target.style.backgroundColor = '#f3f4f6'
                 e.target.style.border = '2px dashed #d1d5db'
               }}
-              onLoad={() => console.log('Banner image loaded successfully:', currentBanner.image)}
+              onLoad={() => {
+                const loadedImage = getBannerImage(currentBanner)
+                console.log('✅ Banner loaded successfully:', loadedImage)
+                console.log('Current language:', language)
+              }}
             />
           </div>
 

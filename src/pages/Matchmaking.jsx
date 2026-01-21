@@ -8,6 +8,8 @@ import { getExhibitors } from '../services/eventxApi'
 import { saveUserPreferences, getUserPreferences, saveMatch, getUserMatches, updateMatchStatus } from '../lib/supabase'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
+import { useTranslation } from '../i18n/translations'
 import { clsx } from 'clsx'
 
 const DEFAULT_LOGO = '/media/default-company.svg'
@@ -41,6 +43,8 @@ const MATCH_REASONS = {
 const Matchmaking = () => {
   const { userProfile, addMeeting } = useApp()
   const { user } = useAuth()
+  const { language } = useLanguage()
+  const { t } = useTranslation(language)
   const [exhibitors, setExhibitors] = useState([])
   const [matches, setMatches] = useState([])
   const [savedMatches, setSavedMatches] = useState([])
@@ -317,9 +321,9 @@ const Matchmaking = () => {
             <div>
               <h1 className="text-2xl font-bold flex items-center gap-2">
                 <Sparkles className="w-6 h-6" />
-                AI Matchmaking
+                {t('aiMatchmaking')}
               </h1>
-              <p className="text-white/70 text-sm mt-1">Find your perfect business partners</p>
+              <p className="text-white/70 text-sm mt-1">{t('findPerfectPartners')}</p>
             </div>
             <button
               onClick={() => { setCurrentStep('preferences'); setActiveTab('matches') }}
@@ -332,9 +336,9 @@ const Matchmaking = () => {
           {/* Tab Selector */}
           <div className="flex gap-2">
             {[
-              { key: 'matches', label: 'Matches', count: matches.length },
-              { key: 'saved', label: 'Saved', count: savedMatches.length },
-              { key: 'how', label: 'How it Works' },
+              { key: 'matches', label: t('matches'), count: matches.length },
+              { key: 'saved', label: t('saved'), count: savedMatches.length },
+              { key: 'how', label: t('howItWorks') },
             ].map(tab => (
               <button
                 key={tab.key}
@@ -372,14 +376,14 @@ const Matchmaking = () => {
                 <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-purple-500 to-primary-500 flex items-center justify-center">
                   <Target className="w-8 h-8 text-white" />
                 </div>
-                <h2 className="text-xl font-bold text-gray-900">Set Your Preferences</h2>
-                <p className="text-gray-500 text-sm mt-1">Help us find the best matches for you</p>
+                <h2 className="text-xl font-bold text-gray-900">{t('setPreferences')}</h2>
+                <p className="text-gray-500 text-sm mt-1">{t('helpFindMatches')}</p>
               </div>
 
               {/* Sector Selection */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-3">
-                  What industries are you interested in?
+                  {t('whatIndustries')}
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {SECTORS.map(sector => (
@@ -402,7 +406,7 @@ const Matchmaking = () => {
               {/* Interest Selection */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-3">
-                  What are you looking for?
+                  {t('whatLookingFor')}
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {INTERESTS.map(interest => (

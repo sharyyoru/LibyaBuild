@@ -1,8 +1,12 @@
 import { useState } from 'react'
 import { Plane, FileText, Hotel, Loader2, Check, ChevronRight, Upload } from 'lucide-react'
 import { storeFlightDetails, submitVisaApplication, submitHotelRequest } from '../services/eventxApi'
+import { useLanguage } from '../context/LanguageContext'
+import { useTranslation } from '../i18n/translations'
 
 const TravelServices = () => {
+  const { language } = useLanguage()
+  const { t } = useTranslation(language)
   const [activeTab, setActiveTab] = useState('flight')
   const [isLoading, setIsLoading] = useState(false)
   const [success, setSuccess] = useState(null)
@@ -91,9 +95,9 @@ const TravelServices = () => {
   }
 
   const tabs = [
-    { id: 'flight', label: 'Flight', icon: Plane },
-    { id: 'visa', label: 'Visa', icon: FileText },
-    { id: 'hotel', label: 'Hotel', icon: Hotel }
+    { id: 'flight', label: t('flight'), icon: Plane },
+    { id: 'visa', label: t('visa'), icon: FileText },
+    { id: 'hotel', label: t('hotel'), icon: Hotel }
   ]
 
   const inputClass = "w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all"
@@ -102,8 +106,8 @@ const TravelServices = () => {
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-4 py-6">
-        <h1 className="text-2xl font-bold">Travel Services</h1>
-        <p className="text-white/80 mt-1">Book your travel arrangements</p>
+        <h1 className="text-2xl font-bold">{t('travelServices')}</h1>
+        <p className="text-white/80 mt-1">{t('bookTravelArrangements')}</p>
       </div>
 
       <div className="flex bg-white border-b sticky top-0 z-10">
@@ -133,7 +137,7 @@ const TravelServices = () => {
         {success && (
           <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl mb-4 flex items-center gap-3">
             <Check className="w-5 h-5" />
-            <span>Your {success} request has been submitted successfully!</span>
+            <span>{success} {t('requestSubmittedSuccessfully')}</span>
           </div>
         )}
 
@@ -141,18 +145,18 @@ const TravelServices = () => {
           <form onSubmit={handleFlightSubmit} className="bg-white rounded-2xl shadow-sm p-5 space-y-4">
             <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
               <Plane className="w-5 h-5 text-primary-600" />
-              Flight Details
+              {t('flightDetails')}
             </h2>
 
             <div>
-              <label className={labelClass}>Passenger Name *</label>
+              <label className={labelClass}>{t('passengerName')} *</label>
               <input
                 type="text"
                 value={flightData.passengerName}
                 onChange={(e) => setFlightData(p => ({ ...p, passengerName: e.target.value }))}
                 required
                 className={inputClass}
-                placeholder="Full name as on passport"
+                placeholder={t('fullNameOnPassport')}
               />
             </div>
 
@@ -164,24 +168,24 @@ const TravelServices = () => {
                 onChange={(e) => setFlightData(p => ({ ...p, nationality: e.target.value }))}
                 required
                 className={inputClass}
-                placeholder="Your nationality"
+                placeholder={t('yourNationality')}
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelClass}>Airlines *</label>
+                <label className={labelClass}>{t('airlines')} *</label>
                 <input
                   type="text"
                   value={flightData.airlines}
                   onChange={(e) => setFlightData(p => ({ ...p, airlines: e.target.value }))}
                   required
                   className={inputClass}
-                  placeholder="Airline name"
+                  placeholder={t('airlineName')}
                 />
               </div>
               <div>
-                <label className={labelClass}>Flight No. *</label>
+                <label className={labelClass}>{t('flightNo')} *</label>
                 <input
                   type="text"
                   value={flightData.flightNo}
@@ -195,7 +199,7 @@ const TravelServices = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelClass}>Arrival Date *</label>
+                <label className={labelClass}>{t('arrivalDate')} *</label>
                 <input
                   type="date"
                   value={flightData.arrivalDate}
@@ -205,7 +209,7 @@ const TravelServices = () => {
                 />
               </div>
               <div>
-                <label className={labelClass}>Arrival Time *</label>
+                <label className={labelClass}>{t('arrivalTime')} *</label>
                 <input
                   type="time"
                   value={flightData.arrivalTime}
@@ -222,7 +226,7 @@ const TravelServices = () => {
               className="w-full bg-primary-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-primary-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
             >
               {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plane className="w-5 h-5" />}
-              {isLoading ? 'Submitting...' : 'Submit Flight Details'}
+              {isLoading ? t('submitting') : t('submitFlightDetails')}
             </button>
           </form>
         )}
@@ -231,12 +235,12 @@ const TravelServices = () => {
           <form onSubmit={handleVisaSubmit} className="bg-white rounded-2xl shadow-sm p-5 space-y-4">
             <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
               <FileText className="w-5 h-5 text-primary-600" />
-              Visa Application
+              {t('visaApplication')}
             </h2>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelClass}>Applicant Name *</label>
+                <label className={labelClass}>{t('applicantName')} *</label>
                 <input
                   type="text"
                   value={visaData.applicantName}
@@ -261,7 +265,7 @@ const TravelServices = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelClass}>Nationality *</label>
+                <label className={labelClass}>{t('nationality')} *</label>
                 <input
                   type="text"
                   value={visaData.nationality}
@@ -272,7 +276,7 @@ const TravelServices = () => {
                 />
               </div>
               <div>
-                <label className={labelClass}>Passport No. *</label>
+                <label className={labelClass}>{t('passportNo')} *</label>
                 <input
                   type="text"
                   value={visaData.passportNo}
@@ -286,32 +290,32 @@ const TravelServices = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelClass}>Mobile *</label>
+                <label className={labelClass}>{t('mobileNo')} *</label>
                 <input
                   type="tel"
                   value={visaData.mobileNo}
                   onChange={(e) => setVisaData(p => ({ ...p, mobileNo: e.target.value }))}
                   required
                   className={inputClass}
-                  placeholder="Mobile number"
+                  placeholder={t('mobileNumber')}
                 />
               </div>
               <div>
-                <label className={labelClass}>Email *</label>
+                <label className={labelClass}>{t('email')} *</label>
                 <input
                   type="email"
                   value={visaData.email}
                   onChange={(e) => setVisaData(p => ({ ...p, email: e.target.value }))}
                   required
                   className={inputClass}
-                  placeholder="Email"
+                  placeholder={t('emailAddress')}
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelClass}>Date of Birth *</label>
+                <label className={labelClass}>{t('dateOfBirth')} *</label>
                 <input
                   type="date"
                   value={visaData.dateOfBirth}
@@ -321,27 +325,27 @@ const TravelServices = () => {
                 />
               </div>
               <div>
-                <label className={labelClass}>Place of Birth *</label>
+                <label className={labelClass}>{t('placeOfBirth')} *</label>
                 <input
                   type="text"
                   value={visaData.placeOfBirth}
                   onChange={(e) => setVisaData(p => ({ ...p, placeOfBirth: e.target.value }))}
                   required
                   className={inputClass}
-                  placeholder="City, Country"
+                  placeholder={t('cityCountry')}
                 />
               </div>
             </div>
 
             <div>
-              <label className={labelClass}>Profession *</label>
+              <label className={labelClass}>{t('profession')} *</label>
               <input
                 type="text"
                 value={visaData.profession}
                 onChange={(e) => setVisaData(p => ({ ...p, profession: e.target.value }))}
                 required
                 className={inputClass}
-                placeholder="Your profession"
+                placeholder={t('profession')}
               />
             </div>
 
@@ -374,7 +378,7 @@ const TravelServices = () => {
               className="w-full bg-primary-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-primary-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
             >
               {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <FileText className="w-5 h-5" />}
-              {isLoading ? 'Submitting...' : 'Submit Visa Application'}
+              {isLoading ? t('submitting') : t('submitVisaApplication')}
             </button>
           </form>
         )}
@@ -383,62 +387,62 @@ const TravelServices = () => {
           <form onSubmit={handleHotelSubmit} className="bg-white rounded-2xl shadow-sm p-5 space-y-4">
             <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
               <Hotel className="w-5 h-5 text-primary-600" />
-              Hotel Booking Request
+              {t('hotelBookingRequest')}
             </h2>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelClass}>Guest Name *</label>
+                <label className={labelClass}>{t('guestName')} *</label>
                 <input
                   type="text"
                   value={hotelData.guestName}
                   onChange={(e) => setHotelData(p => ({ ...p, guestName: e.target.value }))}
                   required
                   className={inputClass}
-                  placeholder="Full name"
+                  placeholder={t('fullName')}
                 />
               </div>
               <div>
-                <label className={labelClass}>Company *</label>
+                <label className={labelClass}>{t('company')} *</label>
                 <input
                   type="text"
                   value={hotelData.companyName}
                   onChange={(e) => setHotelData(p => ({ ...p, companyName: e.target.value }))}
                   required
                   className={inputClass}
-                  placeholder="Company name"
+                  placeholder={t('companyName')}
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelClass}>Email *</label>
+                <label className={labelClass}>{t('email')} *</label>
                 <input
                   type="email"
                   value={hotelData.email}
                   onChange={(e) => setHotelData(p => ({ ...p, email: e.target.value }))}
                   required
                   className={inputClass}
-                  placeholder="Email"
+                  placeholder={t('emailAddress')}
                 />
               </div>
               <div>
-                <label className={labelClass}>Mobile *</label>
+                <label className={labelClass}>{t('mobileNo')} *</label>
                 <input
                   type="tel"
                   value={hotelData.mobileNo}
                   onChange={(e) => setHotelData(p => ({ ...p, mobileNo: e.target.value }))}
                   required
                   className={inputClass}
-                  placeholder="Mobile"
+                  placeholder={t('mobileNumber')}
                 />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelClass}>Check-in Date *</label>
+                <label className={labelClass}>{t('checkInDate')} *</label>
                 <input
                   type="date"
                   value={hotelData.checkInDate}
@@ -448,7 +452,7 @@ const TravelServices = () => {
                 />
               </div>
               <div>
-                <label className={labelClass}>Check-out Date *</label>
+                <label className={labelClass}>{t('checkOutDate')} *</label>
                 <input
                   type="date"
                   value={hotelData.checkOutDate}
@@ -461,18 +465,18 @@ const TravelServices = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className={labelClass}>Room Type *</label>
+                <label className={labelClass}>{t('roomType')} *</label>
                 <select
                   value={hotelData.roomType}
                   onChange={(e) => setHotelData(p => ({ ...p, roomType: e.target.value }))}
                   className={inputClass}
                 >
-                  <option value="single">Single Room</option>
-                  <option value="double">Double Room</option>
+                  <option value="single">{t('singleRoom')}</option>
+                  <option value="double">{t('doubleRoom')}</option>
                 </select>
               </div>
               <div>
-                <label className={labelClass}>Quantity *</label>
+                <label className={labelClass}>{t('quantity')} *</label>
                 <input
                   type="number"
                   min="1"
@@ -491,7 +495,7 @@ const TravelServices = () => {
               className="w-full bg-primary-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-primary-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
             >
               {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Hotel className="w-5 h-5" />}
-              {isLoading ? 'Submitting...' : 'Submit Hotel Request'}
+              {isLoading ? t('submitting') : t('submitHotelRequest')}
             </button>
           </form>
         )}

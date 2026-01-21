@@ -5,10 +5,12 @@ import HeroBannerCarousel from '../components/HeroBannerCarousel'
 import PromotionalBanner from '../components/PromotionalBanner'
 import { newsItems, exhibitors } from '../data/mockData'
 import { useApp } from '../context/AppContext'
+import { useLanguage } from '../context/LanguageContext'
+import { useTranslation } from '../i18n/translations'
 import { format } from 'date-fns'
 import { clsx } from 'clsx'
 
-const QuickAction = ({ to, icon, title, gradient, delay = 0, comingSoon = false }) => {
+const QuickAction = ({ to, icon, title, gradient, delay = 0, comingSoon = false, comingSoonText = 'Coming Soon' }) => {
   const content = (
     <div className="group relative">
       {/* Glass Card */}
@@ -21,7 +23,7 @@ const QuickAction = ({ to, icon, title, gradient, delay = 0, comingSoon = false 
         {comingSoon && (
           <div className="absolute -top-1 -right-1 z-10">
             <span className="inline-flex px-2 py-0.5 bg-gradient-to-r from-orange-500 to-orange-600 text-white text-[9px] font-bold rounded-full shadow-lg">
-              Coming Soon
+              {comingSoonText}
             </span>
           </div>
         )}
@@ -61,7 +63,7 @@ const QuickAction = ({ to, icon, title, gradient, delay = 0, comingSoon = false 
   )
 }
 
-const ExtraServiceCard = ({ to, icon: Icon, title, description, gradient, comingSoon = false }) => {
+const ExtraServiceCard = ({ to, icon: Icon, title, description, gradient, comingSoon = false, comingSoonText = 'Coming Soon' }) => {
   const content = (
     <div className={clsx(
       'relative overflow-hidden rounded-2xl p-4 transition-all duration-300',
@@ -72,7 +74,7 @@ const ExtraServiceCard = ({ to, icon: Icon, title, description, gradient, coming
       {comingSoon && (
         <div className="absolute top-3 right-3 z-10">
           <span className="inline-flex px-2.5 py-1 bg-white/90 backdrop-blur-sm text-purple-700 text-[10px] font-bold rounded-full shadow-lg border border-white/50">
-            Coming Soon
+            {comingSoonText}
           </span>
         </div>
       )}
@@ -114,6 +116,8 @@ const Home = () => {
   const latestNews = newsItems.slice(0, 1)
   const { userProfile } = useApp()
   const navigate = useNavigate()
+  const { language } = useLanguage()
+  const { t } = useTranslation(language)
 
   const getSuggestedExhibitors = () => {
     if (!userProfile.sector) return []
@@ -145,7 +149,7 @@ const Home = () => {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search Exhibitors"
+                  placeholder={t('searchExhibitors')}
                   className="w-full pl-12 pr-4 py-3.5 bg-white rounded-2xl focus:ring-2 focus:ring-white/50 focus:outline-none transition-all text-gray-700 placeholder:text-gray-400"
                 />
               </div>
@@ -189,7 +193,7 @@ const Home = () => {
                 )}
               >
                 <Zap className="w-4 h-4" />
-                Quick Access
+                {t('quickAccess')}
               </button>
               <button
                 onClick={() => setActiveTab('extra')}
@@ -201,28 +205,28 @@ const Home = () => {
                 )}
               >
                 <Star className="w-4 h-4" />
-                Services
+                {t('services')}
               </button>
               <Link 
                 to="/matchmaking"
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold bg-gradient-to-r from-accent-500 to-accent-600 text-white shadow-lg shadow-accent-500/25 whitespace-nowrap"
               >
                 <Sparkles className="w-4 h-4" />
-                AI Match
+                {t('aiMatch')}
               </Link>
             </div>
 
             {/* Quick Access Grid */}
             {activeTab === 'quick' && (
               <div className="grid grid-cols-4 gap-2.5">
-                <QuickAction to="/exhibitors" icon="/media/PNG/App Icons-13.png" title="Exhibitors" delay={0} />
-                <QuickAction to="/sponsorships" icon="/media/PNG/App Icons-14.png" title="Sponsors" delay={50} />
-                <QuickAction to="/speakers" icon="/media/PNG/App Icons-11.png" title="Speakers" delay={100} comingSoon={true} />
-                <QuickAction to="/schedule" icon="/media/PNG/App Icons-09.png" title="Agenda" delay={150} comingSoon={true} />
-                <QuickAction to="/tickets" icon="/media/PNG/App Icons-08.png" title="My Badge" delay={200} />
-                <QuickAction to="/business-cards" icon="/media/PNG/App Icons-01.png" title="Digital Card" delay={250} />
-                <QuickAction to="/meetings" icon="/media/PNG/App Icons-15.png" title="Meetings" delay={300} />
-                <QuickAction to="/navigation" icon="/media/PNG/App Icons-03.png" title="Event Map" delay={350} comingSoon={true} />
+                <QuickAction to="/exhibitors" icon="/media/PNG/App Icons-13.png" title={t('exhibitors')} delay={0} />
+                <QuickAction to="/sponsorships" icon="/media/PNG/App Icons-14.png" title={t('sponsors')} delay={50} />
+                <QuickAction to="/speakers" icon="/media/PNG/App Icons-11.png" title={t('speakers')} delay={100} comingSoon={true} comingSoonText={t('comingSoon')} />
+                <QuickAction to="/schedule" icon="/media/PNG/App Icons-09.png" title={t('agenda')} delay={150} comingSoon={true} comingSoonText={t('comingSoon')} />
+                <QuickAction to="/tickets" icon="/media/PNG/App Icons-08.png" title={t('myBadge')} delay={200} />
+                <QuickAction to="/business-cards" icon="/media/PNG/App Icons-01.png" title={t('digitalCard')} delay={250} />
+                <QuickAction to="/meetings" icon="/media/PNG/App Icons-15.png" title={t('meetings')} delay={300} />
+                <QuickAction to="/navigation" icon="/media/PNG/App Icons-03.png" title={t('eventMap')} delay={350} comingSoon={true} comingSoonText={t('comingSoon')} />
               </div>
             )}
 
@@ -232,24 +236,25 @@ const Home = () => {
                 <ExtraServiceCard 
                   to="/flight-tickets" 
                   icon={Plane} 
-                  title="Flight Tickets" 
-                  description="Book your flights to Tripoli"
+                  title={t('flightTickets')} 
+                  description={t('bookYourFlights')}
                   gradient="bg-gradient-to-r from-blue-500 to-blue-600"
                 />
                 <ExtraServiceCard 
                   to="/visa-application" 
                   icon={FileText} 
-                  title="Visa Application" 
-                  description="Apply for your visa online"
+                  title={t('visaApplication')} 
+                  description={t('applyForVisa')}
                   gradient="bg-gradient-to-r from-emerald-500 to-teal-600"
                 />
                 <ExtraServiceCard 
                   to="/hotel-request" 
                   icon={Hotel} 
-                  title="Hotel Booking" 
-                  description="Find accommodation nearby"
+                  title={t('hotelBooking')} 
+                  description={t('findAccommodation')}
                   gradient="bg-gradient-to-r from-purple-500 to-violet-600"
                   comingSoon={true}
+                  comingSoonText={t('comingSoon')}
                 />
               </div>
             )}
@@ -273,7 +278,7 @@ const Home = () => {
                 <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                   <div className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-md rounded-full border border-white/20 hover:bg-white/30 transition-all">
                     <span className="text-white text-sm font-medium">
-                      View Profile
+                      {t('viewProfile')}
                     </span>
                     <div className="w-5 h-5 rounded-full bg-white/30 flex items-center justify-center">
                       <ArrowRight className="w-3 h-3 text-white" />
@@ -298,8 +303,8 @@ const Home = () => {
                       <Sparkles className="w-7 h-7 text-white" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="font-bold text-white text-lg mb-1">AI Matchmaking</h3>
-                      <p className="text-white/80 text-sm">Find your perfect business partners</p>
+                      <h3 className="font-bold text-white text-lg mb-1">{t('aiMatchmaking')}</h3>
+                      <p className="text-white/80 text-sm">{t('findBusinessPartners')}</p>
                     </div>
                     <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
                       <ArrowRight className="w-5 h-5 text-white" />
@@ -318,10 +323,10 @@ const Home = () => {
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
                     <Sparkles className="w-4 h-4 text-white" />
                   </div>
-                  Suggested for You
+                  {t('suggestedForYou')}
                 </h2>
                 <Link to="/matchmaking" className="flex items-center gap-1 text-sm font-semibold text-primary-600">
-                  View All
+                  {t('viewAll')}
                   <ChevronRight className="w-4 h-4" />
                 </Link>
               </div>
@@ -351,9 +356,9 @@ const Home = () => {
           {/* Latest Updates */}
           <div className="px-4">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-900">Latest Updates</h2>
+              <h2 className="text-lg font-bold text-gray-900">{t('latestUpdates')}</h2>
               <Link to="/news" className="flex items-center gap-1 text-sm font-semibold text-primary-600">
-                View All
+                {t('viewAll')}
                 <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
@@ -368,13 +373,17 @@ const Home = () => {
                       <div className="relative flex-shrink-0">
                         <img src={news.image} alt="" className="w-20 h-20 rounded-xl object-cover" />
                         {index === 0 && (
-                          <span className="absolute -top-2 -left-2 px-2 py-0.5 bg-accent-500 text-white text-[10px] font-bold rounded-full">NEW</span>
+                          <span className="absolute -top-2 -left-2 px-2 py-0.5 bg-accent-500 text-white text-[10px] font-bold rounded-full">{t('new')}</span>
                         )}
                       </div>
                     )}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2 leading-snug">{news.title}</h3>
-                      <p className="text-sm text-gray-500 line-clamp-2 mb-2">{news.summary}</p>
+                      <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2 leading-snug">
+                        {language === 'ar' && news.title_ar ? news.title_ar : news.title}
+                      </h3>
+                      <p className="text-sm text-gray-500 line-clamp-2 mb-2">
+                        {language === 'ar' && news.summary_ar ? news.summary_ar : news.summary}
+                      </p>
                       <div className="flex items-center gap-2 text-xs text-gray-400">
                         <Clock className="w-3 h-3" />
                         {format(new Date(news.date), 'MMM d, h:mm a')}

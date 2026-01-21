@@ -2,9 +2,13 @@ import { useState, useEffect } from 'react'
 import { Calendar, Clock, MapPin, User, Loader2, ChevronLeft, ChevronRight, Plus, Check, X } from 'lucide-react'
 import { getVisitorMeetings, getSchedules, createSchedule, approveMeeting, rejectMeeting } from '../services/eventxApi'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
+import { useTranslation } from '../i18n/translations'
 
 const MyMeetings = () => {
   const { user } = useAuth()
+  const { language } = useLanguage()
+  const { t } = useTranslation(language)
   const [meetings, setMeetings] = useState([])
   const [schedules, setSchedules] = useState([])
   const [exhibitorMeetings, setExhibitorMeetings] = useState([])
@@ -192,14 +196,14 @@ const MyMeetings = () => {
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
             <span className="font-medium text-sm">
-              {pendingMeetingsCount} Incoming Meeting Request{pendingMeetingsCount > 1 ? 's' : ''}
+              {pendingMeetingsCount} {t('meetingRequests')}
             </span>
           </div>
           <button
             onClick={() => setActiveTab('assigned')}
             className="bg-white text-amber-600 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-amber-50 transition-all"
           >
-            View Now
+            {t('view')}
           </button>
         </div>
       )}
@@ -207,8 +211,8 @@ const MyMeetings = () => {
       <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-4 py-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold">My Meetings</h1>
-            <p className="text-white/80 mt-1">Manage your scheduled meetings</p>
+            <h1 className="text-2xl font-bold">{t('myMeetings')}</h1>
+            <p className="text-white/80 mt-1">{t('b2bAppointments')}</p>
           </div>
           <button
             onClick={() => setShowCreateModal(true)}
@@ -248,7 +252,7 @@ const MyMeetings = () => {
                 : 'text-gray-500'
             }`}
           >
-            My Meetings
+            {t('myMeetings')}
           </button>
           <button
             onClick={() => setActiveTab('assigned')}
@@ -258,7 +262,7 @@ const MyMeetings = () => {
                 : 'text-gray-500'
             }`}
           >
-            Meeting Requests
+            {t('meetingRequests')}
             {exhibitorMeetings.filter(m => {
               const status = m.status?.toLowerCase()
               return status === 'pending' && status !== 'cancelled' && status !== 'canceled' && status !== 'cancel'
@@ -279,7 +283,7 @@ const MyMeetings = () => {
                 : 'text-gray-500'
             }`}
           >
-            All Schedules
+            {t('allMeetings')}
           </button>
         </div>
       </div>
@@ -301,8 +305,8 @@ const MyMeetings = () => {
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Calendar className="w-8 h-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No meeting requests</h3>
-              <p className="text-gray-500">You don't have any meeting requests assigned to you.</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('noMeetings')}</h3>
+              <p className="text-gray-500">{t('noMeetings')}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -317,7 +321,7 @@ const MyMeetings = () => {
                         </div>
                         <div>
                           <h3 className="font-semibold text-gray-900">
-                            {meeting.name || 'Meeting Request'}
+                            {meeting.name || t('meetingRequest')}
                           </h3>
                           <p className="text-sm text-gray-500">
                             {meeting.company || ''}
@@ -328,10 +332,10 @@ const MyMeetings = () => {
                         </div>
                       </div>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(meeting.status)}`}>
-                        {meeting.status?.toLowerCase() === 'cancel' ? 'Cancelled' : 
-                         meeting.status?.toLowerCase() === 'canceled' ? 'Cancelled' :
-                         meeting.status?.toLowerCase() === 'cancelled' ? 'Cancelled' :
-                         meeting.status?.charAt(0).toUpperCase() + meeting.status?.slice(1).toLowerCase() || 'Pending'}
+                        {meeting.status?.toLowerCase() === 'cancel' ? t('cancelled') : 
+                         meeting.status?.toLowerCase() === 'canceled' ? t('cancelled') :
+                         meeting.status?.toLowerCase() === 'cancelled' ? t('cancelled') :
+                         (meeting.status ? t(meeting.status.toLowerCase()) || meeting.status : t('pending'))}
                       </span>
                     </div>
                     
@@ -342,7 +346,7 @@ const MyMeetings = () => {
                       </div>
                       <div className="flex items-center gap-1">
                         <Clock className="w-4 h-4" />
-                        {meeting.time || 'TBD'}
+                        {meeting.time || t('tbd')}
                       </div>
                       {meeting.location && (
                         <div className="flex items-center gap-1">
@@ -370,7 +374,7 @@ const MyMeetings = () => {
                           ) : (
                             <Check className="w-4 h-4" />
                           )}
-                          Approve
+                          {t('approve')}
                         </button>
                       </div>
                     )}
@@ -385,14 +389,14 @@ const MyMeetings = () => {
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Calendar className="w-8 h-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No meetings scheduled</h3>
-              <p className="text-gray-500 mb-4">You don't have any meetings for this date.</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('noMeetings')}</h3>
+              <p className="text-gray-500 mb-4">{t('noMeetingsFound')}</p>
               <button
                 onClick={() => setShowCreateModal(true)}
                 className="inline-flex items-center gap-2 bg-primary-600 text-white px-4 py-2 rounded-xl font-medium hover:bg-primary-700 transition-all"
               >
                 <Plus className="w-4 h-4" />
-                Schedule a Meeting
+                {t('scheduleMeeting')}
               </button>
             </div>
           ) : (
@@ -414,7 +418,7 @@ const MyMeetings = () => {
                       </div>
                     </div>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(meeting.status)}`}>
-                      {meeting.status || 'Pending'}
+                      {meeting.status || t('pending')}
                     </span>
                   </div>
                   
@@ -446,17 +450,17 @@ const MyMeetings = () => {
               <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Calendar className="w-8 h-8 text-gray-400" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No schedules yet</h3>
-              <p className="text-gray-500">Your scheduled meetings will appear here.</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('noSchedules')}</h3>
+              <p className="text-gray-500">{t('scheduledMeetingsAppear')}</p>
             </div>
           ) : (
             <div className="space-y-3">
               {schedules.map((schedule, index) => (
                 <div key={schedule.id || index} className="bg-white rounded-xl p-4 shadow-sm">
                   <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-gray-900">{schedule.title || 'Schedule'}</h3>
+                    <h3 className="font-semibold text-gray-900">{schedule.title || t('schedule')}</h3>
                     <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(schedule.status)}`}>
-                      {schedule.status || 'Scheduled'}
+                      {schedule.status || t('scheduled')}
                     </span>
                   </div>
                   <div className="flex gap-4 text-sm text-gray-600">
@@ -490,6 +494,8 @@ const MyMeetings = () => {
 }
 
 const CreateMeetingModal = ({ onClose, onSuccess }) => {
+  const { language } = useLanguage()
+  const { t } = useTranslation(language)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [formData, setFormData] = useState({
@@ -523,7 +529,7 @@ const CreateMeetingModal = ({ onClose, onSuccess }) => {
     <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-4">
       <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="p-5 border-b">
-          <h2 className="text-lg font-semibold">Schedule a Meeting</h2>
+          <h2 className="text-lg font-semibold">{t('scheduleMeeting')}</h2>
         </div>
         
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
@@ -534,20 +540,20 @@ const CreateMeetingModal = ({ onClose, onSuccess }) => {
           )}
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Exhibitor ID *</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('exhibitorId')} *</label>
             <input
               type="number"
               value={formData.exhibitorId}
               onChange={(e) => setFormData(p => ({ ...p, exhibitorId: e.target.value }))}
               required
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none"
-              placeholder="Enter exhibitor ID"
+              placeholder={t('enterExhibitorId')}
             />
           </div>
           
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('date')} *</label>
               <input
                 type="date"
                 value={formData.date}
@@ -557,7 +563,7 @@ const CreateMeetingModal = ({ onClose, onSuccess }) => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Time *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('time')} *</label>
               <input
                 type="time"
                 value={formData.time}
@@ -569,13 +575,13 @@ const CreateMeetingModal = ({ onClose, onSuccess }) => {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t('message')}</label>
             <textarea
               value={formData.message}
               onChange={(e) => setFormData(p => ({ ...p, message: e.target.value }))}
               rows={3}
               className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 outline-none resize-none"
-              placeholder="What would you like to discuss?"
+              placeholder={t('whatToDiscuss')}
             />
           </div>
           
@@ -585,7 +591,7 @@ const CreateMeetingModal = ({ onClose, onSuccess }) => {
               onClick={onClose}
               className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-xl font-medium hover:bg-gray-200 transition-all"
             >
-              Cancel
+              {t('cancel')}
             </button>
             <button
               type="submit"
@@ -593,7 +599,7 @@ const CreateMeetingModal = ({ onClose, onSuccess }) => {
               className="flex-1 bg-primary-600 text-white py-3 rounded-xl font-medium hover:bg-primary-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
             >
               {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : null}
-              {isLoading ? 'Creating...' : 'Schedule'}
+              {isLoading ? t('creating') : t('schedule')}
             </button>
           </div>
         </form>

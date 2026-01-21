@@ -7,6 +7,8 @@ import Button from '../components/Button'
 import Badge from '../components/Badge'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
+import { useTranslation } from '../i18n/translations'
 import { updateProfile, getVisitorMeetings, getExhibitorFavorites } from '../services/eventxApi'
 
 const sectors = [
@@ -29,6 +31,8 @@ const Profile = () => {
   const navigate = useNavigate()
   const { userProfile, setUserProfile, favorites, tickets, meetings: localMeetings } = useApp()
   const { user, logout, deleteAccount, isStaff, userLevel } = useAuth()
+  const { language } = useLanguage()
+  const { t } = useTranslation(language)
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
@@ -154,7 +158,7 @@ const Profile = () => {
 
   return (
     <>
-      <Header title="Profile" showBack={false} />
+      <Header title={t('profile')} showBack={false} />
       <div className="p-4 space-y-4">
         <Card className="p-6">
           <div className="flex flex-col items-center text-center mb-6">
@@ -164,10 +168,10 @@ const Profile = () => {
             {!isEditing ? (
               <>
                 <h2 className="text-2xl font-bold text-gray-900 mb-1">
-                  {userProfile.name || 'Your Name'}
+                  {userProfile.name || t('yourName')}
                 </h2>
-                <p className="text-gray-600 mb-1">{userProfile.role || 'Your Role'}</p>
-                <p className="text-gray-500 text-sm mb-2">{userProfile.company || 'Your Company'}</p>
+                <p className="text-gray-600 mb-1">{userProfile.role || t('yourRole')}</p>
+                <p className="text-gray-500 text-sm mb-2">{userProfile.company || t('yourCompany')}</p>
                 {userProfile.sector && (
                   <div className="flex gap-2">
                     <Badge variant="primary" size="sm">{userProfile.sector}</Badge>
@@ -181,21 +185,21 @@ const Profile = () => {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Your Name"
+                  placeholder={t('yourName')}
                   className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 <input
                   type="text"
                   value={formData.role}
                   onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                  placeholder="Your Role"
+                  placeholder={t('yourRole')}
                   className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 <input
                   type="text"
                   value={formData.company}
                   onChange={(e) => setFormData({ ...formData, company: e.target.value })}
-                  placeholder="Your Company"
+                  placeholder={t('yourCompany')}
                   className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 <select
@@ -203,7 +207,7 @@ const Profile = () => {
                   onChange={(e) => setFormData({ ...formData, sector: e.target.value })}
                   className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="">Select Sector</option>
+                  <option value="">{t('selectSector')}</option>
                   {sectors.map(s => (
                     <option key={s} value={s}>{s}</option>
                   ))}
@@ -213,7 +217,7 @@ const Profile = () => {
                   onChange={(e) => setFormData({ ...formData, country: e.target.value })}
                   className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
                 >
-                  <option value="">Select Country</option>
+                  <option value="">{t('selectCountry')}</option>
                   {countries.map(c => (
                     <option key={c} value={c}>{c}</option>
                   ))}
@@ -221,7 +225,7 @@ const Profile = () => {
                 <textarea
                   value={formData.bio}
                   onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
-                  placeholder="Brief bio..."
+                  placeholder={t('briefBio')}
                   rows={3}
                   className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
                 />
@@ -237,7 +241,7 @@ const Profile = () => {
           
           {!isEditing ? (
             <Button fullWidth variant="outline" onClick={() => setIsEditing(true)}>
-              Edit Profile
+              {t('editProfile')}
             </Button>
           ) : (
             <div className="grid grid-cols-2 gap-3">
@@ -245,10 +249,10 @@ const Profile = () => {
                 setFormData(initialData)
                 setIsEditing(false)
               }} disabled={isSaving}>
-                Cancel
+                {t('cancel')}
               </Button>
               <Button fullWidth onClick={handleSave} disabled={isSaving}>
-                {isSaving ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />Saving...</> : 'Save Changes'}
+                {isSaving ? <><Loader2 className="w-4 h-4 animate-spin mr-2" />{t('saving')}</> : t('saveChanges')}
               </Button>
             </div>
           )}
@@ -259,9 +263,9 @@ const Profile = () => {
             <Card className="p-4">
               <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
                 <Sparkles className="w-5 h-5 text-primary-600" />
-                Select Your Persona
+                {t('selectYourPersona')}
               </h3>
-              <p className="text-sm text-gray-600 mb-3">This determines your app experience</p>
+              <p className="text-sm text-gray-600 mb-3">{t('personaDescription')}</p>
               <div className="grid grid-cols-3 gap-2">
                 {personas.map(persona => {
                   const Icon = persona.icon
@@ -287,8 +291,8 @@ const Profile = () => {
             </Card>
 
             <Card className="p-4">
-              <h3 className="font-bold text-gray-900 mb-3">Interests</h3>
-              <p className="text-sm text-gray-600 mb-3">Select topics for personalized recommendations</p>
+              <h3 className="font-bold text-gray-900 mb-3">{t('interests')}</h3>
+              <p className="text-sm text-gray-600 mb-3">{t('selectTopics')}</p>
             <div className="flex flex-wrap gap-2">
               {interests.map(interest => {
                 const isSelected = (formData.interests || []).includes(interest)
@@ -319,7 +323,7 @@ const Profile = () => {
             <p className="text-2xl font-bold text-gray-900">
               {apiFavorites.length || (favorites.exhibitors?.length || 0) + (favorites.sessions?.length || 0) + (favorites.speakers?.length || 0)}
             </p>
-            <p className="text-xs text-gray-600">Favorites</p>
+            <p className="text-xs text-gray-600">{t('favorites')}</p>
           </Card>
 
           <Card className="p-4 text-center">
@@ -327,7 +331,7 @@ const Profile = () => {
               <Calendar className="w-5 h-5 text-blue-600" />
             </div>
             <p className="text-2xl font-bold text-gray-900">{meetings.length || localMeetings.length}</p>
-            <p className="text-xs text-gray-600">Meetings</p>
+            <p className="text-xs text-gray-600">{t('meetings')}</p>
           </Card>
 
           <Card className="p-4 text-center">
@@ -335,7 +339,7 @@ const Profile = () => {
               <Mail className="w-5 h-5 text-green-600" />
             </div>
             <p className="text-2xl font-bold text-gray-900">{tickets.length}</p>
-            <p className="text-xs text-gray-600">Tickets</p>
+            <p className="text-xs text-gray-600">{t('tickets')}</p>
           </Card>
         </div>
 
@@ -345,8 +349,8 @@ const Profile = () => {
             <div className="flex items-center gap-3 text-white mb-3">
               <Shield className="w-6 h-6" />
               <div>
-                <p className="font-bold">Staff Access</p>
-                <p className="text-sm text-white/80">You have scanner privileges</p>
+                <p className="font-bold">{t('staffAccess')}</p>
+                <p className="text-sm text-white/80">{t('scannerPrivileges')}</p>
               </div>
             </div>
             <button 
@@ -354,24 +358,24 @@ const Profile = () => {
               onClick={() => navigate('/scanner')}
             >
               <QrCode className="w-5 h-5" />
-              Open Scanner
+              {t('openScanner')}
             </button>
           </Card>
         )}
 
         <div>
-          <h3 className="font-bold text-gray-900 mb-3">Settings</h3>
+          <h3 className="font-bold text-gray-900 mb-3">{t('settings')}</h3>
           <div className="space-y-2">
             <Card className="p-4">
               <button className="w-full flex items-center gap-3 text-left">
                 <Settings className="w-5 h-5 text-gray-600" />
-                <span className="flex-1 font-medium text-gray-900">App Settings</span>
+                <span className="flex-1 font-medium text-gray-900">{t('appSettings')}</span>
               </button>
             </Card>
             <Card className="p-4">
               <button className="w-full flex items-center gap-3 text-left">
                 <Mail className="w-5 h-5 text-gray-600" />
-                <span className="flex-1 font-medium text-gray-900">Notifications</span>
+                <span className="flex-1 font-medium text-gray-900">{t('notifications')}</span>
               </button>
             </Card>
             <Card className="p-4 border-red-100">
@@ -380,7 +384,7 @@ const Profile = () => {
                 onClick={() => logout()}
               >
                 <LogOut className="w-5 h-5 text-red-600" />
-                <span className="flex-1 font-medium text-red-600">Sign Out</span>
+                <span className="flex-1 font-medium text-red-600">{t('signOut')}</span>
               </button>
             </Card>
           </div>
@@ -388,19 +392,19 @@ const Profile = () => {
 
         {/* Delete Account Section */}
         <div>
-          <h3 className="font-bold text-gray-900 mb-3">Danger Zone</h3>
+          <h3 className="font-bold text-gray-900 mb-3">{t('dangerZone')}</h3>
           <Card className="p-4 border-red-200 bg-red-50">
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <p className="font-medium text-red-800">Delete Account</p>
-                <p className="text-sm text-red-600 mt-1">Permanently delete your account and all associated data. This action cannot be undone.</p>
+                <p className="font-medium text-red-800">{t('deleteAccount')}</p>
+                <p className="text-sm text-red-600 mt-1">{t('deleteAccountWarning')}</p>
                 <button
                   onClick={() => setShowDeleteModal(true)}
                   className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors flex items-center gap-2"
                 >
                   <Trash2 className="w-4 h-4" />
-                  Delete My Account
+                  {t('deleteMyAccount')}
                 </button>
               </div>
             </div>
@@ -412,7 +416,7 @@ const Profile = () => {
           <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-gray-900">Delete Account</h3>
+                <h3 className="text-xl font-bold text-gray-900">{t('deleteAccount')}</h3>
                 <button
                   onClick={() => {
                     setShowDeleteModal(false)
@@ -430,8 +434,8 @@ const Profile = () => {
                   <AlertTriangle className="w-6 h-6 text-red-600" />
                 </div>
                 <div>
-                  <p className="text-gray-900 font-medium">Are you sure you want to delete your account?</p>
-                  <p className="text-sm text-gray-600 mt-1">This will permanently delete your profile, meetings, favorites, and all associated data. You will not be able to recover your account.</p>
+                  <p className="text-gray-900 font-medium">{t('areYouSure')}</p>
+                  <p className="text-sm text-gray-600 mt-1">{t('deleteAccountConfirm')}</p>
                 </div>
               </div>
 
@@ -450,7 +454,7 @@ const Profile = () => {
                   disabled={isDeleting}
                   className="py-3 px-4 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors disabled:opacity-50"
                 >
-                  Cancel
+                  {t('cancel')}
                 </button>
                 <button
                   onClick={handleDeleteAccount}
@@ -460,12 +464,12 @@ const Profile = () => {
                   {isDeleting ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      Deleting...
+                      {t('deleting')}
                     </>
                   ) : (
                     <>
                       <Trash2 className="w-5 h-5" />
-                      Delete Account
+                      {t('deleteAccount')}
                     </>
                   )}
                 </button>
@@ -475,8 +479,8 @@ const Profile = () => {
         )}
 
         <Card className="p-4 text-center bg-gray-50">
-          <p className="text-sm text-gray-600 mb-1">Libya Build Event App</p>
-          <p className="text-xs text-gray-500">Version 1.0.0</p>
+          <p className="text-sm text-gray-600 mb-1">{t('libyaBuildEventApp')}</p>
+          <p className="text-xs text-gray-500">{t('version')}</p>
         </Card>
       </div>
     </>

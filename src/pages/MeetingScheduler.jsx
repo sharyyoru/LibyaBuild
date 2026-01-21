@@ -6,6 +6,8 @@ import Button from '../components/Button'
 import Badge from '../components/Badge'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
+import { useTranslation } from '../i18n/translations'
 import { getExhibitors } from '../services/eventxApi'
 import { getUserScheduledMeetings, scheduleMeeting, approveMeeting, rejectMeeting } from '../services/eventxApi'
 import { format, addMinutes, isAfter, isBefore, parseISO, isToday, isTomorrow } from 'date-fns'
@@ -53,6 +55,8 @@ const MeetingScheduler = () => {
   
   const { meetings: localMeetings, addMeeting, updateMeeting } = useApp()
   const { user } = useAuth()
+  const { language } = useLanguage()
+  const { t } = useTranslation(language)
   const [exhibitors, setExhibitors] = useState([])
   const [meetings, setMeetings] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -497,7 +501,7 @@ const MeetingScheduler = () => {
               )}
             >
               <CalendarDays className="w-5 h-5 mb-1" />
-              <span className="text-xs">All Days</span>
+              <span className="text-xs">{t('allDays')}</span>
             </button>
             {EVENT_DAYS.map(day => (
               <button
@@ -511,7 +515,7 @@ const MeetingScheduler = () => {
                 )}
               >
                 <span className="text-xl font-bold">{day.day}</span>
-                <span className="text-xs opacity-80">{day.month}</span>
+                <span className="text-xs opacity-80">{t('apr')}</span>
               </button>
             ))}
           </div>
@@ -525,10 +529,10 @@ const MeetingScheduler = () => {
           <div className="px-4 mb-4">
             <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
               {[
-                { key: 'all', label: 'All', color: 'bg-gray-600' },
-                { key: 'pending', label: 'Pending', color: 'bg-amber-500' },
-                { key: 'approved', label: 'Accepted', color: 'bg-emerald-500' },
-                { key: 'cancelled', label: 'Cancelled', color: 'bg-gray-400' },
+                { key: 'all', label: t('all'), color: 'bg-gray-600' },
+                { key: 'pending', label: t('pending'), color: 'bg-amber-500' },
+                { key: 'approved', label: t('accepted'), color: 'bg-emerald-500' },
+                { key: 'cancelled', label: t('cancelled'), color: 'bg-gray-400' },
               ].map(filter => (
                 <button
                   key={filter.key}
@@ -570,7 +574,7 @@ const MeetingScheduler = () => {
                 className="w-full py-3.5 bg-gradient-to-r from-primary-600 to-accent-600 text-white rounded-2xl font-semibold flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all active:scale-[0.98]"
               >
                 <Plus className="w-5 h-5" />
-                Request New Meeting
+                {t('requestNewMeeting')}
               </button>
             </div>
           )}
@@ -581,7 +585,7 @@ const MeetingScheduler = () => {
               <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5">
                 <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
                   <Calendar className="w-5 h-5 text-primary-600" />
-                  Request B2B Meeting
+                  {t('requestB2BMeeting')}
                 </h3>
                 {error && (
                   <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm mb-4">
@@ -590,7 +594,7 @@ const MeetingScheduler = () => {
                 )}
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Exhibitor *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('selectExhibitor')} *</label>
                     <div className="relative">
                       <select
                         required
@@ -598,10 +602,10 @@ const MeetingScheduler = () => {
                         onChange={(e) => setFormData({ ...formData, exhibitorId: e.target.value, selectedUserIds: [] })}
                         className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 appearance-none"
                       >
-                        <option value="">Choose an exhibitor...</option>
+                        <option value="">{t('chooseExhibitor')}</option>
                         {exhibitors.map(ex => (
                           <option key={ex.id} value={ex.id}>
-                            {getExhibitorName(ex)} - Booth {getExhibitorBooth(ex)}
+                            {getExhibitorName(ex)} - {t('booth')} {getExhibitorBooth(ex)}
                           </option>
                         ))}
                       </select>
@@ -612,7 +616,7 @@ const MeetingScheduler = () => {
                   {/* Users Selection - Shows when exhibitor is selected */}
                   {formData.exhibitorId && availableUsers.length > 0 && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Select Users to Meet *</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">{t('selectUsersToMeet')} *</label>
                       <div className="space-y-2 max-h-40 overflow-y-auto bg-gray-50 border border-gray-200 rounded-xl p-3">
                         {availableUsers.map(user => (
                           <label key={user.id} className="flex items-center gap-3 p-2 hover:bg-white rounded-lg cursor-pointer transition-colors">
@@ -650,7 +654,7 @@ const MeetingScheduler = () => {
                       </div>
                       {formData.selectedUserIds.length > 0 && (
                         <p className="text-xs text-primary-600 mt-1">
-                          {formData.selectedUserIds.length} user{formData.selectedUserIds.length !== 1 ? 's' : ''} selected
+                          {formData.selectedUserIds.length} {formData.selectedUserIds.length !== 1 ? t('usersSelected') : t('userSelected')}
                         </p>
                       )}
                     </div>
@@ -659,13 +663,13 @@ const MeetingScheduler = () => {
                   {formData.exhibitorId && availableUsers.length === 0 && (
                     <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl">
                       <p className="text-amber-700 text-sm">
-                        No user contacts found for this exhibitor. You may still request a meeting, but it will be sent to the company directly.
+                        {t('noUserContactsFound')}
                       </p>
                     </div>
                   )}
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Date *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('selectDate')} *</label>
                     <div className="grid grid-cols-4 gap-2">
                       {EVENT_DAYS.map(({ date, day, month }) => (
                         <button
@@ -687,7 +691,7 @@ const MeetingScheduler = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Time *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('selectTime')} *</label>
                     <div className="grid grid-cols-4 gap-2">
                       {TIME_SLOTS.map(time => (
                         <button
@@ -708,11 +712,11 @@ const MeetingScheduler = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Message (Optional)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('messageOptional')}</label>
                     <textarea
                       value={formData.notes}
                       onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                      placeholder="What would you like to discuss?"
+                      placeholder={t('whatToDiscuss')}
                       rows={2}
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none text-sm"
                     />
@@ -720,10 +724,10 @@ const MeetingScheduler = () => {
 
                   <div className="grid grid-cols-2 gap-3">
                     <Button type="button" variant="secondary" fullWidth onClick={() => setShowForm(false)} disabled={isSubmitting}>
-                      Cancel
+                      {t('cancel')}
                     </Button>
                     <Button type="submit" fullWidth disabled={!formData.time || isSubmitting}>
-                      {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin mr-1" />Sending...</> : <><Send className="w-4 h-4 mr-1" />Send</>}
+                      {isSubmitting ? <><Loader2 className="w-4 h-4 animate-spin mr-1" />{t('sending')}</> : <><Send className="w-4 h-4 mr-1" />{t('send')}</>}
                     </Button>
                   </div>
                 </form>
@@ -748,8 +752,8 @@ const MeetingScheduler = () => {
                 <p className="text-gray-800 font-semibold text-lg mb-1">No meetings found</p>
                 <p className="text-gray-500 text-sm text-center max-w-xs">
                   {activeFilter !== 'all' || activeDay !== 'all' 
-                    ? 'Try adjusting your filters' 
-                    : 'Request a meeting with an exhibitor to get started'}
+                    ? t('tryAdjustingFilters') 
+                    : t('requestMeetingToGetStarted')}
                 </p>
                 {(activeFilter !== 'all' || activeDay !== 'all') && (
                   <button

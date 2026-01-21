@@ -6,25 +6,31 @@ import Badge from '../components/Badge'
 import { newsItems } from '../data/mockData'
 import { format } from 'date-fns'
 import { clsx } from 'clsx'
+import { useLanguage } from '../context/LanguageContext'
+import { useTranslation } from '../i18n/translations'
 
 const News = () => {
+  const { language } = useLanguage()
+  const { t } = useTranslation(language)
   const [filter, setFilter] = useState('all')
 
-  const categories = ['all', ...new Set(newsItems.map(n => n.category))]
+  // Filter out Sponsorship category
+  const categories = ['all', ...new Set(newsItems.map(n => n.category).filter(cat => cat.toLowerCase() !== 'sponsorship'))]
 
   const filtered = newsItems.filter(news =>
     filter === 'all' || news.category === filter
   )
 
+  // Removed priority colors for cleaner design
   const priorityColors = {
-    high: 'border-l-4 border-l-red-500',
-    medium: 'border-l-4 border-l-yellow-500',
-    low: 'border-l-4 border-l-blue-500'
+    high: '',
+    medium: '',
+    low: ''
   }
 
   return (
     <>
-      <Header title="News & Updates" showBack={false} />
+      <Header title={t('newsUpdates')} showBack={false} />
       <div className="p-4 space-y-4">
         <Card className="p-4 bg-gradient-to-br from-primary-50 to-accent-50 border-0">
           <div className="flex items-center gap-3">
@@ -32,8 +38,8 @@ const News = () => {
               <TrendingUp className="w-5 h-5 text-white" />
             </div>
             <div className="flex-1">
-              <h3 className="font-bold text-gray-900">Stay Updated</h3>
-              <p className="text-sm text-gray-600">Real-time event announcements</p>
+              <h3 className="font-bold text-gray-900">{t('stayUpdated')}</h3>
+              <p className="text-sm text-gray-600">{t('realtimeAnnouncements')}</p>
             </div>
           </div>
         </Card>
@@ -50,7 +56,7 @@ const News = () => {
                   : 'bg-gray-100 text-gray-700 active:bg-gray-200'
               )}
             >
-              {cat === 'all' ? 'All Updates' : cat}
+              {cat === 'all' ? t('allUpdates') : (t(cat.toLowerCase()) || cat)}
             </button>
           ))}
         </div>
@@ -65,15 +71,20 @@ const News = () => {
                   className="w-full h-40 object-cover rounded-xl mb-4"
                 />
               )}
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <h3 className="font-bold text-gray-900 flex-1">{news.title}</h3>
+              <div className="flex items-start justify-between gap-2 mb-3">
+                <h3 className="font-bold text-gray-900 flex-1">
+                  {language === 'ar' && news.title_ar ? news.title_ar : news.title}
+                </h3>
                 {news.priority === 'high' && (
                   <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
                 )}
               </div>
-              <Badge variant="primary" size="sm" className="mb-2">{news.category}</Badge>
-              <p className="text-sm text-gray-600 mb-3">{news.summary}</p>
-              <p className="text-gray-700 mb-3">{news.content}</p>
+              <p className="text-sm text-gray-600 mb-3">
+                {language === 'ar' && news.summary_ar ? news.summary_ar : news.summary}
+              </p>
+              <p className="text-sm text-gray-600 mb-3">
+                {language === 'ar' && news.content_ar ? news.content_ar : news.content}
+              </p>
               <span className="text-xs text-gray-500">
                 {format(new Date(news.date), 'MMMM d, yyyy • h:mm a')}
               </span>

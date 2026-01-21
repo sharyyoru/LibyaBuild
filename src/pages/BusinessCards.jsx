@@ -5,10 +5,14 @@ import Header from '../components/Header'
 import Card from '../components/Card'
 import Button from '../components/Button'
 import { useApp } from '../context/AppContext'
+import { useLanguage } from '../context/LanguageContext'
+import { useTranslation } from '../i18n/translations'
 import { format } from 'date-fns'
 
 const BusinessCards = () => {
   const { userProfile, businessCards, addBusinessCard } = useApp()
+  const { language } = useLanguage()
+  const { t } = useTranslation(language)
   const [showScanner, setShowScanner] = useState(false)
   const [scannedCode, setScannedCode] = useState('')
 
@@ -30,13 +34,13 @@ const BusinessCards = () => {
 
   return (
     <>
-      <Header title="Business Cards" />
+      <Header title={t('businessCards')} />
       <div className="p-4 space-y-4">
         <Card className="p-6 bg-gradient-to-br from-primary-600 to-accent-500 text-white border-0">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <h3 className="text-xl font-bold mb-1">My Digital Card</h3>
-              <p className="text-sm text-white/80">Share your contact information</p>
+              <h3 className="text-xl font-bold mb-1">{t('myDigitalCard')}</h3>
+              <p className="text-sm text-white/80">{t('shareContactInfo')}</p>
             </div>
             <img src="/media/PNG/App Icons-01.png" alt="Business Card" className="w-12 h-12" />
           </div>
@@ -69,39 +73,39 @@ const BusinessCards = () => {
             icon={QrCode}
             onClick={() => setShowScanner(!showScanner)}
           >
-            Scan Card
+            {t('scanCard')}
           </Button>
           <Button
             variant="secondary"
             fullWidth
             icon={Download}
           >
-            Save Card
+            {t('saveCard')}
           </Button>
         </div>
 
         {showScanner && (
           <Card className="p-4">
-            <h3 className="font-bold text-gray-900 mb-3">Scan QR Code</h3>
+            <h3 className="font-bold text-gray-900 mb-3">{t('scanQRCode')}</h3>
             <div className="aspect-square bg-gray-100 rounded-2xl mb-4 flex items-center justify-center">
               <div className="text-center">
                 <QrCode className="w-16 h-16 text-gray-300 mx-auto mb-2" />
-                <p className="text-sm text-gray-500">Camera view would appear here</p>
+                <p className="text-sm text-gray-500">{t('cameraView')}</p>
               </div>
             </div>
             <input
               type="text"
               value={scannedCode}
               onChange={(e) => setScannedCode(e.target.value)}
-              placeholder="Or enter code manually..."
+              placeholder={t('enterManually')}
               className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl mb-3 focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
             <div className="grid grid-cols-2 gap-2">
               <Button variant="secondary" fullWidth onClick={() => setShowScanner(false)}>
-                Cancel
+                {t('cancel')}
               </Button>
               <Button fullWidth onClick={handleScan}>
-                Add Contact
+                {t('addContact')}
               </Button>
             </div>
           </Card>
@@ -109,13 +113,13 @@ const BusinessCards = () => {
 
         <div>
           <h3 className="font-bold text-gray-900 mb-3">
-            Collected Cards ({businessCards.length})
+            {t('collectedCards')} ({businessCards.length})
           </h3>
           {businessCards.length === 0 ? (
             <Card className="p-8 text-center">
               <User className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">No business cards yet</p>
-              <p className="text-sm text-gray-400 mt-1">Start networking!</p>
+              <p className="text-gray-500">{t('noBusinessCards')}</p>
+              <p className="text-sm text-gray-400 mt-1">{t('startNetworking')}</p>
             </Card>
           ) : (
             <div className="space-y-3">
@@ -141,7 +145,7 @@ const BusinessCards = () => {
                         <span>{card.phone}</span>
                       </div>
                       <p className="text-xs text-gray-400 mt-2">
-                        Scanned {format(new Date(card.scannedAt), 'MMM d, h:mm a')}
+                        {t('scanned')} {format(new Date(card.scannedAt), 'MMM d, h:mm a')}
                       </p>
                     </div>
                   </div>
