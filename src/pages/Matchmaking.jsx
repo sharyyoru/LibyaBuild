@@ -4,8 +4,8 @@ import { Sparkles, Building2, Globe, MessageSquare, Calendar, Heart, ThumbsUp, T
 import Card from '../components/Card'
 import Badge from '../components/Badge'
 import Button from '../components/Button'
-import { getExhibitors } from '../services/eventxApi'
-import { saveUserPreferences, getUserPreferences, saveMatch, getUserMatches, updateMatchStatus } from '../lib/supabase'
+import { getExhibitors, getProfile } from '../services/eventxApi'
+import { saveUserPreferences, saveMatch, getUserMatches, updateMatchStatus } from '../lib/supabase'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -71,41 +71,62 @@ const Matchmaking = () => {
       const exhibitorList = exhibitorsData.data || exhibitorsData.exhibitors || exhibitorsData || []
       setExhibitors(Array.isArray(exhibitorList) ? exhibitorList : [])
       
-      // Load user preferences and saved matches from Supabase
       const userId = user?.id || user?.user_id || user?.visitor_id
+      
+      // Fetch user profile from API to get interests/sectors selected during registration
+      let userInterests = []
+      try {
+        const profileResponse = await getProfile()
+        const profileData = profileResponse.data || profileResponse
+        
+        if (profileData?.company_sectors) {
+          // company_sectors from API contains user's interests from registration
+          const sectors = profileData.company_sectors
+          if (Array.isArray(sectors)) {
+            userInterests = sectors.map(s => typeof s === 'string' ? s : (s.name || s.en_name || ''))
+          } else if (typeof sectors === 'string') {
+            userInterests = [sectors]
+          }
+        }
+      } catch (profileErr) {
+        console.warn('Could not fetch profile for interests:', profileErr)
+        // Fallback to user context data
+        if (user?.company_sectors) {
+          const sectors = user.company_sectors
+          if (Array.isArray(sectors)) {
+            userInterests = sectors.map(s => typeof s === 'string' ? s : (s.name || s.en_name || ''))
+          } else if (typeof sectors === 'string') {
+            userInterests = [sectors]
+          }
+        }
+      }
+      
+      // Load saved matches from Supabase
       if (userId) {
         try {
-          const [prefsResult, matchesResult] = await Promise.all([
-            getUserPreferences(userId),
-            getUserMatches(userId)
-          ])
-        
-          if (prefsResult.data) {
-            setPreferences({
-              sectors: prefsResult.data.sectors || [],
-              interests: prefsResult.data.interests || [],
-              lookingFor: prefsResult.data.looking_for || 'all',
-              country: prefsResult.data.country || ''
-            })
-            setCurrentStep('results')
-          }
-          
+          const matchesResult = await getUserMatches(userId)
           if (matchesResult.data) {
             setSavedMatches(matchesResult.data)
           }
         } catch (supabaseErr) {
-          console.warn('Could not load user preferences or matches:', supabaseErr)
-          // Continue with default preferences
+          console.warn('Could not load saved matches:', supabaseErr)
         }
       }
       
-      // Auto-generate matches if we have preferences
+      // Set preferences from user's registered interests (no need to ask again)
+      const userCountry = user?.country || userProfile?.country || ''
+      const updatedPreferences = {
+        sectors: userInterests,
+        interests: userInterests, // Use same interests for matching
+        lookingFor: 'all',
+        country: userCountry
+      }
+      setPreferences(updatedPreferences)
+      
+      // Auto-generate matches using user's registered interests
       if (exhibitorList.length > 0) {
-        const userSector = user?.company_sectors || userProfile?.sector
-        if (userSector || preferences.sectors.length > 0) {
-          generateMatches(exhibitorList)
-          setCurrentStep('results')
-        }
+        generateMatchesWithPrefs(exhibitorList, updatedPreferences)
+        setCurrentStep('results')
       }
     } catch (err) {
       console.error('Failed to load data:', err)
@@ -208,6 +229,22 @@ const Matchmaking = () => {
       setIsGenerating(false)
       setCurrentStep('results')
     }, 1500)
+  }
+
+  // Generate matches with provided preferences (for initial load with API data)
+  const generateMatchesWithPrefs = (exhibitorList, userPrefs) => {
+    const scoredExhibitors = exhibitorList.map(ex => {
+      const { score, reasons } = calculateMatchScore(ex, userPrefs)
+      return { ...ex, matchScore: score, matchReasons: reasons }
+    })
+    
+    // Sort by score and filter low matches
+    const sortedMatches = scoredExhibitors
+      .filter(ex => ex.matchScore > 20)
+      .sort((a, b) => b.matchScore - a.matchScore)
+      .slice(0, 20)
+    
+    setMatches(sortedMatches)
   }
 
   const handleSavePreferences = async () => {
