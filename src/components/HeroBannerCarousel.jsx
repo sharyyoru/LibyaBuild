@@ -33,29 +33,6 @@ const HeroBannerCarousel = () => {
 
   return (
     <div className="relative">
-      {/* Fancy Header Label */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center">
-            <Sparkles className="w-4 h-4 text-white" />
-          </div>
-          <span className="text-white/90 text-sm font-medium">Featured Highlights</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          {heroBanners.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentIndex(index)}
-              className={`h-1.5 rounded-full transition-all duration-300 ${
-                index === currentIndex
-                  ? 'bg-white w-6'
-                  : 'bg-white/30 w-1.5 hover:bg-white/50'
-              }`}
-            />
-          ))}
-        </div>
-      </div>
-
       {/* Main Carousel Container */}
       <div className="relative overflow-hidden rounded-3xl">
         {/* Glass Border Effect */}
@@ -74,7 +51,7 @@ const HeroBannerCarousel = () => {
               key={currentIndex}
               src={encodeURI(currentBanner.image)}
               alt={currentBanner.title}
-              className="w-full h-full object-contain transition-all duration-[6000ms] ease-linear scale-100 group-hover:scale-105"
+              className="w-full h-full object-cover transition-all duration-[6000ms] ease-linear scale-100 group-hover:scale-105"
               onError={(e) => {
                 console.error('Banner image failed to load:', currentBanner.image)
                 console.error('Encoded URL:', encodeURI(currentBanner.image))
@@ -128,6 +105,23 @@ const HeroBannerCarousel = () => {
           />
         </div>
       </div>
+
+      {/* Pagination Dots - Blue color */}
+      {heroBanners.length > 1 && (
+        <div className="flex items-center justify-center gap-1.5 mt-3">
+          {heroBanners.map((_, index) => (
+            <button
+              key={index}
+              onClick={() => setCurrentIndex(index)}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                index === currentIndex
+                  ? 'bg-primary-600 w-6'
+                  : 'bg-gray-300 w-1.5 hover:bg-gray-400'
+              }`}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }

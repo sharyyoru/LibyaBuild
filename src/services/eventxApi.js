@@ -3,7 +3,7 @@
  * Connects to the EventX backend API for visitor management
  */
 
-const EVENTX_API_BASE_URL = 'https://eventxtest.fxunlock.com/api';
+const EVENTX_API_BASE_URL = 'https://eventxcrm.com/api';
 const DEFAULT_EVENT_ID = 11;
 
 // Token storage
@@ -192,7 +192,7 @@ export const getVisitorMeetings = async (date) => {
  * Get all schedules
  */
 export const getSchedules = async () => {
-  return apiRequest('/schedule/index');
+  return apiRequest('/schedule/index?event_id=11');
 };
 
 /**
@@ -248,8 +248,12 @@ export const scheduleMeeting = async (meetingData) => {
  * @param {number} meetingId - Meeting ID
  */
 export const approveMeeting = async (meetingId) => {
-  return apiRequest(`/schedule/${meetingId}/1`, {
+  return apiRequest('/meeting/update-status', {
     method: 'PUT',
+    body: JSON.stringify({
+      meeting_id: meetingId,
+      type: 1
+    }),
   });
 };
 
@@ -268,8 +272,12 @@ export const cancelMeeting = async (meetingId) => {
  * @param {number} meetingId - Meeting ID
  */
 export const rejectMeeting = async (meetingId) => {
-  return apiRequest(`/schedule/${meetingId}/2`, {
+  return apiRequest('/meeting/update-status', {
     method: 'PUT',
+    body: JSON.stringify({
+      meeting_id: meetingId,
+      type: 2
+    }),
   });
 };
 
@@ -329,7 +337,7 @@ export const getExhibitionEventDetails = async (eventId) => {
  * Get all exhibitors
  */
 export const getExhibitors = async () => {
-  return apiRequest('/get-exhibitor');
+  return apiRequest('/get-exhibitor?event_id=11');
 };
 
 /**

@@ -114,9 +114,9 @@ const Partners = () => {
       }
       // Build full URL for relative paths starting with 'files/'
       if (logoPath.startsWith('files/')) {
-        return `https://eventxtest.fxunlock.com/storage/${logoPath}`
+        return `https://eventxcrm.com/storage/${logoPath}`
       }
-      return `https://eventxtest.fxunlock.com/storage/${logoPath}`
+      return `https://eventxcrm.com/storage/${logoPath}`
     }
     
     // Priority 2: Check other logo fields
@@ -134,9 +134,9 @@ const Partners = () => {
           return logoPath
         }
         if (logoPath.startsWith('files/')) {
-          return `https://eventxtest.fxunlock.com/storage/${logoPath}`
+          return `https://eventxcrm.com/storage/${logoPath}`
         }
-        return `https://eventxtest.fxunlock.com/storage/${logoPath}`
+        return `https://eventxcrm.com/storage/${logoPath}`
       }
     }
     
@@ -211,7 +211,7 @@ const Partners = () => {
           </div>
 
           {/* Search Bar */}
-          <div className="relative mb-4">
+          {/* <div className="relative mb-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-white/50" />
             <input
               type="text"
@@ -220,10 +220,10 @@ const Partners = () => {
               placeholder="Search partners..."
               className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 focus:bg-white/20 transition-all"
             />
-          </div>
+          </div> */}
 
           {/* Filter Pills */}
-          <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
+          {/* <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
             <select
               value={selectedSector}
               onChange={(e) => setSelectedSector(e.target.value)}
@@ -246,7 +246,7 @@ const Partners = () => {
                 </option>
               ))}
             </select>
-          </div>
+          </div> */}
         </div>
       </div>
 

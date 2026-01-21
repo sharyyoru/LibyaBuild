@@ -48,27 +48,34 @@ const Onboarding = () => {
 
   return (
     <div 
-      className="min-h-screen bg-gradient-to-br from-primary-600 via-primary-700 to-accent-500 flex items-center justify-center p-4"
+      className="min-h-screen flex items-center justify-center p-4 relative"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
-      <div className="w-full max-w-md">
+      {/* Gradient Background Image */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{ backgroundImage: "url('/media/newdesign/LB App - Gradient BG.jpg')" }}
+      />
+      <div className="absolute inset-0 bg-black/10" />
+      <div className="w-full max-w-md relative z-10">
         {/* Logo */}
         <div className="text-center mb-8">
           <img 
-            src="/media/App Icons-14.svg" 
+            src="/media/newdesign/LB Benghazi Logo.png" 
             alt="Libya Build" 
-            className="w-24 h-24 mx-auto mb-4"
+            className="h-16 mx-auto mb-4"
           />
-          <h1 className="text-3xl font-bold text-white">{t('libyaBuild')}</h1>
-          <p className="text-white/80 mt-2">{t('eventDate')}</p>
+          <h1 className="text-xl font-bold text-white">20-23 April 2026</h1>
+          <p className="text-white/90 mt-2 text-sm font-medium">Benghazi International</p>
+          <p className="text-white/90 text-sm font-medium">Conference & Exhibitions Centre</p>
         </div>
 
         {/* Step 1: Language Selection */}
         {step === 1 && (
           <div className="bg-white rounded-2xl shadow-xl p-6 animate-fadeIn">
             <div className="text-center mb-6">
-              <div className="w-14 h-14 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Globe className="w-7 h-7 text-primary-600" />
+              <div className="w-14 h-14 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Globe className="w-7 h-7 text-blue-600" />
               </div>
               <h2 className="text-xl font-bold text-gray-900">{t('selectLanguage')}</h2>
             </div>
@@ -78,7 +85,7 @@ const Onboarding = () => {
                 onClick={() => handleLanguageSelect('en')}
                 className={`w-full p-4 rounded-xl border-2 transition-all flex items-center justify-between ${
                   selectedLang === 'en'
-                    ? 'border-primary-500 bg-primary-50'
+                    ? 'border-blue-500 bg-blue-50'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
@@ -87,7 +94,7 @@ const Onboarding = () => {
                   <span className="font-medium text-gray-900">English</span>
                 </div>
                 {selectedLang === 'en' && (
-                  <div className="w-5 h-5 bg-primary-500 rounded-full flex items-center justify-center">
+                  <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
                     <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                     </svg>
@@ -99,7 +106,7 @@ const Onboarding = () => {
                 onClick={() => handleLanguageSelect('ar')}
                 className={`w-full p-4 rounded-xl border-2 transition-all flex items-center justify-between ${
                   selectedLang === 'ar'
-                    ? 'border-primary-500 bg-primary-50'
+                    ? 'border-blue-500 bg-blue-50'
                     : 'border-gray-200 hover:border-gray-300'
                 }`}
               >
@@ -108,7 +115,7 @@ const Onboarding = () => {
                   <span className="font-medium text-gray-900">العربية</span>
                 </div>
                 {selectedLang === 'ar' && (
-                  <div className="w-5 h-5 bg-primary-500 rounded-full flex items-center justify-center">
+                  <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
                     <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                     </svg>
@@ -119,7 +126,7 @@ const Onboarding = () => {
 
             <button
               onClick={handleLanguageContinue}
-              className="w-full bg-primary-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-primary-700 transition-all flex items-center justify-center gap-2"
+              className="w-full bg-blue-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-blue-700 transition-all flex items-center justify-center gap-2"
             >
               {t('continue')}
               <ChevronRight className={`w-5 h-5 ${isRTL ? 'rotate-180' : ''}`} />
@@ -147,7 +154,7 @@ const Onboarding = () => {
             <div className="space-y-4">
               <button
                 onClick={() => handleUserTypeSelect('visitor')}
-                className="w-full p-5 rounded-xl border-2 border-gray-200 hover:border-primary-500 hover:bg-primary-50 transition-all group"
+                className="w-full p-5 rounded-xl border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all group"
               >
                 <div className={`flex items-start gap-4 ${isRTL ? 'flex-row-reverse text-right' : ''}`}>
                   <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-blue-200 transition-all">
@@ -157,13 +164,13 @@ const Onboarding = () => {
                     <h3 className="font-semibold text-gray-900 mb-1">{t('iAmVisitor')}</h3>
                     <p className="text-sm text-gray-500">{t('visitorDesc')}</p>
                   </div>
-                  <ChevronRight className={`w-5 h-5 text-gray-400 group-hover:text-primary-500 transition-all flex-shrink-0 mt-3 ${isRTL ? 'rotate-180' : ''}`} />
+                  <ChevronRight className={`w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-all flex-shrink-0 mt-3 ${isRTL ? 'rotate-180' : ''}`} />
                 </div>
               </button>
 
               <button
                 onClick={() => handleUserTypeSelect('exhibitor')}
-                className="w-full p-5 rounded-xl border-2 border-gray-200 hover:border-primary-500 hover:bg-primary-50 transition-all group"
+                className="w-full p-5 rounded-xl border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 transition-all group"
               >
                 <div className={`flex items-start gap-4 ${isRTL ? 'flex-row-reverse text-right' : ''}`}>
                   <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:bg-amber-200 transition-all">
@@ -173,15 +180,15 @@ const Onboarding = () => {
                     <h3 className="font-semibold text-gray-900 mb-1">{t('iAmExhibitor')}</h3>
                     <p className="text-sm text-gray-500">{t('exhibitorDesc')}</p>
                   </div>
-                  <ChevronRight className={`w-5 h-5 text-gray-400 group-hover:text-primary-500 transition-all flex-shrink-0 mt-3 ${isRTL ? 'rotate-180' : ''}`} />
+                  <ChevronRight className={`w-5 h-5 text-gray-400 group-hover:text-blue-500 transition-all flex-shrink-0 mt-3 ${isRTL ? 'rotate-180' : ''}`} />
                 </div>
               </button>
             </div>
           </div>
         )}
 
-        <p className="text-center text-white/60 text-sm mt-6">
-          {t('allRightsReserved')}
+        <p className="text-center text-white/70 text-sm mt-6">
+          2026 Libya Build. All rights reserved
         </p>
       </div>
     </div>

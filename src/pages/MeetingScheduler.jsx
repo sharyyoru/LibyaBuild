@@ -42,6 +42,7 @@ const STATUS_CONFIG = {
   confirmed: { label: 'Confirmed', color: 'from-emerald-500 to-green-600', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', icon: CheckCircle },
   rejected: { label: 'Declined', color: 'from-red-500 to-rose-600', bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', icon: XCircle },
   cancelled: { label: 'Cancelled', color: 'from-gray-400 to-gray-500', bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-600', icon: XCircle },
+  cancel: { label: 'Cancelled', color: 'from-gray-400 to-gray-500', bg: 'bg-gray-50', border: 'border-gray-200', text: 'text-gray-600', icon: XCircle },
 }
 
 const DEFAULT_LOGO = '/media/default-company.svg'
@@ -335,9 +336,7 @@ const MeetingScheduler = () => {
   const handleCancel = async (meetingId) => {
     try {
       await rejectMeeting(meetingId) // Using rejectMeeting for cancellation as per API
-      setMeetings(prev => prev.map(m => 
-        m.id === meetingId ? { ...m, status: 'cancelled' } : m
-      ))
+      await loadData() // Reload data from API to get updated status
       setSuccess('Meeting cancelled')
       
       // Show notification
@@ -350,10 +349,7 @@ const MeetingScheduler = () => {
       }
     } catch (err) {
       console.error('Failed to cancel meeting:', err)
-      setMeetings(prev => prev.map(m => 
-        m.id === meetingId ? { ...m, status: 'cancelled' } : m
-      ))
-      updateMeeting(meetingId, { status: 'cancelled' })
+      setError('Failed to cancel meeting')
     }
   }
 
@@ -371,7 +367,18 @@ const MeetingScheduler = () => {
   // Filter meetings based on active filter
   const filteredMeetings = meetings.filter(m => {
     if (activeFilter === 'all') return true
-    return m.status === activeFilter
+    const status = (m.status || '').toLowerCase()
+    const filter = activeFilter.toLowerCase()
+    
+    // Handle special cases
+    if (filter === 'cancelled') {
+      return status === 'cancelled' || status === 'canceled' || status === 'cancel' || status === 'rejected'
+    }
+    if (filter === 'approved') {
+      return status === 'approved' || status === 'confirmed'
+    }
+    
+    return status === filter
   })
 
   // Separate incoming (for exhibitors) and outgoing (for visitors) meetings
@@ -380,9 +387,15 @@ const MeetingScheduler = () => {
 
   const filterCounts = {
     all: meetings.length,
-    pending: meetings.filter(m => m.status === 'pending').length,
-    approved: meetings.filter(m => m.status === 'approved' || m.status === 'confirmed').length,
-    cancelled: meetings.filter(m => m.status === 'cancelled' || m.status === 'rejected').length,
+    pending: meetings.filter(m => (m.status || '').toLowerCase() === 'pending').length,
+    approved: meetings.filter(m => {
+      const status = (m.status || '').toLowerCase()
+      return status === 'approved' || status === 'confirmed'
+    }).length,
+    cancelled: meetings.filter(m => {
+      const status = (m.status || '').toLowerCase()
+      return status === 'cancelled' || status === 'canceled' || status === 'cancel' || status === 'rejected'
+    }).length,
   }
 
   // Format date label
@@ -397,10 +410,13 @@ const MeetingScheduler = () => {
     }
   }
 
-  // Filter by day
+  // Filter by day - normalize dates for comparison
   const dayFilteredMeetings = filteredMeetings.filter(m => {
     if (activeDay === 'all') return true
-    return m.date === activeDay
+    // Normalize both dates to YYYY-MM-DD format
+    const meetingDate = m.date ? m.date.split('T')[0] : null
+    const filterDate = activeDay.split('T')[0]
+    return meetingDate === filterDate
   })
 
   // Group meetings by date

@@ -15,13 +15,35 @@ const MyMeetings = () => {
   const [error, setError] = useState('')
   const [actionLoading, setActionLoading] = useState(null)
 
+  // Load data on mount and when dependencies change
   useEffect(() => {
-    loadData()
-  }, [selectedDate])
+    console.log('🔄 MyMeetings useEffect triggered - User ID:', user?.id, 'Date:', selectedDate)
+    if (user?.id) {
+      loadData()
+    } else {
+      console.warn('⚠️ User ID not available yet, waiting...')
+    }
+  }, [selectedDate, user?.id])
+  
+  // Also load once on mount regardless
+  useEffect(() => {
+    console.log('🚀 MyMeetings component mounted')
+    const timer = setTimeout(() => {
+      if (user?.id) {
+        console.log('⏰ Delayed load triggered with user ID:', user.id)
+        loadData()
+      }
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [])
 
   const loadData = async () => {
     setIsLoading(true)
     try {
+      // Check localStorage for user data
+      const storedUser = localStorage.getItem('eventx_user')
+      console.log('🔍 RAW LocalStorage user:', storedUser)
+      
       const dateStr = selectedDate.toISOString().split('T')[0]
       const [meetingsData, schedulesData] = await Promise.all([
         getVisitorMeetings(dateStr),
@@ -33,19 +55,72 @@ const MyMeetings = () => {
       const allSchedules = schedulesData.data || []
       setSchedules(allSchedules)
       
-      // Filter meetings assigned to current user (for exhibitors)
+      console.log('=== MEETING REQUEST FILTER DEBUG ===')
+      console.log('📋 Total schedules fetched:', allSchedules.length)
+      
+      // Try multiple sources for user ID
+      let currentUserId = null
+      
+      // Source 1: From user context
       if (user?.id) {
-        const userAssignedMeetings = allSchedules.filter(schedule => {
-          // Check if user_id matches or if user is in the assigned users
-          return schedule.user_id === user.id || 
-                 schedule.assigned_user_id === user.id ||
-                 (schedule.attendees && schedule.attendees.some(a => a.user_id === user.id))
-        })
-        setExhibitorMeetings(userAssignedMeetings)
+        currentUserId = user.id
+        console.log('✅ User ID from context:', currentUserId)
       }
+      
+      // Source 2: From localStorage (fallback)
+      if (!currentUserId && storedUser) {
+        try {
+          const parsedUser = JSON.parse(storedUser)
+          currentUserId = parsedUser?.id
+          console.log('✅ User ID from localStorage:', currentUserId)
+        } catch (e) {
+          console.error('Failed to parse localStorage user')
+        }
+      }
+      
+      if (!currentUserId) {
+        console.error('❌ CRITICAL: No user ID found anywhere!')
+        console.error('User context:', user)
+        setExhibitorMeetings([])
+        setIsLoading(false)
+        return
+      }
+      
+      console.log('👤 Current User ID (final):', currentUserId, 'Type:', typeof currentUserId)
+      
+      // Filter meetings where schedule.user_id matches logged-in user
+      const userAssignedMeetings = []
+      
+      allSchedules.forEach((schedule, index) => {
+        const scheduleUserId = parseInt(schedule.user_id)
+        const loggedInUserId = parseInt(currentUserId)
+        
+        console.log(`\nSchedule #${index + 1} (ID: ${schedule.id})`)
+        console.log(`  - user_id: ${schedule.user_id} (${typeof schedule.user_id}) → parsed: ${scheduleUserId}`)
+        console.log(`  - visitor_id: ${schedule.visitor_id}`)
+        console.log(`  - Logged-in user: ${currentUserId} (${typeof currentUserId}) → parsed: ${loggedInUserId}`)
+        console.log(`  - Match? ${scheduleUserId === loggedInUserId ? '✅ YES' : '❌ NO'}`)
+        
+        if (scheduleUserId === loggedInUserId) {
+          console.log(`  ✅ ADDING to exhibitor meetings`)
+          userAssignedMeetings.push(schedule)
+        }
+      })
+      
+      console.log('\n📊 FINAL RESULTS:')
+      console.log('Total matched meetings:', userAssignedMeetings.length)
+      console.log('Matched meeting IDs:', userAssignedMeetings.map(m => m.id))
+      console.log('=== END DEBUG ===\n')
+      
+      console.log('📋 STATE SUMMARY:')
+      console.log('  - meetings (My Meetings tab):', meetings.length, 'items')
+      console.log('  - exhibitorMeetings (Meeting Requests tab):', userAssignedMeetings.length, 'items')
+      console.log('  - schedules (All Schedules tab):', allSchedules.length, 'items')
+      
+      setExhibitorMeetings(userAssignedMeetings)
     } catch (err) {
       setError('Failed to load meetings')
-      console.error(err)
+      console.error('Error loading data:', err)
     } finally {
       setIsLoading(false)
     }
@@ -95,6 +170,8 @@ const MyMeetings = () => {
       case 'pending':
         return 'bg-yellow-100 text-yellow-700'
       case 'cancelled':
+      case 'canceled':
+      case 'cancel':
       case 'rejected':
         return 'bg-red-100 text-red-700'
       default:
@@ -102,8 +179,31 @@ const MyMeetings = () => {
     }
   }
 
+  const pendingMeetingsCount = exhibitorMeetings.filter(m => {
+    const status = m.status?.toLowerCase()
+    return status === 'pending' && status !== 'cancelled' && status !== 'canceled' && status !== 'cancel'
+  }).length
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
+      {/* Incoming Meetings Notification Bar */}
+      {pendingMeetingsCount > 0 && (
+        <div className="bg-amber-500 text-white px-4 py-3 flex items-center justify-between sticky top-0 z-20">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+            <span className="font-medium text-sm">
+              {pendingMeetingsCount} Incoming Meeting Request{pendingMeetingsCount > 1 ? 's' : ''}
+            </span>
+          </div>
+          <button
+            onClick={() => setActiveTab('assigned')}
+            className="bg-white text-amber-600 px-3 py-1.5 rounded-lg text-xs font-semibold hover:bg-amber-50 transition-all"
+          >
+            View Now
+          </button>
+        </div>
+      )}
+
       <div className="bg-gradient-to-r from-primary-600 to-primary-700 text-white px-4 py-6">
         <div className="flex items-center justify-between">
           <div>
@@ -159,9 +259,15 @@ const MyMeetings = () => {
             }`}
           >
             Meeting Requests
-            {exhibitorMeetings.filter(m => m.status?.toLowerCase() === 'pending').length > 0 && (
+            {exhibitorMeetings.filter(m => {
+              const status = m.status?.toLowerCase()
+              return status === 'pending' && status !== 'cancelled' && status !== 'canceled' && status !== 'cancel'
+            }).length > 0 && (
               <span className="ml-1 px-1.5 py-0.5 bg-red-500 text-white text-xs rounded-full">
-                {exhibitorMeetings.filter(m => m.status?.toLowerCase() === 'pending').length}
+                {exhibitorMeetings.filter(m => {
+                  const status = m.status?.toLowerCase()
+                  return status === 'pending' && status !== 'cancelled' && status !== 'canceled' && status !== 'cancel'
+                }).length}
               </span>
             )}
           </button>
@@ -211,26 +317,32 @@ const MyMeetings = () => {
                         </div>
                         <div>
                           <h3 className="font-semibold text-gray-900">
-                            {meeting.visitor_name || meeting.requester_name || meeting.title || 'Meeting Request'}
+                            {meeting.name || 'Meeting Request'}
                           </h3>
                           <p className="text-sm text-gray-500">
-                            {meeting.visitor_company || meeting.company_name || ''}
+                            {meeting.company || ''}
+                          </p>
+                          <p className="text-xs text-gray-400">
+                            {meeting.email || ''}
                           </p>
                         </div>
                       </div>
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(meeting.status)}`}>
-                        {meeting.status || 'Pending'}
+                        {meeting.status?.toLowerCase() === 'cancel' ? 'Cancelled' : 
+                         meeting.status?.toLowerCase() === 'canceled' ? 'Cancelled' :
+                         meeting.status?.toLowerCase() === 'cancelled' ? 'Cancelled' :
+                         meeting.status?.charAt(0).toUpperCase() + meeting.status?.slice(1).toLowerCase() || 'Pending'}
                       </span>
                     </div>
                     
                     <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-3">
                       <div className="flex items-center gap-1">
                         <Calendar className="w-4 h-4" />
-                        {meeting.date || 'TBD'}
+                        {meeting.date ? new Date(meeting.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'TBD'}
                       </div>
                       <div className="flex items-center gap-1">
                         <Clock className="w-4 h-4" />
-                        {meeting.time || meeting.start_time || 'TBD'}
+                        {meeting.time || 'TBD'}
                       </div>
                       {meeting.location && (
                         <div className="flex items-center gap-1">
@@ -251,7 +363,7 @@ const MyMeetings = () => {
                         <button
                           onClick={() => handleApproveMeeting(meeting.id)}
                           disabled={actionLoading === meeting.id}
-                          className="flex-1 flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 transition-all"
+                          className="w-full flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 transition-all"
                         >
                           {actionLoading === meeting.id ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -259,18 +371,6 @@ const MyMeetings = () => {
                             <Check className="w-4 h-4" />
                           )}
                           Approve
-                        </button>
-                        <button
-                          onClick={() => handleRejectMeeting(meeting.id)}
-                          disabled={actionLoading === meeting.id}
-                          className="flex-1 flex items-center justify-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-red-700 disabled:opacity-50 transition-all"
-                        >
-                          {actionLoading === meeting.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <X className="w-4 h-4" />
-                          )}
-                          Reject
                         </button>
                       </div>
                     )}

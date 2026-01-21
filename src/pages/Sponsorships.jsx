@@ -225,7 +225,7 @@ const Sponsorships = () => {
         return logoPath
       }
       // Build full URL for relative paths
-      return `https://eventxtest.fxunlock.com/storage/${logoPath}`
+      return `https://eventxcrm.com/storage/${logoPath}`
     }
     
     // Priority 2: Check other logo fields from main sponsor
@@ -242,7 +242,7 @@ const Sponsorships = () => {
         if (logoPath.startsWith('http')) {
           return logoPath
         }
-        return `https://eventxtest.fxunlock.com/storage/${logoPath}`
+        return `https://eventxcrm.com/storage/${logoPath}`
       }
     }
     

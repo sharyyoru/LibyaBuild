@@ -9,6 +9,8 @@ import Loader from '../components/Loader'
 import { getExhibitor, scheduleMeeting } from '../services/eventxApi'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
+import { getLocalizedName, getLocalizedProfile, getLocalizedIndustry } from '../utils/localization'
 import { clsx } from 'clsx'
 
 const DEFAULT_LOGO = '/media/default-company.svg'
@@ -41,6 +43,7 @@ const ExhibitorDetail = () => {
   const navigate = useNavigate()
   const { isFavorite, toggleFavorite, addMeeting } = useApp()
   const { user } = useAuth()
+  const { language } = useLanguage()
   const [exhibitor, setExhibitor] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
@@ -98,7 +101,7 @@ const ExhibitorDetail = () => {
       if (logoPath.startsWith('http')) {
         return logoPath
       }
-      return `https://eventxtest.fxunlock.com/storage/${logoPath}`
+      return `https://eventxcrm.com/storage/${logoPath}`
     }
     
     const alternativeLogos = [
@@ -114,14 +117,14 @@ const ExhibitorDetail = () => {
         if (logoPath.startsWith('http')) {
           return logoPath
         }
-        return `https://eventxtest.fxunlock.com/storage/${logoPath}`
+        return `https://eventxcrm.com/storage/${logoPath}`
       }
     }
     
     return DEFAULT_LOGO
   }
 
-  const getName = () => exhibitor?.en_name || exhibitor?.company_name || exhibitor?.name || exhibitor?.company || 'Unknown Company'
+  const getName = () => getLocalizedName(exhibitor, language)
   const getArabicName = () => exhibitor?.ar_name || ''
   const getCountry = () => exhibitor?.country || exhibitor?.form3_data_entry?.country || exhibitor?.location || 'Libya'
   const getSector = () => {
@@ -161,13 +164,7 @@ const ExhibitorDetail = () => {
     return []
   }
   
-  const getExhibitorProfile = () => {
-    const form3Array = exhibitor?.form3_data_entry
-    if (Array.isArray(form3Array) && form3Array.length > 0) {
-      return form3Array[0]?.company_profile || form3Array[0]?.ar_company_profile || ''
-    }
-    return exhibitor?.description || exhibitor?.about || exhibitor?.company_description || ''
-  }
+  const getExhibitorProfile = () => getLocalizedProfile(exhibitor, language)
   
   const getHall = () => exhibitor?.hall || 'TBA'
   const getBooth = () => {
@@ -242,7 +239,7 @@ const ExhibitorDetail = () => {
     // Add main user if exists (from exhibitor.user field)
     if (exhibitor?.user && exhibitor.user.id) {
       users.push({
-        id: exhibitor.user.id, // This is the actual user ID we need
+        id: exhibitor.user.id,
         name: `${exhibitor.user.first_name || ''} ${exhibitor.user.last_name || ''}`.trim(),
         email: exhibitor.user.email,
         job_title: exhibitor.user.job_title,
@@ -253,24 +250,25 @@ const ExhibitorDetail = () => {
     // Add users from exhibitor_badges if available
     if (exhibitor?.exhibitor_badges && Array.isArray(exhibitor.exhibitor_badges)) {
       exhibitor.exhibitor_badges.forEach(badge => {
-        if (badge.user && badge.user.id) {
+        // New API structure: badge_user contains the actual user ID
+        if (badge.badge_user && badge.badge_user.id) {
           users.push({
-            id: badge.user.id, // This is the actual user ID we need
-            name: `${badge.user.first_name || ''} ${badge.user.last_name || ''}`.trim(),
-            email: badge.user.email,
-            job_title: badge.user.job_title,
+            id: badge.badge_user.id, // This is the actual badge user ID (826, 827, etc.)
+            name: `${badge.fnameEN || ''} ${badge.lnameEN || ''}`.trim(),
+            email: badge.email,
+            job_title: badge.role,
             type: 'badge_user'
           })
         }
       })
     }
 
-    // Add users from form3_data_entry if available (this is where the actual users are)
+    // Add users from form3_data_entry if available
     if (exhibitor?.form3_data_entry && Array.isArray(exhibitor.form3_data_entry)) {
       exhibitor.form3_data_entry.forEach(entry => {
         if (entry.user && entry.user.id) {
           users.push({
-            id: entry.user.id, // This is the actual user ID we need
+            id: entry.user.id,
             name: `${entry.user.first_name || ''} ${entry.user.last_name || ''}`.trim(),
             email: entry.user.email,
             job_title: entry.user.job_title,
@@ -280,7 +278,7 @@ const ExhibitorDetail = () => {
       })
     }
 
-    // Remove duplicates by user ID (not email)
+    // Remove duplicates by user ID
     const uniqueUsers = users.filter((user, index, self) => 
       index === self.findIndex(u => u.id === user.id)
     )
@@ -312,13 +310,20 @@ const ExhibitorDetail = () => {
     setIsSubmitting(true)
     setError('')
     try {
-      // Use selected users or fallback if no users available
-      const userIds = selectedUserIds.length > 0 ? selectedUserIds : 
-                     availableUsers.length > 0 ? [availableUsers[0].id] : [parseInt(id)]
+      // Selected IDs are already the correct user IDs (badge_user.id for badges, user.id for others)
+      const badgeUserIds = selectedUserIds.length > 0 
+        ? selectedUserIds
+        : availableUsers.length > 0 
+          ? [availableUsers[0].id] 
+          : []
+      
+      // Add visitor_id (auth user) to the user_ids array
+      const visitorId = exhibitor?.visitor_id || exhibitor?.user?.id
+      const actualUserIds = visitorId ? [visitorId, ...badgeUserIds] : badgeUserIds
       
       // Use scheduleMeeting API with user_ids instead of createSchedule
       const meetingData = {
-        user_ids: userIds,
+        user_ids: actualUserIds.length > 0 ? actualUserIds : [parseInt(id)],
         date: selectedDate,
         time: selectedTime,
         message: `BUSINESS MEETING: ${meetingNotes}\n\nDuration: 30 minutes\nRequested by: ${user?.first_name || user?.name || 'User'}\nWith: ${getName()}`
@@ -552,33 +557,6 @@ const ExhibitorDetail = () => {
             </Card>
           )}
 
-          {/* Team Members */}
-          {getExhibitorBadges().length > 0 && (
-            <Card className="p-4">
-              <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                <Users className="w-5 h-5 text-primary-600" />
-                Team Members ({getExhibitorBadges().length})
-              </h3>
-              <div className="space-y-2">
-                {getExhibitorBadges().slice(0, 3).map((badge, index) => (
-                  <div key={badge.id || index} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                    <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
-                      <User className="w-5 h-5 text-primary-600" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900 text-sm">{badge.name || 'Team Member'}</p>
-                      <p className="text-xs text-gray-500">{badge.job_title || badge.position || 'Representative'}</p>
-                    </div>
-                  </div>
-                ))}
-                {getExhibitorBadges().length > 3 && (
-                  <p className="text-center text-sm text-gray-500 pt-2">
-                    +{getExhibitorBadges().length - 3} more team members
-                  </p>
-                )}
-              </div>
-            </Card>
-          )}
 
           {/* Contact Information */}
           <Card className="p-4">
@@ -619,37 +597,22 @@ const ExhibitorDetail = () => {
               )}
             </div>
             
-            {/* All Contacts */}
-            {getAllContacts().length > 1 && (
+            {/* Team Members */}
+            {getExhibitorBadges().length > 0 && (
               <div>
-                <h4 className="font-semibold text-gray-900 mb-3 text-sm">All Team Contacts</h4>
+                <h4 className="font-semibold text-gray-900 mb-3 text-sm">Team Members</h4>
                 <div className="space-y-2">
-                  {getAllContacts().map((contact, index) => (
+                  {getExhibitorBadges().map((badge, index) => (
                     <div key={index} className="border border-gray-200 rounded-xl p-3">
-                      <div className="flex justify-between items-start mb-2">
-                        <h5 className="font-medium text-gray-900 text-sm">
-                          {contact.first_name} {contact.last_name}
-                        </h5>
-                        <Badge variant="outline" size="sm" className="text-xs">
-                          {contact.contact_type?.replace('_', ' ')}
-                        </Badge>
-                      </div>
-                      {contact.job_title && (
-                        <p className="text-xs text-gray-600 mb-2">{contact.job_title}</p>
-                      )}
-                      <div className="space-y-1 text-xs">
-                        {contact.email && (
-                          <p className="text-primary-600 hover:text-primary-700">
-                            <a href={`mailto:${contact.email}`}>{contact.email}</a>
-                          </p>
-                        )}
-                        {contact.phone && (
-                          <p className="text-gray-600">
-                            <a href={`tel:${contact.phone}`} className="hover:text-primary-600">
-                              {contact.phone}
-                            </a>
-                          </p>
-                        )}
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h5 className="font-medium text-gray-900 text-sm">
+                            {badge.fnameEN || ''} {badge.lnameEN || ''}
+                          </h5>
+                          {badge.role && (
+                            <p className="text-xs text-gray-600 mt-1">{badge.role}</p>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -658,8 +621,8 @@ const ExhibitorDetail = () => {
             )}
           </Card>
 
-          {/* Meeting Request */}
-          {user && (
+          {/* Meeting Request - Hide for partners */}
+          {user && exhibitor?.event_user?.is_partner !== 1 && (
             <Card className="p-4">
               <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-primary-600" />
@@ -724,9 +687,11 @@ const ExhibitorDetail = () => {
                                   {user.name || 'No Name'}
                                 </span>
                               </div>
-                              <p className="text-xs text-gray-500 truncate">
-                                {user.email} • {user.job_title || 'No Title'}
-                              </p>
+                              {user.job_title && (
+                                <p className="text-xs text-gray-500 truncate">
+                                  {user.job_title}
+                                </p>
+                              )}
                             </div>
                           </label>
                         ))}
@@ -812,20 +777,6 @@ const ExhibitorDetail = () => {
               )}
             </Card>
           )}
-
-          {/* Other Actions */}
-          <div className="grid grid-cols-2 gap-3">
-            <Link to="/exhibitors">
-              <Button variant="outline" fullWidth className="border-primary-200 text-primary-600 hover:bg-primary-50">
-                <Building2 className="w-4 h-4 mr-2" />
-                All Exhibitors
-              </Button>
-            </Link>
-            <Button fullWidth className="bg-primary-600 hover:bg-primary-700">
-              <User className="w-4 h-4 mr-2" />
-              Exchange Card
-            </Button>
-          </div>
         </div>
       </div>
     </>

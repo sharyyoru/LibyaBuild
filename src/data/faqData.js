@@ -31,7 +31,7 @@ export const faqs = [
     id: 1,
     category: 'general',
     question: "When is Libya Build 2026?",
-    answer: "Libya Build 2026 takes place from March 15-17, 2026. The event runs from 9:00 AM to 7:00 PM each day.",
+    answer: "Libya Build 2026 takes place from April 20-23, 2026. The event runs from 9:00 AM to 7:00 PM each day.",
     keywords: ["dates", "when", "time", "schedule", "hours"]
   },
   {

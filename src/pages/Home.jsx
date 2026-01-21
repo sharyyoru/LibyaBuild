@@ -1,9 +1,8 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { QrCode, Sparkles, Plane, FileText, Hotel, Bell, ChevronRight, Calendar, MapPin, Users, Zap, ArrowRight, Clock, Star } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { QrCode, Sparkles, Plane, FileText, Hotel, Bell, ChevronRight, Calendar, MapPin, Users, Zap, ArrowRight, Clock, Star, Search } from 'lucide-react'
 import HeroBannerCarousel from '../components/HeroBannerCarousel'
 import PromotionalBanner from '../components/PromotionalBanner'
-import AppInstallBanner from '../components/AppInstallBanner'
 import { newsItems, exhibitors } from '../data/mockData'
 import { useApp } from '../context/AppContext'
 import { format } from 'date-fns'
@@ -111,8 +110,10 @@ const ExtraServiceCard = ({ to, icon: Icon, title, description, gradient, coming
 
 const Home = () => {
   const [activeTab, setActiveTab] = useState('quick')
+  const [searchQuery, setSearchQuery] = useState('')
   const latestNews = newsItems.slice(0, 1)
   const { userProfile } = useApp()
+  const navigate = useNavigate()
 
   const getSuggestedExhibitors = () => {
     if (!userProfile.sector) return []
@@ -121,77 +122,52 @@ const Home = () => {
 
   const suggested = getSuggestedExhibitors()
 
+  const handleSearch = (e) => {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      navigate(`/exhibitors?search=${encodeURIComponent(searchQuery.trim())}`)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Header Section */}
       <div className="relative overflow-hidden">
-        {/* Animated Gradient Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-primary-600 via-primary-700 to-accent-600" />
-        
-        {/* Floating Orbs */}
-        <div className="absolute top-20 left-10 w-32 h-32 bg-accent-400/20 rounded-full blur-3xl animate-float" />
-        <div className="absolute top-40 right-5 w-24 h-24 bg-primary-300/20 rounded-full blur-2xl animate-float-delayed" />
-        <div className="absolute -bottom-10 left-1/2 w-40 h-40 bg-white/10 rounded-full blur-3xl" />
-        
-        {/* Grid Pattern Overlay */}
-        <div className="absolute inset-0 opacity-5" style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
-        }} />
-        
-        <div className="relative px-4 pt-6 pb-6 safe-top">
-          {/* Top Header Row */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              {/* Logo with Glow */}
+        {/* Cyan to Blue Gradient Background */}
+        <div className="bg-gradient-to-r from-cyan-400 via-blue-500 to-blue-900 px-4 pt-16 pb-4 safe-top">
+          {/* Header with Search Bar */}
+          <div className="flex items-center gap-3">
+            {/* Exhibitor Search */}
+            <form onSubmit={handleSearch} className="flex-1">
               <div className="relative">
-                <div className="absolute inset-0 bg-white/30 rounded-2xl blur-lg" />
-                <div className="relative w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl p-2 border border-white/30">
-                  <img src="/media/App Icons-14.svg" alt="Libya Build" className="w-full h-full" />
-                </div>
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search Exhibitors"
+                  className="w-full pl-12 pr-4 py-3.5 bg-white rounded-2xl focus:ring-2 focus:ring-white/50 focus:outline-none transition-all text-gray-700 placeholder:text-gray-400"
+                />
               </div>
-              <div>
-                <h1 className="text-2xl font-bold text-white tracking-tight">Libya Build</h1>
-                <div className="flex items-center gap-2 text-white/80 text-sm">
-                  <Calendar className="w-3.5 h-3.5" />
-                  <span>April 20-23, 2026</span>
-                </div>
-              </div>
-            </div>
+            </form>
             
             {/* Action Buttons */}
-            <div className="flex items-center gap-2">
-              <Link to="/notifications">
-                <div className="relative w-11 h-11 bg-white/15 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/20 hover:bg-white/25 transition-all active:scale-95">
-                  <Bell className="w-5 h-5 text-white" />
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-accent-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white border-2 border-primary-600">3</span>
-                </div>
-              </Link>
-              <Link to="/tickets">
-                <div className="w-11 h-11 bg-white/15 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/20 hover:bg-white/25 transition-all active:scale-95">
-                  <QrCode className="w-5 h-5 text-white" />
-                </div>
-              </Link>
-            </div>
-          </div>
-
-          {/* Event Stats Bar */}
-          <div className="flex items-center gap-3 mb-6 overflow-x-auto pb-1 -mx-4 px-4">
-            {[
-              { icon: Users, label: 'Exhibitors', value: '200+' },
-              { icon: MapPin, label: 'Venue', value: 'Tripoli' },
-              { icon: Clock, label: 'Days Left', value: '45' },
-            ].map((stat, i) => (
-              <div key={i} className="flex items-center gap-2 px-3 py-2 bg-white/10 backdrop-blur-md rounded-xl border border-white/10 whitespace-nowrap">
-                <stat.icon className="w-4 h-4 text-accent-300" />
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-white font-bold text-sm">{stat.value}</span>
-                  <span className="text-white/60 text-xs">{stat.label}</span>
-                </div>
+            <Link to="/notifications">
+              <div className="relative w-11 h-11 flex items-center justify-center hover:opacity-80 transition-opacity active:scale-95">
+                <Bell className="w-6 h-6 text-white" />
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[10px] font-bold text-white">3</span>
               </div>
-            ))}
+            </Link>
+            <Link to="/tickets">
+              <div className="w-11 h-11 flex items-center justify-center hover:opacity-80 transition-opacity active:scale-95">
+                <QrCode className="w-6 h-6 text-white" />
+              </div>
+            </Link>
           </div>
+        </div>
 
-          {/* Hero Banner Carousel */}
+        {/* Hero Banner Carousel */}
+        <div className="px-4 pt-4 pb-4 bg-gray-50">
           <HeroBannerCarousel />
         </div>
       </div>
@@ -239,16 +215,14 @@ const Home = () => {
             {/* Quick Access Grid */}
             {activeTab === 'quick' && (
               <div className="grid grid-cols-4 gap-2.5">
-                <QuickAction to="/partners" icon="/media/PNG/App Icons-13.png" title="Partners" delay={0} />
-                <QuickAction to="/sponsorships" icon="/media/PNG/App Icons-14.png" title="Sponsorships" delay={50} />
-                <QuickAction to="/speakers" icon="/media/PNG/App Icons-11.png" title="Speakers" delay={100} />
-                <QuickAction to="/schedule" icon="/media/PNG/App Icons-09.png" title="Schedule" delay={150} />
-                <QuickAction to="/tickets" icon="/media/PNG/App Icons-08.png" title="Tickets" delay={200} />
-                <QuickAction to="/meetings" icon="/media/PNG/App Icons-15.png" title="Meetings" delay={250} />
-                <QuickAction to="/business-cards" icon="/media/PNG/App Icons-01.png" title="Cards" delay={300} />
-                <QuickAction to="/navigation" icon="/media/PNG/App Icons-03.png" title="Navigate" delay={350} comingSoon={true} />
-                {/* Floor Plan removed from display but keeping code for later use */}
-                {/* <QuickAction to="/floor-plan" icon="/media/PNG/App Icons-12.png" title="Floor Plan" delay={100} /> */}
+                <QuickAction to="/exhibitors" icon="/media/PNG/App Icons-13.png" title="Exhibitors" delay={0} />
+                <QuickAction to="/sponsorships" icon="/media/PNG/App Icons-14.png" title="Sponsors" delay={50} />
+                <QuickAction to="/speakers" icon="/media/PNG/App Icons-11.png" title="Speakers" delay={100} comingSoon={true} />
+                <QuickAction to="/schedule" icon="/media/PNG/App Icons-09.png" title="Agenda" delay={150} comingSoon={true} />
+                <QuickAction to="/tickets" icon="/media/PNG/App Icons-08.png" title="My Badge" delay={200} />
+                <QuickAction to="/business-cards" icon="/media/PNG/App Icons-01.png" title="Digital Card" delay={250} />
+                <QuickAction to="/meetings" icon="/media/PNG/App Icons-15.png" title="Meetings" delay={300} />
+                <QuickAction to="/navigation" icon="/media/PNG/App Icons-03.png" title="Event Map" delay={350} comingSoon={true} />
               </div>
             )}
 
@@ -294,14 +268,6 @@ const Home = () => {
                 
                 {/* Minimal Overlay for Future Carousel Functionality */}
                 <div className="absolute inset-0 bg-black/5" />
-                
-                {/* Sponsored Tag - Top Left Corner */}
-                <div className="absolute top-4 left-4">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-600/80 backdrop-blur-md rounded-full text-xs font-medium text-white border border-blue-400/50">
-                    <Star className="w-3 h-3" />
-                    Sponsored
-                  </span>
-                </div>
                 
                 {/* View Profile Button - Bottom Right Corner */}
                 <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -421,8 +387,6 @@ const Home = () => {
           </div>
         </div>
       </div>
-
-      <AppInstallBanner />
     </div>
   )
 }

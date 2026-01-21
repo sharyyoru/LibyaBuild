@@ -166,16 +166,16 @@ export const getSystemConfig = async () => {
     }
     return {
       event_name: 'Libya Build 2026',
-      event_start_date: '2026-03-15',
-      event_end_date: '2026-03-17',
+      event_start_date: '2026-04-20',
+      event_end_date: '2026-04-23',
       venue_name: 'Tripoli International Fair Ground'
     }
   } catch (error) {
     console.error('Error fetching system config:', error)
     return {
       event_name: 'Libya Build 2026',
-      event_start_date: '2026-03-15',
-      event_end_date: '2026-03-17'
+      event_start_date: '2026-04-20',
+      event_end_date: '2026-04-23'
     }
   }
 }

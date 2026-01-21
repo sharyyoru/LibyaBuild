@@ -13,6 +13,7 @@ import Onboarding from './pages/Onboarding'
 import VisitorLogin from './pages/VisitorLogin'
 import ExhibitorLogin from './pages/ExhibitorLogin'
 import Login from './pages/Login'
+import ForgotPassword from './pages/ForgotPassword'
 import Scanner from './pages/Scanner'
 import Home from './pages/Home'
 import Exhibitors from './pages/Exhibitors'
@@ -63,6 +64,7 @@ function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/login/visitor" element={<VisitorLogin />} />
                 <Route path="/login/exhibitor" element={<ExhibitorLogin />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/register" element={<Registration />} />
 
                 {/* Admin Portal Routes */}

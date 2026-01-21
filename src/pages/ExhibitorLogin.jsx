@@ -5,7 +5,7 @@ import { useLanguage } from '../context/LanguageContext'
 import { translations } from '../i18n/translations'
 import { setAuthToken } from '../services/eventxApi'
 
-const EVENTX_API_BASE_URL = 'https://eventxtest.fxunlock.com/api'
+const EVENTX_API_BASE_URL = 'https://eventxcrm.com/api'
 const DEFAULT_EVENT_ID = 11
 
 const ExhibitorLogin = () => {
@@ -35,7 +35,7 @@ const ExhibitorLogin = () => {
     formData.append('password', password)
     formData.append('eventId', DEFAULT_EVENT_ID.toString())
 
-    const response = await fetch(`${EVENTX_API_BASE_URL}/login-exhibitor`, {
+    const response = await fetch(`${EVENTX_API_BASE_URL}/login-visitor`, {
       method: 'POST',
       headers: { 'Accept': 'application/json' },
       body: formData
@@ -188,7 +188,7 @@ const ExhibitorLogin = () => {
 
   return (
     <div 
-      className="min-h-screen bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600 py-8 px-4"
+      className="min-h-screen bg-gradient-to-br from-primary-600 via-primary-700 to-accent-500 py-8 px-4"
       dir={isRTL ? 'rtl' : 'ltr'}
     >
       <div className="max-w-md mx-auto">
@@ -203,11 +203,12 @@ const ExhibitorLogin = () => {
 
         {/* Logo */}
         <div className="text-center mb-6">
-          <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
-            <Building2 className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-white">{t('iAmExhibitor')}</h1>
-          <p className="text-white/80 mt-1">{t('libyaBuild')}</p>
+          <img 
+            src="/media/App Icons-14.svg" 
+            alt="Libya Build" 
+            className="w-16 h-16 mx-auto mb-3"
+          />
+          <h1 className="text-2xl font-bold text-white">{t('libyaBuild')}</h1>
         </div>
 
         <div className="bg-white rounded-2xl shadow-xl p-6">
@@ -260,7 +261,7 @@ const ExhibitorLogin = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-amber-500 text-white py-3 px-4 rounded-xl font-semibold hover:bg-amber-600 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                className="w-full bg-primary-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-primary-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
               >
                 {isLoading ? (
                   <>
@@ -287,8 +288,8 @@ const ExhibitorLogin = () => {
           {mode === 'changePassword' && (
             <form onSubmit={handleChangePassword} className="space-y-4">
               <div className="text-center mb-4">
-                <div className="w-14 h-14 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                  <Lock className="w-7 h-7 text-amber-600" />
+                <div className="w-14 h-14 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <Lock className="w-7 h-7 text-primary-600" />
                 </div>
                 <h2 className="text-xl font-bold text-gray-900">{t('changePassword')}</h2>
                 <p className="text-sm text-gray-500 mt-1">{t('changePasswordDesc')}</p>
@@ -342,7 +343,7 @@ const ExhibitorLogin = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-amber-500 text-white py-3 px-4 rounded-xl font-semibold hover:bg-amber-600 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                className="w-full bg-primary-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-primary-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2"
               >
                 {isLoading ? (
                   <>

@@ -82,7 +82,7 @@ export const translations = {
     more: 'More',
     
     // Event Info
-    eventDate: 'March 15-17, 2026',
+    eventDate: 'April 20-23, 2026',
     eventLocation: 'Tripoli International Fair Ground',
     allRightsReserved: '© 2026 Libya Build. All rights reserved.',
     

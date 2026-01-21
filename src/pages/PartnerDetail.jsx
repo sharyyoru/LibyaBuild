@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { MapPin, Mail, Phone, Globe, Heart, Calendar, Building2, ArrowLeft, Clock, Users, Package, CheckCircle, Loader2, ChevronDown, Send, Star, Award, Crown, BadgeCheck, Briefcase, User, Shield } from 'lucide-react'
+import { useLanguage } from '../context/LanguageContext'
+import { getLocalizedName, getLocalizedProfile } from '../utils/localization'
 import Header from '../components/Header'
 import Card from '../components/Card'
 import Button from '../components/Button'
@@ -41,6 +43,7 @@ const PartnerDetail = () => {
   const navigate = useNavigate()
   const { isFavorite, toggleFavorite, addMeeting } = useApp()
   const { user } = useAuth()
+  const { language } = useLanguage()
   const [partner, setPartner] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
@@ -102,7 +105,7 @@ const PartnerDetail = () => {
       if (logoPath.startsWith('http')) {
         return logoPath
       }
-      return `https://eventxtest.fxunlock.com/storage/${logoPath}`
+      return `https://eventxcrm.com/storage/${logoPath}`
     }
     
     // Priority 2: Check root logo field
@@ -112,7 +115,7 @@ const PartnerDetail = () => {
       if (logoPath.startsWith('http')) {
         return logoPath
       }
-      return `https://eventxtest.fxunlock.com/storage/${logoPath}`
+      return `https://eventxcrm.com/storage/${logoPath}`
     }
     
     // Priority 3: Check other logo fields
@@ -128,17 +131,14 @@ const PartnerDetail = () => {
         if (logoPath.startsWith('http')) {
           return logoPath
         }
-        return `https://eventxtest.fxunlock.com/storage/${logoPath}`
+        return `https://eventxcrm.com/storage/${logoPath}`
       }
     }
     
     return DEFAULT_LOGO
   }
 
-  const getPartnerName = () => {
-    const form3Data = partner?.form3_data_entry?.[0]
-    return form3Data?.company || partner?.en_name || partner?.company_name || partner?.name || 'Partner'
-  }
+  const getPartnerName = () => getLocalizedName(partner, language)
   
   const getPartnerArabicName = () => {
     const form3Data = partner?.form3_data_entry?.[0]
@@ -162,6 +162,8 @@ const PartnerDetail = () => {
     const form3Data = partner?.form3_data_entry?.[0]
     return form3Data?.company_industries || []
   }
+  
+  const getPartnerProfile = () => getLocalizedProfile(partner, language)
   
   const getPartnerDescription = () => {
     const form3Data = partner?.form3_data_entry?.[0]
@@ -210,6 +212,8 @@ const PartnerDetail = () => {
   const getAllContacts = () => {
     return partner?.contacts || []
   }
+  
+  const getExhibitorBadges = () => partner?.exhibitor_badges || []
 
   // Check if partner is official
   const isOfficialPartner = () => partner?.is_partner === 1 || partner?.is_partner === true
@@ -231,12 +235,13 @@ const PartnerDetail = () => {
     // Add users from exhibitor_badges if available
     if (partner?.exhibitor_badges && Array.isArray(partner.exhibitor_badges)) {
       partner.exhibitor_badges.forEach(badge => {
-        if (badge.user && badge.user.id) {
+        // New API structure: badge_user contains the actual user ID
+        if (badge.badge_user && badge.badge_user.id) {
           users.push({
-            id: badge.user.id, // This is the actual user ID we need
-            name: `${badge.user.first_name || ''} ${badge.user.last_name || ''}`.trim(),
-            email: badge.user.email,
-            job_title: badge.user.job_title,
+            id: badge.badge_user.id, // This is the actual badge user ID (826, 827, etc.)
+            name: `${badge.fnameEN || ''} ${badge.lnameEN || ''}`.trim(),
+            email: badge.email,
+            job_title: badge.role,
             type: 'badge_user'
           })
         }
@@ -545,37 +550,22 @@ const PartnerDetail = () => {
               )}
             </div>
             
-            {/* All Contacts */}
-            {getAllContacts().length > 1 && (
+            {/* Team Members */}
+            {getExhibitorBadges().length > 0 && (
               <div>
-                <h4 className="font-semibold text-gray-900 mb-3 text-sm">All Team Contacts</h4>
+                <h4 className="font-semibold text-gray-900 mb-3 text-sm">Team Members</h4>
                 <div className="space-y-2">
-                  {getAllContacts().map((contact, index) => (
+                  {getExhibitorBadges().map((badge, index) => (
                     <div key={index} className="border border-gray-200 rounded-xl p-3">
-                      <div className="flex justify-between items-start mb-2">
-                        <h5 className="font-medium text-gray-900 text-sm">
-                          {contact.first_name} {contact.last_name}
-                        </h5>
-                        <Badge variant="outline" size="sm" className="text-xs">
-                          {contact.contact_type?.replace('_', ' ')}
-                        </Badge>
-                      </div>
-                      {contact.job_title && (
-                        <p className="text-xs text-gray-600 mb-2">{contact.job_title}</p>
-                      )}
-                      <div className="space-y-1 text-xs">
-                        {contact.email && (
-                          <p className="text-purple-600 hover:text-purple-700">
-                            <a href={`mailto:${contact.email}`}>{contact.email}</a>
-                          </p>
-                        )}
-                        {contact.phone && (
-                          <p className="text-gray-600">
-                            <a href={`tel:${contact.phone}`} className="hover:text-purple-600">
-                              {contact.phone}
-                            </a>
-                          </p>
-                        )}
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h5 className="font-medium text-gray-900 text-sm">
+                            {badge.fnameEN || ''} {badge.lnameEN || ''}
+                          </h5>
+                          {badge.role && (
+                            <p className="text-xs text-gray-600 mt-1">{badge.role}</p>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -583,175 +573,6 @@ const PartnerDetail = () => {
               </div>
             )}
           </Card>
-
-          {/* Meeting Request */}
-          {user && (
-            <Card className="p-4">
-              <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-purple-600" />
-                Schedule Meeting
-              </h3>
-              
-              {!showMeetingForm ? (
-                <Button
-                  onClick={() => setShowMeetingForm(true)}
-                  fullWidth
-                  className="bg-purple-600 hover:bg-purple-700"
-                >
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Request Meeting
-                </Button>
-              ) : (
-                <form onSubmit={handleMeetingSubmit} className="space-y-4">
-                  {/* Date Selection */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Date</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {EVENT_DATES.map(({ date, label }) => (
-                        <button
-                          key={date}
-                          type="button"
-                          onClick={() => setSelectedDate(date)}
-                          className={clsx(
-                            'py-2 px-3 rounded-lg text-sm font-medium transition-all',
-                            selectedDate === date
-                              ? 'bg-purple-600 text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          )}
-                        >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* User Selection */}
-                  {availableUsers.length > 0 && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Select Users ({selectedUserIds.length} selected)
-                      </label>
-                      <div className="space-y-2 max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-2">
-                        {availableUsers.map((user) => (
-                          <label
-                            key={user.id}
-                            className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-50 cursor-pointer"
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selectedUserIds.includes(user.id)}
-                              onChange={() => handleUserSelect(user.id)}
-                              className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-                            />
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center space-x-2">
-                                <User className="w-4 h-4 text-gray-400" />
-                                <span className="text-sm font-medium text-gray-900 truncate">
-                                  {user.name || 'No Name'}
-                                </span>
-                              </div>
-                              <p className="text-xs text-gray-500 truncate">
-                                {user.email} • {user.job_title || 'No Title'}
-                              </p>
-                            </div>
-                          </label>
-                        ))}
-                      </div>
-                      {availableUsers.length === 0 && (
-                        <div className="text-center py-4 text-sm text-amber-600 bg-amber-50 rounded-lg">
-                          No user contacts found for this partner.
-                          You may still request a meeting, but it will be sent to the company directly.
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Time Selection */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Time</label>
-                    <div className="grid grid-cols-4 gap-2">
-                      {TIME_SLOTS.map((time) => (
-                        <button
-                          key={time}
-                          type="button"
-                          onClick={() => setSelectedTime(time)}
-                          className={clsx(
-                            'py-2 px-2 rounded-lg text-xs font-medium transition-all',
-                            selectedTime === time
-                              ? 'bg-purple-600 text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          )}
-                        >
-                          {formatTimeSlot(time)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Purpose */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Meeting Purpose</label>
-                    <textarea
-                      value={meetingPurpose}
-                      onChange={(e) => setMeetingPurpose(e.target.value)}
-                      placeholder="Describe the purpose of your meeting..."
-                      className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none text-sm"
-                      rows={3}
-                    />
-                  </div>
-
-                  {/* Actions */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      fullWidth
-                      onClick={() => {
-                        setShowMeetingForm(false)
-                        setSelectedTime('')
-                        setMeetingPurpose('')
-                      }}
-                      disabled={isSubmittingMeeting}
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      fullWidth
-                      disabled={!selectedTime || isSubmittingMeeting}
-                      className="bg-purple-600 hover:bg-purple-700"
-                    >
-                      {isSubmittingMeeting ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Sending...
-                        </>
-                      ) : (
-                        <>
-                          <Send className="w-4 h-4 mr-2" />
-                          Send Request
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </form>
-              )}
-            </Card>
-          )}
-
-          {/* Other Actions */}
-          <div className="grid grid-cols-2 gap-3">
-            <Link to="/partners">
-              <Button variant="outline" fullWidth className="border-purple-200 text-purple-600 hover:bg-purple-50">
-                <Users className="w-4 h-4 mr-2" />
-                All Partners
-              </Button>
-            </Link>
-            <Button fullWidth className="bg-purple-600 hover:bg-purple-700">
-              <User className="w-4 h-4 mr-2" />
-              Exchange Card
-            </Button>
-          </div>
         </div>
 
       </div>

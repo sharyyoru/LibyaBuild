@@ -10,6 +10,8 @@ import MeetingRequestModal from '../components/MeetingRequestModal'
 import { getExhibitors, getIndustries } from '../services/eventxApi'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
+import { getLocalizedName, getLocalizedIndustry } from '../utils/localization'
 import { clsx } from 'clsx'
 
 const DEFAULT_LOGO = '/media/default-company.svg'
@@ -34,6 +36,7 @@ const Exhibitors = () => {
   const [selectedExhibitor, setSelectedExhibitor] = useState(null)
   const { isFavorite, toggleFavorite } = useApp()
   const { user } = useAuth()
+  const { language } = useLanguage()
 
   useEffect(() => {
     loadData()
@@ -97,7 +100,7 @@ const Exhibitors = () => {
         return logoPath
       }
       // Build full URL for relative paths
-      return `https://eventxtest.fxunlock.com/storage/${logoPath}`
+      return `https://eventxcrm.com/storage/${logoPath}`
     }
     
     // Priority 2: Check other logo fields from main exhibitor
@@ -114,7 +117,7 @@ const Exhibitors = () => {
         if (logoPath.startsWith('http')) {
           return logoPath
         }
-        return `https://eventxtest.fxunlock.com/storage/${logoPath}`
+        return `https://eventxcrm.com/storage/${logoPath}`
       }
     }
     
@@ -131,16 +134,12 @@ const Exhibitors = () => {
     setSelectedExhibitor(null)
   }
 
-  // Get company name - check form3Entry first, then fallback to exhibitor
+  // Get exhibitor name based on language
   const getExhibitorName = (exhibitor) => {
-    const form3Entry = exhibitor?._form3Entry
-    if (form3Entry?.company) {
-      return form3Entry.company
-    }
-    return exhibitor.en_name || exhibitor.company_name || exhibitor.name || exhibitor.company || 'Unknown Company'
+    return getLocalizedName(exhibitor, language)
   }
 
-  // Get Arabic name - check form3Entry first
+  // Get Arabic name - kept for compatibility
   const getExhibitorArabicName = (exhibitor) => {
     const form3Entry = exhibitor?._form3Entry
     if (form3Entry?.ar_company) {
@@ -184,7 +183,16 @@ const Exhibitors = () => {
   }
 
   // Check if partner
-  const isPartner = (exhibitor) => exhibitor?.is_partner === 1 || exhibitor?.is_partner === true
+  const isPartner = (exhibitor) => {
+    const eventUser = exhibitor?.event_user || exhibitor
+    return eventUser?.is_partner === 1 || eventUser?.is_partner === true
+  }
+
+  // Get partner type
+  const getPartnerType = (exhibitor) => {
+    const eventUser = exhibitor?.event_user || exhibitor
+    return eventUser?.partner_type || 'Partner'
+  }
 
   // Get sponsorship level
   const getSponsorshipLevel = (exhibitor) => {
@@ -303,6 +311,8 @@ const Exhibitors = () => {
               const sponsorLevel = getSponsorshipLevel(exhibitor)
               const sponsorConfig = sponsorLevel ? SPONSOR_CONFIG[sponsorLevel] : null
               const SponsorIcon = sponsorConfig?.icon
+              const isExhibitorPartner = isPartner(exhibitor)
+              const partnerType = getPartnerType(exhibitor)
               
               return (
                 <div key={exhibitor.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all">
@@ -311,6 +321,14 @@ const Exhibitors = () => {
                     <div className={`${sponsorConfig.bg} ${sponsorConfig.text} px-4 py-2 flex items-center gap-2`}>
                       <SponsorIcon className="w-4 h-4" />
                       <span className="text-sm font-semibold">{sponsorConfig.label} Sponsor</span>
+                    </div>
+                  )}
+                  
+                  {/* Partner banner */}
+                  {!sponsorConfig && isExhibitorPartner && (
+                    <div className="bg-gradient-to-r from-slate-600 to-slate-800 text-white px-4 py-2 flex items-center gap-2">
+                      <Crown className="w-4 h-4" />
+                      <span className="text-sm font-semibold">{partnerType}</span>
                     </div>
                   )}
                   
@@ -323,11 +341,6 @@ const Exhibitors = () => {
                           className="w-16 h-16 rounded-xl object-cover bg-gray-100 border border-gray-200"
                           onError={(e) => { e.target.src = DEFAULT_LOGO }}
                         />
-                        {isPartner(exhibitor) && (
-                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-primary-600 rounded-full flex items-center justify-center">
-                            <BadgeCheck className="w-3 h-3 text-white" />
-                          </div>
-                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between gap-2 mb-1">
@@ -367,30 +380,16 @@ const Exhibitors = () => {
                         {getExhibitorDescription(exhibitor) && (
                           <p className="text-sm text-gray-600 line-clamp-2">{getExhibitorDescription(exhibitor)}</p>
                         )}
-                        <div className="flex items-center justify-between mt-3">
-                          <div className="flex items-center gap-4 text-xs text-gray-500">
+                        <div className="flex items-center gap-4 text-xs text-gray-500 mt-3">
+                          <span className="flex items-center gap-1">
+                            <MapPin className="w-3.5 h-3.5" />
+                            {getExhibitorBooth(exhibitor)}
+                          </span>
+                          {getTeamCount(exhibitor) > 0 && (
                             <span className="flex items-center gap-1">
-                              <MapPin className="w-3.5 h-3.5" />
-                              {getExhibitorBooth(exhibitor)}
+                              <Building2 className="w-3.5 h-3.5" />
+                              {getTeamCount(exhibitor)} team
                             </span>
-                            {getTeamCount(exhibitor) > 0 && (
-                              <span className="flex items-center gap-1">
-                                <Building2 className="w-3.5 h-3.5" />
-                                {getTeamCount(exhibitor)} team
-                              </span>
-                            )}
-                          </div>
-                          {user && (
-                            <button
-                              onClick={(e) => {
-                                e.preventDefault()
-                                handleMeetingRequest(exhibitor)
-                              }}
-                              className="flex items-center gap-1 px-3 py-1.5 bg-primary-600 text-white text-xs font-semibold rounded-lg hover:bg-primary-700 transition-colors"
-                            >
-                              <Calendar className="w-3.5 h-3.5" />
-                              Request Meeting
-                            </button>
                           )}
                         </div>
                       </div>
