@@ -374,3 +374,68 @@ export const deleteScannedCard = async (cardId) => {
     .eq('id', cardId)
   return { error }
 }
+
+// User interests functions
+export const saveUserInterests = async (userId, industryIds) => {
+  const userIdStr = String(userId)
+  
+  // First, delete existing interests
+  await supabase
+    .from('user_interests')
+    .delete()
+    .eq('user_id', userIdStr)
+  
+  // Then insert new interests
+  if (industryIds && industryIds.length > 0) {
+    const interests = industryIds.map(industryId => ({
+      user_id: userIdStr,
+      industry_id: industryId,
+      created_at: new Date().toISOString()
+    }))
+    
+    const { data, error } = await supabase
+      .from('user_interests')
+      .insert(interests)
+      .select()
+    return { data, error }
+  }
+  
+  return { data: [], error: null }
+}
+
+export const getUserInterests = async (userId) => {
+  const userIdStr = String(userId)
+  const { data, error } = await supabase
+    .from('user_interests')
+    .select('industry_id')
+    .eq('user_id', userIdStr)
+  return { data: data || [], error }
+}
+
+// Get chat contacts from scanned business cards
+export const getChatContacts = async (userId) => {
+  const userIdStr = String(userId)
+  const { data, error } = await supabase
+    .from('scanned_cards')
+    .select('scanned_user_id, name, company, role, created_at')
+    .eq('user_id', userIdStr)
+    .not('scanned_user_id', 'is', null)
+    .order('created_at', { ascending: false })
+  return { data: data || [], error }
+}
+
+// Get last message with a contact
+export const getLastMessageWith = async (userId, contactId) => {
+  const userIdStr = String(userId)
+  const contactIdStr = String(contactId)
+  
+  const { data, error } = await supabase
+    .from('chat_messages')
+    .select('message, created_at, sender_id')
+    .or(`and(sender_id.eq.${userIdStr},receiver_id.eq.${contactIdStr}),and(sender_id.eq.${contactIdStr},receiver_id.eq.${userIdStr})`)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single()
+  
+  return { data, error }
+}

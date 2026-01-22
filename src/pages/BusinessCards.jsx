@@ -98,10 +98,12 @@ const BusinessCards = () => {
       const { data: savedCard } = await saveScannedCard(userId, cardData)
       if (savedCard) {
         setBusinessCards(prev => [savedCard, ...prev])
+        // Stop camera and close scanner
+        stopCamera()
+        alert('Contact added successfully! You can now chat with them from the Chats page.')
       }
 
       setScannedCode('')
-      setShowScanner(false)
     } catch (err) {
       console.error('Failed to scan card:', err)
       // Fallback to simple save
@@ -117,9 +119,10 @@ const BusinessCards = () => {
       const { data: savedCard } = await saveScannedCard(userId, cardData)
       if (savedCard) {
         setBusinessCards(prev => [savedCard, ...prev])
+        stopCamera()
+        alert('Contact added successfully!')
       }
       setScannedCode('')
-      setShowScanner(false)
     }
   }
 
@@ -173,13 +176,25 @@ const BusinessCards = () => {
 
   const startCamera = async () => {
     setCameraError('')
+    
+    // Check if getUserMedia is supported
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setCameraError('Camera not supported on this device')
+      return
+    }
+    
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } 
+        video: { 
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        } 
       })
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream
+        await videoRef.current.play()
         streamRef.current = stream
         setIsCameraActive(true)
         
@@ -188,7 +203,19 @@ const BusinessCards = () => {
       }
     } catch (err) {
       console.error('Camera error:', err)
-      setCameraError('Could not access camera. Please check permissions.')
+      let errorMsg = 'Could not access camera. '
+      
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        errorMsg += 'Please allow camera access in your browser settings.'
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        errorMsg += 'No camera found on this device.'
+      } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+        errorMsg += 'Camera is already in use by another app.'
+      } else {
+        errorMsg += 'Please check permissions and try again.'
+      }
+      
+      setCameraError(errorMsg)
     }
   }
 
@@ -276,7 +303,15 @@ const BusinessCards = () => {
             variant="outline"
             fullWidth
             icon={QrCode}
-            onClick={() => setShowScanner(!showScanner)}
+            onClick={() => {
+              setShowScanner(!showScanner)
+              if (!showScanner) {
+                // Auto-start camera when opening scanner
+                setTimeout(() => startCamera(), 100)
+              } else {
+                stopCamera()
+              }
+            }}
           >
             {t('scanCard')}
           </Button>

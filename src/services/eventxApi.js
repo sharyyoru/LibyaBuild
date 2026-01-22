@@ -467,7 +467,7 @@ export const getExhibitor = async (exhibitorId) => {
 };
 
 /**
- * Get industries for filtering
+ * Get industries/company sectors for filtering and interests
  */
 export const getIndustries = async () => {
   return apiRequest('/get-industry');

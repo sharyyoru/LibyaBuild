@@ -9,8 +9,8 @@ import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useTranslation } from '../i18n/translations'
-import { updateProfile, getVisitorMeetings, getExhibitorFavorites } from '../services/eventxApi'
-import { saveUserProfile, getUserProfile, uploadProfilePhoto, deleteProfilePhoto } from '../lib/supabase'
+import { updateProfile, getVisitorMeetings, getExhibitorFavorites, getIndustries } from '../services/eventxApi'
+import { saveUserProfile, getUserProfile, uploadProfilePhoto, deleteProfilePhoto, saveUserInterests, getUserInterests } from '../lib/supabase'
 import { clsx } from 'clsx'
 
 const sectors = [
@@ -47,6 +47,8 @@ const Profile = () => {
   const [profileImage, setProfileImage] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
   const [supabaseProfile, setSupabaseProfile] = useState(null)
+  const [industries, setIndustries] = useState([])
+  const [selectedIndustries, setSelectedIndustries] = useState([])
   const fileInputRef = useRef(null)
   
   // Initialize form data from user or userProfile
@@ -69,6 +71,7 @@ const Profile = () => {
 
   useEffect(() => {
     loadProfileData()
+    loadIndustries()
   }, [])
 
   const loadProfileData = async () => {
@@ -88,7 +91,7 @@ const Profile = () => {
       const favList = favoritesData.data || favoritesData.favorites || []
       setApiFavorites(Array.isArray(favList) ? favList : [])
       
-      // Load Supabase profile data
+      // Load Supabase profile data and interests
       if (supabaseProfileData.data) {
         setSupabaseProfile(supabaseProfileData.data)
         setFormData(prev => ({
@@ -102,10 +105,29 @@ const Profile = () => {
           setImagePreview(supabaseProfileData.data.profile_photo_url)
         }
       }
+      
+      // Load user interests
+      if (userId) {
+        const interestsResult = await getUserInterests(userId).catch(() => ({ data: [] }))
+        if (interestsResult.data) {
+          const industryIds = interestsResult.data.map(i => i.industry_id)
+          setSelectedIndustries(industryIds)
+        }
+      }
     } catch (err) {
       console.error('Failed to load profile data:', err)
     } finally {
       setIsLoading(false)
+    }
+  }
+  
+  const loadIndustries = async () => {
+    try {
+      const response = await getIndustries()
+      const industryList = response.data || response.industries || response || []
+      setIndustries(Array.isArray(industryList) ? industryList : [])
+    } catch (err) {
+      console.error('Failed to load industries:', err)
     }
   }
 
@@ -114,6 +136,16 @@ const Profile = () => {
     { id: 'exhibitor', label: 'Exhibitor', icon: Building2, description: 'Showcase products' },
     { id: 'media', label: 'Media', icon: Mail, description: 'Press coverage' }
   ]
+  
+  // Determine user persona based on company type
+  const getUserPersona = () => {
+    if (user?.company_id) {
+      // Check if user is exhibitor based on company relationship
+      return 'exhibitor'
+    }
+    // Default to visitor
+    return 'visitor'
+  }
 
   const handleImageChange = (e) => {
     const file = e.target.files[0]
@@ -179,7 +211,7 @@ const Profile = () => {
         image: profileImage
       })
       
-      // Save to Supabase user_profiles
+      // Save to Supabase user_profiles and interests
       if (userId) {
         await saveUserProfile(userId, {
           email: formData.email,
@@ -189,6 +221,9 @@ const Profile = () => {
           profile_photo_path: photoPath,
           profile_photo_url: photoUrl
         })
+        
+        // Save user interests
+        await saveUserInterests(userId, selectedIndustries)
       }
       
       setUserProfile(formData)
@@ -205,23 +240,12 @@ const Profile = () => {
     }
   }
 
-  const interests = [
-    'Construction Equipment',
-    'Building Materials',
-    'Smart Technology',
-    'Architecture',
-    'Sustainability',
-    'Steel & Metal',
-    'Energy Solutions',
-    'IoT Systems'
-  ]
-
-  const toggleInterest = (interest) => {
-    const current = formData.interests || []
-    const updated = current.includes(interest)
-      ? current.filter(i => i !== interest)
-      : [...current, interest]
-    setFormData({ ...formData, interests: updated })
+  const toggleIndustry = (industryId) => {
+    setSelectedIndustries(prev => 
+      prev.includes(industryId)
+        ? prev.filter(id => id !== industryId)
+        : [...prev, industryId]
+    )
   }
 
   const handleDeleteAccount = async () => {
@@ -442,48 +466,61 @@ const Profile = () => {
               <div className="grid grid-cols-3 gap-2">
                 {personas.map(persona => {
                   const Icon = persona.icon
-                  const isSelected = formData.persona === persona.id
+                  const currentPersona = getUserPersona()
+                  const isSelected = currentPersona === persona.id
                   return (
-                    <button
+                    <div
                       key={persona.id}
-                      onClick={() => setFormData({ ...formData, persona: persona.id })}
-                      className={`p-3 rounded-xl border-2 transition-all ${
+                      className={`p-3 rounded-xl border-2 ${
                         isSelected
                           ? 'border-primary-600 bg-primary-50'
-                          : 'border-gray-200 hover:border-gray-300'
+                          : 'border-gray-200 bg-gray-50 opacity-50'
                       }`}
                     >
                       <Icon className={`w-6 h-6 mx-auto mb-1 ${isSelected ? 'text-primary-600' : 'text-gray-400'}`} />
                       <p className={`text-xs font-semibold ${isSelected ? 'text-primary-600' : 'text-gray-700'}`}>
                         {persona.label}
                       </p>
-                    </button>
+                    </div>
                   )
                 })}
               </div>
+              <p className="text-xs text-gray-500 mt-2 text-center">
+                <Shield className="w-3 h-3 inline mr-1" />
+                {t('personaCannotChange') || 'Your persona is determined by your registration type and cannot be changed'}
+              </p>
             </Card>
 
             <Card className="p-4">
               <h3 className="font-bold text-gray-900 mb-3">{t('interests')}</h3>
-              <p className="text-sm text-gray-600 mb-3">{t('selectTopics')}</p>
-            <div className="flex flex-wrap gap-2">
-              {interests.map(interest => {
-                const isSelected = (formData.interests || []).includes(interest)
-                return (
-                  <button
-                    key={interest}
-                    onClick={() => toggleInterest(interest)}
-                    className={`px-3 py-2 rounded-full text-sm font-medium transition-colors ${
-                      isSelected
-                        ? 'bg-primary-600 text-white'
-                        : 'bg-gray-100 text-gray-700 active:bg-gray-200'
-                    }`}
-                  >
-                    {interest}
-                  </button>
-                )
-              })}
-            </div>
+              <p className="text-sm text-gray-600 mb-3">{t('selectIndustriesInterest') || 'Select industries you are interested in'}</p>
+              {industries.length === 0 ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                  <span className="ml-2 text-gray-500 text-sm">Loading industries...</span>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {industries.map(industry => {
+                    const industryId = industry.id
+                    const industryName = language === 'ar' ? (industry.ar_name || industry.name) : industry.name
+                    const isSelected = selectedIndustries.includes(industryId)
+                    return (
+                      <button
+                        key={industryId}
+                        onClick={() => toggleIndustry(industryId)}
+                        className={`px-3 py-2 rounded-full text-sm font-medium transition-colors ${
+                          isSelected
+                            ? 'bg-primary-600 text-white'
+                            : 'bg-gray-100 text-gray-700 active:bg-gray-200'
+                        }`}
+                      >
+                        {industryName}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
             </Card>
           </>
         )}

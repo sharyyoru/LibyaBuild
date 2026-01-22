@@ -4,8 +4,8 @@ import { Sparkles, Building2, Globe, MessageSquare, Calendar, Heart, ThumbsUp, T
 import Card from '../components/Card'
 import Badge from '../components/Badge'
 import Button from '../components/Button'
-import { getExhibitors, getProfile } from '../services/eventxApi'
-import { saveUserPreferences, saveMatch, getUserMatches, updateMatchStatus } from '../lib/supabase'
+import { getExhibitors, getProfile, getIndustries } from '../services/eventxApi'
+import { saveMatch, getUserMatches, updateMatchStatus, getUserInterests } from '../lib/supabase'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -14,30 +14,14 @@ import { clsx } from 'clsx'
 
 const DEFAULT_LOGO = '/media/default-company.svg'
 
-// Industry/Sector categories for matching
-const SECTORS = [
-  'Construction', 'Building Materials', 'Architecture', 'Interior Design',
-  'Real Estate', 'Engineering', 'HVAC', 'Electrical', 'Plumbing',
-  'Flooring', 'Roofing', 'Glass & Windows', 'Steel & Metal', 'Wood & Timber',
-  'Paints & Coatings', 'Lighting', 'Security Systems', 'Smart Building',
-  'Green Building', 'Heavy Equipment', 'Tools & Hardware', 'Other'
-]
-
-// Interest tags for matching
-const INTERESTS = [
-  'Sustainability', 'Innovation', 'Technology', 'Import/Export',
-  'Wholesale', 'Retail', 'Manufacturing', 'Distribution',
-  'Consulting', 'Partnership', 'Investment', 'Networking'
-]
-
-// Match reason configurations
+// Match reason configurations (labels will be translated dynamically)
 const MATCH_REASONS = {
-  sector: { label: 'Same Industry', icon: Target, color: 'text-purple-600 bg-purple-50' },
-  country: { label: 'Same Region', icon: Globe, color: 'text-blue-600 bg-blue-50' },
-  interest: { label: 'Shared Interest', icon: Zap, color: 'text-amber-600 bg-amber-50' },
-  sponsor: { label: 'Event Sponsor', icon: Crown, color: 'text-yellow-600 bg-yellow-50' },
-  partner: { label: 'Official Partner', icon: BadgeCheck, color: 'text-green-600 bg-green-50' },
-  trending: { label: 'Popular Choice', icon: TrendingUp, color: 'text-pink-600 bg-pink-50' },
+  sector: { key: 'sameIndustry', icon: Target, color: 'text-purple-600 bg-purple-50' },
+  country: { key: 'sameRegion', icon: Globe, color: 'text-blue-600 bg-blue-50' },
+  interest: { key: 'sharedInterest', icon: Zap, color: 'text-amber-600 bg-amber-50' },
+  sponsor: { key: 'eventSponsor', icon: Crown, color: 'text-yellow-600 bg-yellow-50' },
+  partner: { key: 'officialPartner', icon: BadgeCheck, color: 'text-green-600 bg-green-50' },
+  trending: { key: 'popularChoice', icon: TrendingUp, color: 'text-pink-600 bg-pink-50' },
 }
 
 const Matchmaking = () => {
@@ -58,6 +42,8 @@ const Matchmaking = () => {
     country: ''
   })
   const [activeTab, setActiveTab] = useState('matches') // 'matches', 'saved', 'how'
+  const [industries, setIndustries] = useState([])
+  const [selectedIndustryIds, setSelectedIndustryIds] = useState([])
 
   useEffect(() => {
     loadData()
@@ -66,58 +52,57 @@ const Matchmaking = () => {
   const loadData = async () => {
     setIsLoading(true)
     try {
-      // Load exhibitors from API
-      const exhibitorsData = await getExhibitors()
+      // Load exhibitors and industries from API
+      const [exhibitorsData, industriesData] = await Promise.all([
+        getExhibitors(),
+        getIndustries()
+      ])
+      
       const exhibitorList = exhibitorsData.data || exhibitorsData.exhibitors || exhibitorsData || []
       setExhibitors(Array.isArray(exhibitorList) ? exhibitorList : [])
       
+      const industryList = industriesData.data || industriesData.industries || industriesData || []
+      const industriesArray = Array.isArray(industryList) ? industryList : []
+      setIndustries(industriesArray)
+      
+      const industriesMap = {}
+      industriesArray.forEach(ind => {
+        industriesMap[ind.id] = ind
+      })
+      
       const userId = user?.id || user?.user_id || user?.visitor_id
       
-      // Fetch user profile from API to get interests/sectors selected during registration
-      let userInterests = []
-      try {
-        const profileResponse = await getProfile()
-        const profileData = profileResponse.data || profileResponse
-        
-        if (profileData?.company_sectors) {
-          // company_sectors from API contains user's interests from registration
-          const sectors = profileData.company_sectors
-          if (Array.isArray(sectors)) {
-            userInterests = sectors.map(s => typeof s === 'string' ? s : (s.name || s.en_name || ''))
-          } else if (typeof sectors === 'string') {
-            userInterests = [sectors]
-          }
-        }
-      } catch (profileErr) {
-        console.warn('Could not fetch profile for interests:', profileErr)
-        // Fallback to user context data
-        if (user?.company_sectors) {
-          const sectors = user.company_sectors
-          if (Array.isArray(sectors)) {
-            userInterests = sectors.map(s => typeof s === 'string' ? s : (s.name || s.en_name || ''))
-          } else if (typeof sectors === 'string') {
-            userInterests = [sectors]
-          }
-        }
-      }
-      
-      // Load saved matches from Supabase
+      // Fetch user interests from Supabase (industry IDs) - ONLY 1 QUERY
+      let userInterestIds = []
+      let userInterestNames = []
       if (userId) {
         try {
-          const matchesResult = await getUserMatches(userId)
-          if (matchesResult.data) {
-            setSavedMatches(matchesResult.data)
+          const interestsResult = await getUserInterests(userId)
+          if (interestsResult.data && Array.isArray(interestsResult.data)) {
+            userInterestIds = interestsResult.data.map(i => i.industry_id)
+            setSelectedIndustryIds(userInterestIds)
+            // Convert IDs to names for matching
+            userInterestNames = userInterestIds.map(id => industriesMap[id]?.name || '').filter(Boolean)
           }
-        } catch (supabaseErr) {
-          console.warn('Could not load saved matches:', supabaseErr)
+        } catch (interestsErr) {
+          console.warn('Could not fetch user interests:', interestsErr)
         }
       }
       
-      // Set preferences from user's registered interests
+      // Load saved matches from Supabase (optional - doesn't affect core functionality)
+      if (userId) {
+        getUserMatches(userId)
+          .then(result => {
+            if (result.data) setSavedMatches(result.data)
+          })
+          .catch(err => console.warn('Could not load saved matches:', err))
+      }
+      
+      // Set preferences from user's saved interests
       const userCountry = user?.country || userProfile?.country || ''
       const updatedPreferences = {
-        sectors: userInterests,
-        interests: userInterests, // Use same interests for matching
+        sectors: userInterestNames,
+        interests: userInterestNames, // Use same interests for matching
         lookingFor: 'all',
         country: userCountry
       }
@@ -125,12 +110,12 @@ const Matchmaking = () => {
       
       // Scenario 1: User has interests - auto-generate matches
       // Scenario 2: User has NO interests - show preference selection screen
-      if (userInterests.length > 0 && exhibitorList.length > 0) {
-        // User already filled interests during registration - auto-generate matches
+      if (userInterestNames.length > 0 && exhibitorList.length > 0) {
+        // User saved interests in profile - auto-generate matches
         generateMatchesWithPrefs(exhibitorList, updatedPreferences)
         setCurrentStep('results')
       } else {
-        // User didn't fill interests yet - show selection screen
+        // User hasn't selected interests yet - show selection screen
         setCurrentStep('preferences')
       }
     } catch (err) {
@@ -149,21 +134,30 @@ const Matchmaking = () => {
     const exSector = exhibitor.sector || exhibitor.industry || exhibitor.category || ''
     const exCountry = exhibitor.country || ''
     const exTags = exhibitor.tags || exhibitor.products || []
-    const form3 = exhibitor.form3_data_entry || {}
-    const eventsUser = exhibitor.events_user || exhibitor
+    const eventsUser = exhibitor.event_user || exhibitor.events_user || exhibitor
     
     // Sector matching (highest weight - 40 points max)
     const userSectors = userPrefs.sectors.length > 0 ? userPrefs.sectors : [user?.company_sectors, userProfile?.sector].filter(Boolean)
     
-    // Check exhibitor industries from form3_data_entry
+    // Check exhibitor industries from form3_data_entry (company_industries field)
     let exhibitorIndustries = []
-    if (form3.company_industries) {
-      const industries = Array.isArray(form3.company_industries) ? form3.company_industries : [form3.company_industries]
-      exhibitorIndustries = industries.map(i => {
-        if (typeof i === 'string') return i
-        return i.name || i.en_name || i.ar_name || ''
-      }).filter(Boolean)
-    }
+    
+    // Check all form3 entries for company_industries
+    const form3Entries = exhibitor.form3_data_entry || []
+    const form3Array = Array.isArray(form3Entries) ? form3Entries : [form3Entries]
+    
+    form3Array.forEach(form3 => {
+      if (form3.company_industries) {
+        const industries = Array.isArray(form3.company_industries) ? form3.company_industries : [form3.company_industries]
+        industries.forEach(ind => {
+          if (typeof ind === 'string') {
+            exhibitorIndustries.push(ind)
+          } else if (ind.name || ind.en_name) {
+            exhibitorIndustries.push(ind.name || ind.en_name)
+          }
+        })
+      }
+    })
     
     // Also check legacy sector field
     if (exSector) {
@@ -200,7 +194,13 @@ const Matchmaking = () => {
         const tagStr = typeof tag === 'string' ? tag : tag.name || ''
         return tagStr.toLowerCase().includes(interest.toLowerCase())
       })
-      const descMatch = (exhibitor.description || form3.company_description || '').toLowerCase().includes(interest.toLowerCase())
+      // Check description from form3 entries
+      let descMatch = false
+      form3Array.forEach(form3 => {
+        if (form3.company_description && form3.company_description.toLowerCase().includes(interest.toLowerCase())) {
+          descMatch = true
+        }
+      })
       if (tagMatch || descMatch) {
         interestScore += 5
         if (!reasons.includes('interest')) reasons.push('interest')
@@ -273,21 +273,22 @@ const Matchmaking = () => {
   }
 
   const handleSavePreferences = async () => {
-    const userId = user?.id || user?.user_id || user?.visitor_id
-    if (userId) {
-      try {
-        await saveUserPreferences(userId, {
-          sectors: preferences.sectors,
-          interests: preferences.interests,
-          looking_for: preferences.lookingFor,
-          country: preferences.country
-        })
-      } catch (err) {
-        console.warn('Could not save preferences:', err)
-        // Continue with match generation even if save fails
-      }
+    // Convert selected industry IDs to names for matching
+    const selectedIndustryNames = selectedIndustryIds
+      .map(id => industries.find(ind => ind.id === id)?.name)
+      .filter(Boolean)
+    
+    // Update preferences with selected industries
+    const updatedPrefs = {
+      ...preferences,
+      sectors: selectedIndustryNames,
+      interests: selectedIndustryNames
     }
-    generateMatches()
+    setPreferences(updatedPrefs)
+    
+    // Generate matches with selected industries
+    generateMatchesWithPrefs(exhibitors, updatedPrefs)
+    setCurrentStep('results')
   }
 
   const handleSaveMatch = async (exhibitor) => {
@@ -297,9 +298,9 @@ const Matchmaking = () => {
     const matchData = {
       user_id: userId,
       exhibitor_id: exhibitor.id,
-      exhibitor_name: exhibitor.en_name || exhibitor.company_name || exhibitor.name,
-      exhibitor_logo: exhibitor.form3_data_entry?.company_logo || exhibitor.logo_url || exhibitor.logo,
-      exhibitor_booth: exhibitor.booth_number || exhibitor.booth,
+      exhibitor_name: getExhibitorName(exhibitor),
+      exhibitor_logo: getExhibitorLogo(exhibitor),
+      exhibitor_booth: getExhibitorBooth(exhibitor),
       match_score: exhibitor.matchScore,
       match_reasons: exhibitor.matchReasons,
       status: 'saved'
@@ -321,31 +322,26 @@ const Matchmaking = () => {
     setMatches(prev => prev.filter(m => m.id !== exhibitorId))
   }
 
-  const toggleSector = (sector) => {
-    setPreferences(prev => ({
-      ...prev,
-      sectors: prev.sectors.includes(sector)
-        ? prev.sectors.filter(s => s !== sector)
-        : [...prev.sectors, sector]
-    }))
-  }
-
-  const toggleInterest = (interest) => {
-    setPreferences(prev => ({
-      ...prev,
-      interests: prev.interests.includes(interest)
-        ? prev.interests.filter(i => i !== interest)
-        : [...prev.interests, interest]
-    }))
+  const toggleIndustry = (industryId) => {
+    setSelectedIndustryIds(prev => 
+      prev.includes(industryId)
+        ? prev.filter(id => id !== industryId)
+        : [...prev, industryId]
+    )
   }
 
   // Get helper functions for exhibitor data
   const getExhibitorName = (ex) => ex.en_name || ex.company_name || ex.name || 'Unknown'
-  const getExhibitorLogo = (ex) => ex.form3_data_entry?.company_logo || ex.logo_url || ex.logo || DEFAULT_LOGO
+  const getExhibitorLogo = (ex) => {
+    const form3Array = Array.isArray(ex.form3_data_entry) ? ex.form3_data_entry : [ex.form3_data_entry]
+    const form3 = form3Array[0]
+    return form3?.company_logo || ex.logo_url || ex.logo || DEFAULT_LOGO
+  }
   const getExhibitorSector = (ex) => {
-    const form3 = ex.form3_data_entry
-    if (form3?.industries) {
-      const industries = Array.isArray(form3.industries) ? form3.industries : [form3.industries]
+    const form3Array = Array.isArray(ex.form3_data_entry) ? ex.form3_data_entry : [ex.form3_data_entry]
+    const form3 = form3Array[0]
+    if (form3?.company_industries) {
+      const industries = Array.isArray(form3.company_industries) ? form3.company_industries : [form3.company_industries]
       if (industries.length > 0) {
         const first = industries[0]
         return typeof first === 'string' ? first : first.name || first.en_name || 'General'
@@ -353,11 +349,15 @@ const Matchmaking = () => {
     }
     return ex.sector || ex.industry || ex.category || 'General'
   }
+  const getExhibitorBooth = (ex) => {
+    const eventUser = ex.event_user || ex.events_user || ex
+    return eventUser.stand_no || ex.booth_number || ex.booth || null
+  }
   const getSponsorLevel = (ex) => {
-    const eventsUser = ex.events_user || ex
-    if (eventsUser.is_platinum_sponsorship) return 'platinum'
-    if (eventsUser.gold_sponsorship) return 'gold'
-    if (eventsUser.silver_sponsorship) return 'silver'
+    const eventUser = ex.event_user || ex.events_user || ex
+    if (eventUser.is_platinum_sponsorship) return 'platinum'
+    if (eventUser.gold_sponsorship) return 'gold'
+    if (eventUser.silver_sponsorship) return 'silver'
     return null
   }
 
@@ -368,7 +368,7 @@ const Matchmaking = () => {
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center animate-pulse">
             <Sparkles className="w-8 h-8 text-white" />
           </div>
-          <p className="text-gray-600 font-medium">Loading matchmaking...</p>
+          <p className="text-gray-600 font-medium">{t('loadingMatchmaking')}</p>
         </div>
       </div>
     )
@@ -442,62 +442,57 @@ const Matchmaking = () => {
                 <p className="text-gray-500 text-sm mt-1">{t('helpFindMatches')}</p>
               </div>
 
-              {/* Sector Selection */}
+              {/* Industry Selection */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-3">
-                  {t('whatIndustries')}
+                  {t('selectIndustriesInterest') || 'Select industries you are interested in'}
                 </label>
-                <div className="flex flex-wrap gap-2">
-                  {SECTORS.map(sector => (
-                    <button
-                      key={sector}
-                      onClick={() => toggleSector(sector)}
-                      className={clsx(
-                        'px-3 py-2 rounded-xl text-sm font-medium transition-all border',
-                        preferences.sectors.includes(sector)
-                          ? 'bg-primary-600 text-white border-primary-600'
-                          : 'bg-white text-gray-700 border-gray-200 hover:border-primary-300'
-                      )}
-                    >
-                      {sector}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Interest Selection */}
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-3">
-                  {t('whatLookingFor')}
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {INTERESTS.map(interest => (
-                    <button
-                      key={interest}
-                      onClick={() => toggleInterest(interest)}
-                      className={clsx(
-                        'px-3 py-2 rounded-xl text-sm font-medium transition-all border',
-                        preferences.interests.includes(interest)
-                          ? 'bg-accent-600 text-white border-accent-600'
-                          : 'bg-white text-gray-700 border-gray-200 hover:border-accent-300'
-                      )}
-                    >
-                      {interest}
-                    </button>
-                  ))}
-                </div>
+                {industries.length === 0 ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+                    <span className="ml-2 text-gray-500 text-sm">{t('loadingIndustries')}</span>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {industries.map(industry => {
+                      const industryId = industry.id
+                      const industryName = language === 'ar' ? (industry.ar_name || industry.name) : industry.name
+                      const isSelected = selectedIndustryIds.includes(industryId)
+                      return (
+                        <button
+                          key={industryId}
+                          onClick={() => toggleIndustry(industryId)}
+                          className={clsx(
+                            'px-3 py-2 rounded-xl text-sm font-medium transition-all border',
+                            isSelected
+                              ? 'bg-primary-600 text-white border-primary-600'
+                              : 'bg-white text-gray-700 border-gray-200 hover:border-primary-300'
+                          )}
+                        >
+                          {industryName}
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
+                <p className="text-xs text-gray-500 mt-2">
+                  {selectedIndustryIds.length > 0 
+                    ? `${selectedIndustryIds.length} ${selectedIndustryIds.length === 1 ? t('industrySelected') : t('industriesSelected')}`
+                    : t('selectAtLeastOne')
+                  }
+                </p>
               </div>
 
               {/* Looking For */}
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-3">
-                  Exhibitor type preference
+                  {t('exhibitorTypePreference')}
                 </label>
                 <div className="grid grid-cols-3 gap-2">
                   {[
-                    { key: 'all', label: 'All', icon: Users },
-                    { key: 'sponsors', label: 'Sponsors', icon: Crown },
-                    { key: 'partners', label: 'Partners', icon: BadgeCheck },
+                    { key: 'all', label: t('all'), icon: Users },
+                    { key: 'sponsors', label: t('sponsors'), icon: Crown },
+                    { key: 'partners', label: t('partners'), icon: BadgeCheck },
                   ].map(opt => (
                     <button
                       key={opt.key}
@@ -519,18 +514,18 @@ const Matchmaking = () => {
               {/* Generate Button */}
               <button
                 onClick={handleSavePreferences}
-                disabled={isGenerating}
+                disabled={isGenerating || selectedIndustryIds.length === 0}
                 className="w-full py-4 bg-gradient-to-r from-purple-600 to-primary-600 text-white rounded-2xl font-semibold flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transition-all active:scale-[0.98] disabled:opacity-70"
               >
                 {isGenerating ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    AI is finding matches...
+                    {t('aiFindingMatches')}
                   </>
                 ) : (
                   <>
                     <Sparkles className="w-5 h-5" />
-                    Find My Matches
+                    {t('findMatches')}
                   </>
                 )}
               </button>
@@ -545,9 +540,9 @@ const Matchmaking = () => {
                   <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-purple-500 to-primary-500 flex items-center justify-center mb-6 animate-pulse">
                     <Sparkles className="w-10 h-10 text-white" />
                   </div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-2">AI is analyzing...</h3>
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">{t('aiGenerating')}</h3>
                   <p className="text-gray-500 text-sm text-center max-w-xs">
-                    Matching your profile with {exhibitors.length} exhibitors
+                    {t('matchingProfile')} {exhibitors.length} {t('exhibitors').toLowerCase()}
                   </p>
                 </div>
               ) : matches.length === 0 ? (
@@ -555,27 +550,27 @@ const Matchmaking = () => {
                   <div className="w-20 h-20 rounded-3xl bg-gray-100 flex items-center justify-center mb-4">
                     <Target className="w-10 h-10 text-gray-400" />
                   </div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-2">No matches yet</h3>
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">{t('noMatchesYet')}</h3>
                   <p className="text-gray-500 text-sm text-center max-w-xs mb-4">
-                    Set your preferences to find matching exhibitors
+                    {t('setPreferencesToFind')}
                   </p>
                   <button
                     onClick={() => setCurrentStep('preferences')}
                     className="px-6 py-2.5 bg-primary-600 text-white rounded-xl font-medium"
                   >
-                    Set Preferences
+                    {t('setPreferences')}
                   </button>
                 </div>
               ) : (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm text-gray-500">{matches.length} matches found</p>
+                    <p className="text-sm text-gray-500">{matches.length} {t('matches').toLowerCase()}</p>
                     <button
                       onClick={() => generateMatches()}
                       className="flex items-center gap-1 text-sm text-primary-600 font-medium"
                     >
                       <RefreshCw className="w-4 h-4" />
-                      Refresh
+                      {t('refresh')}
                     </button>
                   </div>
 
@@ -590,7 +585,7 @@ const Matchmaking = () => {
                           <div className="flex items-center gap-2">
                             <Sparkles className="w-4 h-4 text-white" />
                             <span className="text-white text-sm font-medium">
-                              {exhibitor.matchScore}% Match
+                              {exhibitor.matchScore}% {t('match')}
                             </span>
                           </div>
                           <div className="flex gap-1">
@@ -599,7 +594,7 @@ const Matchmaking = () => {
                               if (!config) return null
                               const ReasonIcon = config.icon
                               return (
-                                <div key={reason} className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center" title={config.label}>
+                                <div key={reason} className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center" title={t(config.key)}>
                                   <ReasonIcon className="w-3.5 h-3.5 text-white" />
                                 </div>
                               )
@@ -634,7 +629,7 @@ const Matchmaking = () => {
                                   if (!config) return null
                                   return (
                                     <span key={reason} className={clsx('text-xs px-2 py-0.5 rounded-full font-medium', config.color)}>
-                                      {config.label}
+                                      {t(config.key)}
                                     </span>
                                   )
                                 })}
@@ -644,10 +639,10 @@ const Matchmaking = () => {
 
                           {/* Location */}
                           <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
-                            {exhibitor.booth_number && (
+                            {getExhibitorBooth(exhibitor) && (
                               <span className="flex items-center gap-1">
                                 <MapPin className="w-3.5 h-3.5" />
-                                Booth {exhibitor.booth_number}
+                                {t('booth')} {getExhibitorBooth(exhibitor)}
                               </span>
                             )}
                             {exhibitor.country && (
@@ -680,7 +675,7 @@ const Matchmaking = () => {
                             </button>
                             <Link to={`/exhibitors/${exhibitor.id}`} className="flex-1">
                               <button className="w-full py-3 bg-primary-600 text-white rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-primary-700 transition-all">
-                                View Profile
+                                {t('viewProfile')}
                                 <ChevronRight className="w-4 h-4" />
                               </button>
                             </Link>
@@ -702,9 +697,9 @@ const Matchmaking = () => {
                   <div className="w-20 h-20 rounded-3xl bg-gray-100 flex items-center justify-center mb-4">
                     <Heart className="w-10 h-10 text-gray-400" />
                   </div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-2">No saved matches</h3>
+                  <h3 className="text-lg font-bold text-gray-900 mb-2">{t('noSavedMatches')}</h3>
                   <p className="text-gray-500 text-sm text-center max-w-xs">
-                    Save matches to revisit them later
+                    {t('saveMatchesToView')}
                   </p>
                 </div>
               ) : (
@@ -721,11 +716,11 @@ const Matchmaking = () => {
                         <div className="flex-1 min-w-0">
                           <h4 className="font-semibold text-gray-900 truncate">{match.exhibitor_name}</h4>
                           <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <span className="text-primary-600 font-medium">{match.match_score}% match</span>
+                            <span className="text-primary-600 font-medium">{match.match_score}% {t('match')}</span>
                             {match.exhibitor_booth && (
                               <>
                                 <span>•</span>
-                                <span>Booth {match.exhibitor_booth}</span>
+                                <span>{t('booth')} {match.exhibitor_booth}</span>
                               </>
                             )}
                           </div>
@@ -745,14 +740,14 @@ const Matchmaking = () => {
               <div className="bg-white rounded-2xl p-5 border border-gray-100">
                 <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-primary-600" />
-                  How AI Matchmaking Works
+                  {t('aiMatchingAlgorithm')}
                 </h3>
                 <div className="space-y-4">
                   {[
-                    { step: 1, title: 'Profile Analysis', desc: 'We analyze your company profile, industry sector, and interests' },
-                    { step: 2, title: 'Exhibitor Scanning', desc: 'Our AI scans all exhibitor profiles for compatibility signals' },
-                    { step: 3, title: 'Scoring Algorithm', desc: 'Each match is scored based on industry overlap, interests, and more' },
-                    { step: 4, title: 'Smart Ranking', desc: 'Matches are ranked by compatibility and business potential' },
+                    { step: 1, title: t('profileAnalysis'), desc: t('profileAnalysisDesc') },
+                    { step: 2, title: t('exhibitorScanning'), desc: t('exhibitorScanningDesc') },
+                    { step: 3, title: t('scoringAlgorithm'), desc: t('scoringAlgorithmDesc') },
+                    { step: 4, title: t('smartRanking'), desc: t('smartRankingDesc') },
                   ].map(item => (
                     <div key={item.step} className="flex gap-4">
                       <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center text-white font-bold flex-shrink-0">
@@ -768,19 +763,19 @@ const Matchmaking = () => {
               </div>
 
               <div className="bg-gradient-to-br from-primary-50 to-accent-50 rounded-2xl p-5 border border-primary-100">
-                <h4 className="font-semibold text-gray-900 mb-2">Match Score Meaning</h4>
+                <h4 className="font-semibold text-gray-900 mb-2">{t('matchScoreMeaning')}</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-green-500" />
-                    <span className="text-gray-700">80-100%: Excellent match</span>
+                    <span className="text-gray-700">80-100%: {t('excellentMatch')}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-yellow-500" />
-                    <span className="text-gray-700">50-79%: Good potential</span>
+                    <span className="text-gray-700">50-79%: {t('goodPotential')}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full bg-orange-500" />
-                    <span className="text-gray-700">20-49%: Worth exploring</span>
+                    <span className="text-gray-700">20-49%: {t('worthExploring')}</span>
                   </div>
                 </div>
               </div>
