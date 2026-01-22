@@ -1,9 +1,13 @@
-import { useState, useEffect } from 'react'
-import { Calendar, Clock, MapPin, User, Loader2, ChevronLeft, ChevronRight, Plus, Check, X } from 'lucide-react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { Calendar, Loader2, ChevronLeft, ChevronRight, Plus } from 'lucide-react'
+import MeetingCard from '../components/MeetingCard'
 import { getVisitorMeetings, getSchedules, createSchedule, approveMeeting, rejectMeeting } from '../services/eventxApi'
+import { getCachedData, clearCache } from '../services/apiCache'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useTranslation } from '../i18n/translations'
+
+const CACHE_TTL = 2 * 60 * 1000
 
 const MyMeetings = () => {
   const { user } = useAuth()
@@ -19,39 +23,26 @@ const MyMeetings = () => {
   const [error, setError] = useState('')
   const [actionLoading, setActionLoading] = useState(null)
 
-  // Load data on mount and when dependencies change
   useEffect(() => {
-    console.log('🔄 MyMeetings useEffect triggered - User ID:', user?.id, 'Date:', selectedDate)
     if (user?.id) {
       loadData()
-    } else {
-      console.warn('⚠️ User ID not available yet, waiting...')
     }
   }, [selectedDate, user?.id])
-  
-  // Also load once on mount regardless
-  useEffect(() => {
-    console.log('🚀 MyMeetings component mounted')
-    const timer = setTimeout(() => {
-      if (user?.id) {
-        console.log('⏰ Delayed load triggered with user ID:', user.id)
-        loadData()
-      }
-    }, 500)
-    return () => clearTimeout(timer)
-  }, [])
 
-  const loadData = async () => {
+  const loadData = async (forceRefresh = false) => {
     setIsLoading(true)
     try {
-      // Check localStorage for user data
+      if (forceRefresh) {
+        clearCache('meetings')
+        clearCache('schedules')
+      }
+
       const storedUser = localStorage.getItem('eventx_user')
-      console.log('🔍 RAW LocalStorage user:', storedUser)
-      
       const dateStr = selectedDate.toISOString().split('T')[0]
+      
       const [meetingsData, schedulesData] = await Promise.all([
-        getVisitorMeetings(dateStr),
-        getSchedules()
+        getCachedData(`meetings_${dateStr}`, () => getVisitorMeetings(dateStr), CACHE_TTL),
+        getCachedData('schedules', () => getSchedules(), CACHE_TTL)
       ])
       
       setMeetings(Array.isArray(meetingsData) ? meetingsData : meetingsData.data || [])
@@ -59,67 +50,27 @@ const MyMeetings = () => {
       const allSchedules = schedulesData.data || []
       setSchedules(allSchedules)
       
-      console.log('=== MEETING REQUEST FILTER DEBUG ===')
-      console.log('📋 Total schedules fetched:', allSchedules.length)
-      
-      // Try multiple sources for user ID
       let currentUserId = null
-      
-      // Source 1: From user context
       if (user?.id) {
         currentUserId = user.id
-        console.log('✅ User ID from context:', currentUserId)
-      }
-      
-      // Source 2: From localStorage (fallback)
-      if (!currentUserId && storedUser) {
+      } else if (storedUser) {
         try {
           const parsedUser = JSON.parse(storedUser)
           currentUserId = parsedUser?.id
-          console.log('✅ User ID from localStorage:', currentUserId)
         } catch (e) {
           console.error('Failed to parse localStorage user')
         }
       }
       
       if (!currentUserId) {
-        console.error('❌ CRITICAL: No user ID found anywhere!')
-        console.error('User context:', user)
         setExhibitorMeetings([])
         setIsLoading(false)
         return
       }
       
-      console.log('👤 Current User ID (final):', currentUserId, 'Type:', typeof currentUserId)
-      
-      // Filter meetings where schedule.user_id matches logged-in user
-      const userAssignedMeetings = []
-      
-      allSchedules.forEach((schedule, index) => {
-        const scheduleUserId = parseInt(schedule.user_id)
-        const loggedInUserId = parseInt(currentUserId)
-        
-        console.log(`\nSchedule #${index + 1} (ID: ${schedule.id})`)
-        console.log(`  - user_id: ${schedule.user_id} (${typeof schedule.user_id}) → parsed: ${scheduleUserId}`)
-        console.log(`  - visitor_id: ${schedule.visitor_id}`)
-        console.log(`  - Logged-in user: ${currentUserId} (${typeof currentUserId}) → parsed: ${loggedInUserId}`)
-        console.log(`  - Match? ${scheduleUserId === loggedInUserId ? '✅ YES' : '❌ NO'}`)
-        
-        if (scheduleUserId === loggedInUserId) {
-          console.log(`  ✅ ADDING to exhibitor meetings`)
-          userAssignedMeetings.push(schedule)
-        }
-      })
-      
-      console.log('\n📊 FINAL RESULTS:')
-      console.log('Total matched meetings:', userAssignedMeetings.length)
-      console.log('Matched meeting IDs:', userAssignedMeetings.map(m => m.id))
-      console.log('=== END DEBUG ===\n')
-      
-      console.log('📋 STATE SUMMARY:')
-      console.log('  - meetings (My Meetings tab):', meetings.length, 'items')
-      console.log('  - exhibitorMeetings (Meeting Requests tab):', userAssignedMeetings.length, 'items')
-      console.log('  - schedules (All Schedules tab):', allSchedules.length, 'items')
+      const userAssignedMeetings = allSchedules.filter(schedule => 
+        parseInt(schedule.user_id) === parseInt(currentUserId)
+      )
       
       setExhibitorMeetings(userAssignedMeetings)
     } catch (err) {
@@ -130,43 +81,43 @@ const MyMeetings = () => {
     }
   }
 
-  const formatDate = (date) => {
+  const formatDate = useCallback((date) => {
     return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-  }
+  }, [])
 
-  const navigateDate = (days) => {
+  const navigateDate = useCallback((days) => {
     const newDate = new Date(selectedDate)
     newDate.setDate(newDate.getDate() + days)
     setSelectedDate(newDate)
-  }
+  }, [selectedDate])
 
-  const handleApproveMeeting = async (meetingId) => {
+  const handleApproveMeeting = useCallback(async (meetingId) => {
     setActionLoading(meetingId)
     try {
       await approveMeeting(meetingId)
-      await loadData()
+      await loadData(true)
       setError('')
     } catch (err) {
       setError('Failed to approve meeting: ' + err.message)
     } finally {
       setActionLoading(null)
     }
-  }
+  }, [])
 
-  const handleRejectMeeting = async (meetingId) => {
+  const handleRejectMeeting = useCallback(async (meetingId) => {
     setActionLoading(meetingId)
     try {
       await rejectMeeting(meetingId)
-      await loadData()
+      await loadData(true)
       setError('')
     } catch (err) {
       setError('Failed to reject meeting: ' + err.message)
     } finally {
       setActionLoading(null)
     }
-  }
+  }, [])
 
-  const getStatusColor = (status) => {
+  const getStatusColor = useCallback((status) => {
     switch (status?.toLowerCase()) {
       case 'approved':
       case 'confirmed':
@@ -181,12 +132,15 @@ const MyMeetings = () => {
       default:
         return 'bg-gray-100 text-gray-700'
     }
-  }
+  }, [])
 
-  const pendingMeetingsCount = exhibitorMeetings.filter(m => {
-    const status = m.status?.toLowerCase()
-    return status === 'pending' && status !== 'cancelled' && status !== 'canceled' && status !== 'cancel'
-  }).length
+  const pendingMeetingsCount = useMemo(() => 
+    exhibitorMeetings.filter(m => {
+      const status = m.status?.toLowerCase()
+      return status === 'pending' && status !== 'cancelled' && status !== 'canceled' && status !== 'cancel'
+    }).length,
+    [exhibitorMeetings]
+  )
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
@@ -310,77 +264,19 @@ const MyMeetings = () => {
             </div>
           ) : (
             <div className="space-y-3">
-              {exhibitorMeetings.map((meeting, index) => {
-                const isPending = meeting.status?.toLowerCase() === 'pending'
-                return (
-                  <div key={meeting.id || index} className="bg-white rounded-xl p-4 shadow-sm">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
-                          <User className="w-5 h-5 text-primary-600" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-gray-900">
-                            {meeting.name || t('meetingRequest')}
-                          </h3>
-                          <p className="text-sm text-gray-500">
-                            {meeting.company || ''}
-                          </p>
-                          <p className="text-xs text-gray-400">
-                            {meeting.email || ''}
-                          </p>
-                        </div>
-                      </div>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(meeting.status)}`}>
-                        {meeting.status?.toLowerCase() === 'cancel' ? t('cancelled') : 
-                         meeting.status?.toLowerCase() === 'canceled' ? t('cancelled') :
-                         meeting.status?.toLowerCase() === 'cancelled' ? t('cancelled') :
-                         (meeting.status ? t(meeting.status.toLowerCase()) || meeting.status : t('pending'))}
-                      </span>
-                    </div>
-                    
-                    <div className="flex flex-wrap gap-4 text-sm text-gray-600 mb-3">
-                      <div className="flex items-center gap-1">
-                        <Calendar className="w-4 h-4" />
-                        {meeting.date ? new Date(meeting.date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'TBD'}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="w-4 h-4" />
-                        {meeting.time || t('tbd')}
-                      </div>
-                      {meeting.location && (
-                        <div className="flex items-center gap-1">
-                          <MapPin className="w-4 h-4" />
-                          {meeting.location}
-                        </div>
-                      )}
-                    </div>
-                    
-                    {meeting.message && (
-                      <p className="text-sm text-gray-600 mb-3 bg-gray-50 rounded-lg p-3">
-                        {meeting.message}
-                      </p>
-                    )}
-
-                    {isPending && (
-                      <div className="flex gap-2 mt-3">
-                        <button
-                          onClick={() => handleApproveMeeting(meeting.id)}
-                          disabled={actionLoading === meeting.id}
-                          className="w-full flex items-center justify-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 transition-all"
-                        >
-                          {actionLoading === meeting.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Check className="w-4 h-4" />
-                          )}
-                          {t('approve')}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+              {exhibitorMeetings.map((meeting, index) => (
+                <MeetingCard
+                  key={meeting.id || index}
+                  meeting={meeting}
+                  showActions={true}
+                  isPending={meeting.status?.toLowerCase() === 'pending'}
+                  actionLoading={actionLoading === meeting.id}
+                  onApprove={() => handleApproveMeeting(meeting.id)}
+                  onReject={() => handleRejectMeeting(meeting.id)}
+                  getStatusColor={getStatusColor}
+                  t={t}
+                />
+              ))}
             </div>
           )
         ) : activeTab === 'meetings' ? (
@@ -402,45 +298,13 @@ const MyMeetings = () => {
           ) : (
             <div className="space-y-3">
               {meetings.map((meeting, index) => (
-                <div key={meeting.id || index} className="bg-white rounded-xl p-4 shadow-sm">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-primary-100 rounded-full flex items-center justify-center">
-                        <User className="w-5 h-5 text-primary-600" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900">
-                          {meeting.exhibitor_name || meeting.title || 'Meeting'}
-                        </h3>
-                        <p className="text-sm text-gray-500">
-                          {meeting.company_name || meeting.exhibitor?.company_name || ''}
-                        </p>
-                      </div>
-                    </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(meeting.status)}`}>
-                      {meeting.status || t('pending')}
-                    </span>
-                  </div>
-                  
-                  <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      {meeting.time || meeting.start_time || 'TBD'}
-                    </div>
-                    {meeting.location && (
-                      <div className="flex items-center gap-1">
-                        <MapPin className="w-4 h-4" />
-                        {meeting.location}
-                      </div>
-                    )}
-                  </div>
-                  
-                  {meeting.message && (
-                    <p className="text-sm text-gray-600 mt-3 bg-gray-50 rounded-lg p-3">
-                      {meeting.message}
-                    </p>
-                  )}
-                </div>
+                <MeetingCard
+                  key={meeting.id || index}
+                  meeting={meeting}
+                  showActions={false}
+                  getStatusColor={getStatusColor}
+                  t={t}
+                />
               ))}
             </div>
           )
@@ -456,24 +320,13 @@ const MyMeetings = () => {
           ) : (
             <div className="space-y-3">
               {schedules.map((schedule, index) => (
-                <div key={schedule.id || index} className="bg-white rounded-xl p-4 shadow-sm">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-semibold text-gray-900">{schedule.title || t('schedule')}</h3>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(schedule.status)}`}>
-                      {schedule.status || t('scheduled')}
-                    </span>
-                  </div>
-                  <div className="flex gap-4 text-sm text-gray-600">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />
-                      {schedule.date}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      {schedule.time}
-                    </div>
-                  </div>
-                </div>
+                <MeetingCard
+                  key={schedule.id || index}
+                  meeting={schedule}
+                  showActions={false}
+                  getStatusColor={getStatusColor}
+                  t={t}
+                />
               ))}
             </div>
           )
@@ -485,7 +338,7 @@ const MyMeetings = () => {
           onClose={() => setShowCreateModal(false)}
           onSuccess={() => {
             setShowCreateModal(false)
-            loadData()
+            loadData(true)
           }}
         />
       )}
