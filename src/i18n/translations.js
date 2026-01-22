@@ -161,6 +161,11 @@ export const translations = {
     
     // Profile Page
     editProfile: 'Edit Profile',
+    changePhoto: 'Change Photo',
+    uploadPhoto: 'Upload Photo',
+    removePhoto: 'Remove Photo',
+    photoUploaded: 'Photo uploaded successfully',
+    photoUploadFailed: 'Failed to upload photo',
     myProfile: 'My Profile',
     yourName: 'Your Name',
     yourRole: 'Your Role',
@@ -837,6 +842,11 @@ export const translations = {
     
     // Profile Page
     editProfile: 'تعديل الملف الشخصي',
+    changePhoto: 'تغيير الصورة',
+    uploadPhoto: 'رفع صورة',
+    removePhoto: 'إزالة الصورة',
+    photoUploaded: 'تم رفع الصورة بنجاح',
+    photoUploadFailed: 'فشل رفع الصورة',
     myProfile: 'ملفي الشخصي',
     yourName: 'اسمك',
     yourRole: 'دورك',

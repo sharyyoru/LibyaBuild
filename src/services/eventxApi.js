@@ -170,6 +170,7 @@ export const updateProfile = async (profileData) => {
   if (profileData.email) formData.append('email', profileData.email);
   if (profileData.company) formData.append('company_text', profileData.company);
   if (profileData.jobTitle) formData.append('job_title', profileData.jobTitle);
+  if (profileData.image) formData.append('image', profileData.image);
 
   return apiRequest('/profile/update', {
     method: 'POST',

@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { User, Building2, Briefcase, Heart, Calendar, Mail, Settings, LogOut, Globe, Sparkles, QrCode, Shield, Loader2, Trash2, AlertTriangle, X } from 'lucide-react'
+import { User, Building2, Briefcase, Heart, Calendar, Mail, Settings, LogOut, Globe, Sparkles, QrCode, Shield, Loader2, Trash2, AlertTriangle, X, Camera, Upload } from 'lucide-react'
 import Header from '../components/Header'
 import Card from '../components/Card'
 import Button from '../components/Button'
@@ -42,6 +42,9 @@ const Profile = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState('')
+  const [profileImage, setProfileImage] = useState(null)
+  const [imagePreview, setImagePreview] = useState(null)
+  const fileInputRef = useRef(null)
   
   // Initialize form data from user or userProfile
   const initialData = {
@@ -87,6 +90,30 @@ const Profile = () => {
     { id: 'media', label: 'Media', icon: Mail, description: 'Press coverage' }
   ]
 
+  const handleImageChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        setError('Image size should be less than 5MB')
+        return
+      }
+      setProfileImage(file)
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImagePreview(reader.result)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleRemoveImage = () => {
+    setProfileImage(null)
+    setImagePreview(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
   const handleSave = async () => {
     setIsSaving(true)
     setError('')
@@ -101,11 +128,14 @@ const Profile = () => {
         firstName,
         lastName,
         company: formData.company,
-        jobTitle: formData.role
+        jobTitle: formData.role,
+        image: profileImage
       })
       
       setUserProfile(formData)
       setIsEditing(false)
+      setProfileImage(null)
+      setImagePreview(null)
     } catch (err) {
       console.error('Failed to save profile:', err)
       setError(err.message || 'Failed to save profile')
@@ -162,8 +192,31 @@ const Profile = () => {
       <div className="p-4 space-y-4">
         <Card className="p-6">
           <div className="flex flex-col items-center text-center mb-6">
-            <div className="w-24 h-24 bg-gradient-to-br from-primary-600 to-accent-600 rounded-3xl flex items-center justify-center mb-4">
-              <User className="w-12 h-12 text-white" />
+            <div className="relative mb-4">
+              <div className="w-24 h-24 bg-gradient-to-br from-primary-600 to-accent-600 rounded-3xl flex items-center justify-center overflow-hidden">
+                {imagePreview ? (
+                  <img src={imagePreview} alt="Profile" className="w-full h-full object-cover" />
+                ) : user?.image ? (
+                  <img src={user.image} alt="Profile" className="w-full h-full object-cover" />
+                ) : (
+                  <User className="w-12 h-12 text-white" />
+                )}
+              </div>
+              {isEditing && (
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute bottom-0 right-0 w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center text-white shadow-lg hover:bg-primary-700 transition-colors"
+                >
+                  <Camera className="w-4 h-4" />
+                </button>
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+              />
             </div>
             {!isEditing ? (
               <>
@@ -232,6 +285,18 @@ const Profile = () => {
               </div>
             )}
           </div>
+
+          {imagePreview && isEditing && (
+            <div className="mb-4">
+              <button
+                onClick={handleRemoveImage}
+                className="text-sm text-red-600 hover:text-red-700 font-medium flex items-center gap-1 mx-auto"
+              >
+                <X className="w-4 h-4" />
+                {t('removePhoto')}
+              </button>
+            </div>
+          )}
 
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm mb-4">
