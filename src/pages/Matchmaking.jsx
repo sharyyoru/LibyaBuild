@@ -315,11 +315,22 @@ const Matchmaking = () => {
       
       if (!matchResult.error && matchResult.data) {
         setSavedMatches(prev => [...prev, matchResult.data])
+        console.log('✓ Match saved to favorites successfully')
       } else {
-        console.warn('Could not save match:', matchResult.error)
+        console.warn('Could not save match to Supabase:', matchResult.error)
+      }
+      
+      // Log favorite API result
+      if (favoriteResult) {
+        console.log('✓ Exhibitor added to EventX favorites (shows in Profile)')
       }
     } catch (err) {
-      console.warn('Error saving match:', err)
+      console.error('Error saving match/favorite:', err)
+      // Still add to local saved matches even if API fails
+      if (matchData) {
+        const localMatch = { ...matchData, id: Date.now(), created_at: new Date().toISOString() }
+        setSavedMatches(prev => [...prev, localMatch])
+      }
     }
   }
 

@@ -42,6 +42,15 @@ const Exhibitors = () => {
 
   useEffect(() => {
     loadData()
+  }, []) // Fresh fetch on every mount
+  
+  // Also refresh when user navigates back to this page
+  useEffect(() => {
+    const handleFocus = () => {
+      loadData()
+    }
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
   }, [])
 
   const loadData = async () => {
@@ -60,7 +69,7 @@ const Exhibitors = () => {
       const expandedExhibitors = []
       if (Array.isArray(exhibitorList)) {
         exhibitorList.forEach(exhibitor => {
-          if (exhibitor?.form3_data_entry && Array.isArray(exhibitor.form3_data_entry)) {
+          if (exhibitor?.form3_data_entry && Array.isArray(exhibitor.form3_data_entry) && exhibitor.form3_data_entry.length > 0) {
             // Create a card for each form3_data_entry (main exhibitor + co-exhibitors)
             exhibitor.form3_data_entry.forEach(form3Entry => {
               expandedExhibitors.push({
@@ -70,8 +79,14 @@ const Exhibitors = () => {
               })
             })
           } else {
-            // No form3_data_entry, add exhibitor as-is
-            expandedExhibitors.push(exhibitor)
+            // No form3_data_entry or empty array - add exhibitor with company base data
+            // This handles exhibitors like "Company Brevo Exhibitor testt" (id 5258)
+            expandedExhibitors.push({
+              ...exhibitor,
+              _form3Entry: null,
+              _isCoExhibitor: false,
+              _useCompanyData: true // Flag to use company-level data
+            })
           }
         })
       }
@@ -138,7 +153,15 @@ const Exhibitors = () => {
 
   // Get exhibitor name based on language
   const getExhibitorName = (exhibitor) => {
-    return getLocalizedName(exhibitor, language)
+    // Try form3 entry first
+    const form3Entry = exhibitor?._form3Entry
+    if (form3Entry) {
+      if (language === 'ar' && form3Entry.ar_company) return form3Entry.ar_company
+      if (form3Entry.company) return form3Entry.company
+    }
+    // Fallback to company-level data
+    if (language === 'ar' && exhibitor.ar_name) return exhibitor.ar_name
+    return exhibitor.en_name || exhibitor.company_name || exhibitor.name || 'Unknown Exhibitor'
   }
 
   // Get Arabic name - kept for compatibility
@@ -163,15 +186,37 @@ const Exhibitors = () => {
       }
     }
     
-    // Fallback to direct exhibitor properties
+    // Fallback to company-level sector or find sector name from industries list
+    if (exhibitor.sector && typeof exhibitor.sector === 'number') {
+      // Try to find sector name from industries list
+      const sectorObj = industries.find(ind => ind.id === exhibitor.sector)
+      if (sectorObj) {
+        return getLocalizedIndustry(sectorObj, language)
+      }
+    }
+    
     return exhibitor.sector || exhibitor.industry || exhibitor.category || 'General'
   }
 
   const getExhibitorCountry = (exhibitor) => {
-    return exhibitor.country || exhibitor?.form3_data_entry?.country || exhibitor.location || 'Libya'
+    const form3Entry = exhibitor?._form3Entry
+    if (form3Entry?.country) return form3Entry.country
+    return exhibitor.country || exhibitor.location || 'Libya'
   }
 
   const getExhibitorBooth = (exhibitor) => {
+    // Check event_user for stand info
+    const eventUser = exhibitor?.event_user
+    if (eventUser?.stand_no) return eventUser.stand_no
+    if (eventUser?.hall_no && eventUser?.stand_no) {
+      return `${eventUser.hall_no} - ${eventUser.stand_no}`
+    }
+    
+    // Check form3 entry
+    const form3Entry = exhibitor?._form3Entry
+    if (form3Entry?.stand_no) return form3Entry.stand_no
+    
+    // Fallback to company level
     if (exhibitor.booth_number && exhibitor.hall) {
       return `${exhibitor.hall} - ${exhibitor.booth_number}`
     }
@@ -179,7 +224,15 @@ const Exhibitors = () => {
   }
 
   const getExhibitorDescription = (exhibitor) => {
-    return getLocalizedProfile(exhibitor, language)
+    const form3Entry = exhibitor?._form3Entry
+    if (form3Entry) {
+      if (language === 'ar' && form3Entry.ar_company_profile) return form3Entry.ar_company_profile
+      if (form3Entry.company_profile) return form3Entry.company_profile
+    }
+    // Fallback to company-level description or contact info
+    const desc = exhibitor.description || exhibitor.profile || ''
+    const contact = exhibitor.email || exhibitor.phone || ''
+    return desc || (contact ? `Contact: ${contact}` : 'No description available')
   }
 
   // Check if partner

@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef } from 'react'
-import { QrCode, User, Briefcase, Mail, Phone, Download, Share2, MessageCircle, EyeOff, Camera, X } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { QrCode, Camera, X, Users, MessageSquare, Download, Share2, Loader2 } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
+import jsQR from 'jsqr'
 import Header from '../components/Header'
 import Card from '../components/Card'
 import Button from '../components/Button'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
+import { saveScannedCard, getScannedCards, getUserProfile, getPublicUserProfile } from '../lib/supabase'
 import { useLanguage } from '../context/LanguageContext'
 import { useTranslation } from '../i18n/translations'
 import { saveScannedCard, getScannedCards, getPublicUserProfile, getUserProfile } from '../lib/supabase'
@@ -289,8 +292,25 @@ const BusinessCards = () => {
       const imageData = context.getImageData(0, 0, canvas.width, canvas.height)
       
       try {
-        // Simple QR detection - in production, use jsQR library
-        // For now, we'll keep the manual entry as primary method
+        // Use jsQR library to detect QR codes
+        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+          inversionAttempts: "dontInvert",
+        })
+        
+        if (code && code.data) {
+          // QR code detected!
+          setScannedCode(code.data)
+          // Stop camera temporarily while processing
+          setIsCameraActive(false)
+          // Auto-process the scanned code
+          setTimeout(() => {
+            // Trigger the scan handler
+            const event = new Event('qr-detected')
+            event.qrData = code.data
+            window.dispatchEvent(event)
+          }, 100)
+          return // Stop scanning
+        }
       } catch (err) {
         console.error('QR scan error:', err)
       }
