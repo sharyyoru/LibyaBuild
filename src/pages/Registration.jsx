@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { UserPlus, Loader2, ChevronDown, Check } from 'lucide-react'
 import { registerVisitor } from '../services/eventxApi'
+import { useLanguage } from '../context/LanguageContext'
+import { translations } from '../i18n/translations'
 
 const SECTORS = [
   'Architecture',
@@ -27,6 +29,8 @@ const SALUTATIONS = ['Mr', 'Mrs', 'Ms', 'Dr', 'Prof']
 
 const Registration = () => {
   const navigate = useNavigate()
+  const { language, isRTL } = useLanguage()
+  const t = (key) => translations[language]?.[key] || translations.en[key] || key
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
@@ -81,7 +85,8 @@ const Registration = () => {
         region: formData.region,
         referredEmail: formData.referredEmail,
         companySector: formData.companySector,
-        howHeardAboutUs: formData.howHeardAboutUs
+        howHeardAboutUs: formData.howHeardAboutUs,
+        preferLanguage: language || 'en'
       })
       
       setSuccess(true)
@@ -94,7 +99,7 @@ const Registration = () => {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 relative">
+      <div className="min-h-screen flex items-center justify-center p-4 relative" dir={isRTL ? 'rtl' : 'ltr'}>
         {/* Gradient Background Image */}
         <div 
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -105,15 +110,15 @@ const Registration = () => {
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Check className="w-8 h-8 text-green-600" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Registration Successful!</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">{t('registrationSuccessful')}</h2>
           <p className="text-gray-600 mb-6">
-            Your login credentials have been sent to <strong>{formData.email}</strong>
+            {t('credentialsSent')} <strong>{formData.email}</strong>
           </p>
           <Link
             to="/login"
             className="block w-full bg-blue-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-blue-700 transition-all"
           >
-            Go to Login
+            {t('goToLogin')}
           </Link>
         </div>
       </div>
@@ -121,7 +126,7 @@ const Registration = () => {
   }
 
   return (
-    <div className="min-h-screen py-8 px-4 relative">
+    <div className="min-h-screen py-8 px-4 relative" dir={isRTL ? 'rtl' : 'ltr'}>
       {/* Gradient Background Image */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -135,9 +140,9 @@ const Registration = () => {
             alt="Libya Build" 
             className="h-16 mx-auto mb-3"
           />
-          <h1 className="text-xl font-bold text-white">20-23 April 2026</h1>
-          <p className="text-white/90 mt-2 text-sm font-medium">Benghazi International</p>
-          <p className="text-white/90 text-sm font-medium">Conference & Exhibitions Centre</p>
+          <h1 className="text-xl font-bold text-white">{t('eventDates')}</h1>
+          <p className="text-white/90 mt-2 text-sm font-medium">{t('benghaziInternational')}</p>
+          <p className="text-white/90 text-sm font-medium">{t('conferenceExhibitionsCentre')}</p>
         </div>
 
         <div className="flex justify-center mb-6">
@@ -165,11 +170,11 @@ const Registration = () => {
           <form onSubmit={handleSubmit}>
             {step === 1 && (
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('personalInformation')}</h3>
                 
                 <div className="grid grid-cols-4 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('title')}</label>
                     <select
                       name="salutation"
                       value={formData.salutation}
@@ -180,7 +185,7 @@ const Registration = () => {
                     </select>
                   </div>
                   <div className="col-span-3">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">First Name *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('firstName')} *</label>
                     <input
                       type="text"
                       name="firstName"
@@ -188,13 +193,13 @@ const Registration = () => {
                       onChange={handleChange}
                       required
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-gray-50"
-                      placeholder="First name"
+                      placeholder={t('firstNamePlaceholder')}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Last Name *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('lastName')} *</label>
                   <input
                     type="text"
                     name="lastName"
@@ -202,12 +207,12 @@ const Registration = () => {
                     onChange={handleChange}
                     required
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-                    placeholder="Last name"
+                    placeholder={t('lastNamePlaceholder')}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('email')} *</label>
                   <input
                     type="email"
                     name="email"
@@ -215,24 +220,24 @@ const Registration = () => {
                     onChange={handleChange}
                     required
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-                    placeholder="your@email.com"
+                    placeholder={t('emailPlaceholder')}
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('phone')}</label>
                     <input
                       type="tel"
                       name="phone"
                       value={formData.phone}
                       onChange={handleChange}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-gray-50"
-                      placeholder="Office phone"
+                      placeholder={t('phoneOffice')}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Mobile *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('mobile')} *</label>
                     <input
                       type="tel"
                       name="mobile"
@@ -240,7 +245,7 @@ const Registration = () => {
                       onChange={handleChange}
                       required
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-gray-50"
-                      placeholder="Mobile number"
+                      placeholder={t('mobilePlaceholder')}
                     />
                   </div>
                 </div>
@@ -251,17 +256,17 @@ const Registration = () => {
                   disabled={!formData.firstName || !formData.lastName || !formData.email || !formData.mobile}
                   className="w-full bg-blue-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                 >
-                  Continue
+                  {t('continue')}
                 </button>
               </div>
             )}
 
             {step === 2 && (
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Company Information</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('companyInformation')}</h3>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Company Name *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('company')} *</label>
                   <input
                     type="text"
                     name="company"
@@ -269,12 +274,12 @@ const Registration = () => {
                     onChange={handleChange}
                     required
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-                    placeholder="Your company"
+                    placeholder={t('companyPlaceholder')}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Job Title *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('jobTitle')} *</label>
                   <input
                     type="text"
                     name="jobTitle"
@@ -282,13 +287,13 @@ const Registration = () => {
                     onChange={handleChange}
                     required
                     className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-                    placeholder="Your job title"
+                    placeholder={t('jobTitlePlaceholder')}
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Country *</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('country')} *</label>
                     <input
                       type="text"
                       name="country"
@@ -296,24 +301,24 @@ const Registration = () => {
                       onChange={handleChange}
                       required
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-gray-50"
-                      placeholder="Country"
+                      placeholder={t('countryPlaceholder')}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Region</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('region')}</label>
                     <input
                       type="text"
                       name="region"
                       value={formData.region}
                       onChange={handleChange}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-gray-50"
-                      placeholder="Region/City"
+                      placeholder={t('regionPlaceholder')}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Company Sector</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('companySector')}</label>
                   <div className="flex flex-wrap gap-2">
                     {SECTORS.map(sector => (
                       <button
@@ -338,7 +343,7 @@ const Registration = () => {
                     onClick={() => setStep(1)}
                     className="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-xl font-semibold hover:bg-gray-200 transition-all"
                   >
-                    Back
+                    {t('back')}
                   </button>
                   <button
                     type="button"
@@ -346,7 +351,7 @@ const Registration = () => {
                     disabled={!formData.company || !formData.jobTitle || !formData.country}
                     className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-xl font-semibold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
-                    Continue
+                    {t('continue')}
                   </button>
                 </div>
               </div>
@@ -354,22 +359,22 @@ const Registration = () => {
 
             {step === 3 && (
               <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Additional Information</h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('additionalInformation')}</h3>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Referred By (Email)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('referredBy')}</label>
                   <input
                     type="email"
                     name="referredEmail"
                     value={formData.referredEmail}
                     onChange={handleChange}
                     className="w-full px-3 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-gray-50"
-                    placeholder="referrer@email.com"
+                    placeholder={t('referredEmailPlaceholder')}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">How did you hear about us?</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('howHeardAboutUs')}</label>
                   <div className="flex flex-wrap gap-2">
                     {HOW_HEARD.map(source => (
                       <button
@@ -394,7 +399,7 @@ const Registration = () => {
                     onClick={() => setStep(2)}
                     className="flex-1 bg-gray-100 text-gray-700 py-3 px-4 rounded-xl font-semibold hover:bg-gray-200 transition-all"
                   >
-                    Back
+                    {t('back')}
                   </button>
                   <button
                     type="submit"
@@ -404,12 +409,12 @@ const Registration = () => {
                     {isLoading ? (
                       <>
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        Registering...
+                        {t('registering')}
                       </>
                     ) : (
                       <>
                         <UserPlus className="w-5 h-5" />
-                        Complete Registration
+                        {t('completeRegistration')}
                       </>
                     )}
                   </button>
@@ -419,9 +424,9 @@ const Registration = () => {
           </form>
 
           <p className="text-center text-sm text-gray-500 mt-6">
-            Already registered?{' '}
+            {t('alreadyRegistered')}{' '}
             <Link to="/login" className="text-primary-600 font-medium hover:underline">
-              Sign in
+              {t('signIn')}
             </Link>
           </p>
         </div>

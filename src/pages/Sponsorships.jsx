@@ -6,6 +6,9 @@ import Badge from '../components/Badge'
 import Loader from '../components/Loader'
 import { getExhibitors, getIndustries } from '../services/eventxApi'
 import { useApp } from '../context/AppContext'
+import { useLanguage } from '../context/LanguageContext'
+import { useTranslation } from '../i18n/translations'
+import { getLocalizedName, getLocalizedProfile, getLocalizedIndustry } from '../utils/localization'
 import { clsx } from 'clsx'
 
 const Sponsorships = () => {
@@ -19,6 +22,8 @@ const Sponsorships = () => {
   const [selectedSector, setSelectedSector] = useState('all')
   const [viewMode, setViewMode] = useState('grid') // 'grid' or 'list'
   const { isFavorite, toggleFavorite } = useApp()
+  const { language } = useLanguage()
+  const { t } = useTranslation(language)
 
   useEffect(() => {
     loadSponsors()
@@ -209,11 +214,7 @@ const Sponsorships = () => {
 
   // Helper functions
   const getSponsorName = (sponsor) => {
-    const form3Entry = sponsor?._form3Entry
-    if (form3Entry?.company) {
-      return form3Entry.company
-    }
-    return sponsor.en_name || sponsor.company_name || sponsor.name || 'Sponsor'
+    return getLocalizedName(sponsor, language)
   }
   const getSponsorLogo = (sponsor) => {
     // Priority 1: Check the specific _form3Entry for this card
@@ -254,8 +255,8 @@ const Sponsorships = () => {
       const firstIndustry = form3Entry.company_industries[0]
       
       // The company_industries array contains objects with id, name, ar_name properties
-      if (typeof firstIndustry === 'object' && firstIndustry && firstIndustry.name) {
-        return firstIndustry.name || firstIndustry.en_name || 'General'
+      if (typeof firstIndustry === 'object' && firstIndustry) {
+        return getLocalizedIndustry(firstIndustry, language)
       }
       
       // Fallback for string values
@@ -275,12 +276,7 @@ const Sponsorships = () => {
     return fallback || 'General'
   }
   const getSponsorDescription = (sponsor) => {
-    const form3Entry = sponsor?._form3Entry
-    if (form3Entry?.company_profile) {
-      return form3Entry.company_profile
-    }
-    
-    return sponsor.description || sponsor.about || sponsor.company_description || ''
+    return getLocalizedProfile(sponsor, language)
   }
 
   if (isLoading) {
@@ -290,7 +286,7 @@ const Sponsorships = () => {
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center animate-pulse">
             <Crown className="w-8 h-8 text-white" />
           </div>
-          <p className="text-gray-600 font-medium">Loading sponsors...</p>
+          <p className="text-gray-600 font-medium">{t('loadingSponsors')}</p>
         </div>
       </div>
     )
@@ -305,9 +301,9 @@ const Sponsorships = () => {
             <div>
               <h1 className="text-2xl font-bold flex items-center gap-2">
                 <Crown className="w-6 h-6" />
-                Event Sponsors
+                {t('eventSponsors')}
               </h1>
-              <p className="text-white/70 text-sm mt-1">{sponsors.length} official sponsors</p>
+              <p className="text-white/70 text-sm mt-1">{sponsors.length} {t('officialSponsors')}</p>
             </div>
             <div className="flex gap-2">
               <button
@@ -338,7 +334,7 @@ const Sponsorships = () => {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search sponsors..."
+              placeholder={t('searchSponsors')}
               className="w-full pl-10 pr-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/30 focus:bg-white/20 transition-all"
             />
           </div>
@@ -352,7 +348,7 @@ const Sponsorships = () => {
             >
               {tiers.map(tier => (
                 <option key={tier} value={tier} className="bg-amber-600 text-white">
-                  {tier === 'all' ? 'All Tiers' : getTierConfig(tier).label}
+                  {tier === 'all' ? t('allTiers') : getTierConfig(tier).label}
                 </option>
               ))}
             </select>
@@ -363,7 +359,7 @@ const Sponsorships = () => {
             >
               {countries.map(country => (
                 <option key={country} value={country} className="bg-amber-600 text-white">
-                  {country === 'all' ? 'All Countries' : country}
+                  {country === 'all' ? t('allCountries') : country}
                 </option>
               ))}
             </select>
@@ -374,7 +370,7 @@ const Sponsorships = () => {
       {/* Sector Carousel - Same as Exhibitors page */}
       <div className="px-4 pb-4 bg-gradient-to-br from-amber-500 via-amber-600 to-orange-600">
         <div>
-          <h3 className="text-xs font-semibold text-white/90 mb-2">Sector</h3>
+          <h3 className="text-xs font-semibold text-white/90 mb-2">{t('sector')}</h3>
           <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
             {sectors.map(s => (
               <button
@@ -387,7 +383,7 @@ const Sponsorships = () => {
                     : 'bg-white/20 text-white hover:bg-white/30'
                 )}
               >
-                {s === 'all' ? 'All Sectors' : s}
+                {s === 'all' ? t('allSectors') : s}
               </button>
             ))}
           </div>
@@ -404,12 +400,12 @@ const Sponsorships = () => {
                   <Crown className="w-10 h-10 text-gray-400" />
                 </div>
                 <p className="text-gray-800 font-semibold text-lg mb-1">
-                  {sponsors.length === 0 ? 'No sponsors found' : 'No matches found'}
+                  {sponsors.length === 0 ? t('noSponsorsFound') : t('noMatchesFound')}
                 </p>
                 <p className="text-gray-500 text-sm text-center max-w-xs">
                   {sponsors.length === 0 
-                    ? 'Sponsors will be displayed here once available' 
-                    : 'Try adjusting your search or filters'
+                    ? t('sponsorsWillBeDisplayed') 
+                    : t('tryAdjustingFilters')
                   }
                 </p>
                 {filteredSponsors.length !== sponsors.length && (
@@ -417,7 +413,7 @@ const Sponsorships = () => {
                     onClick={() => { setSearchQuery(''); setSelectedTier('all'); setSelectedCountry('all') }}
                     className="mt-4 px-6 py-2.5 bg-amber-600 text-white rounded-xl font-medium text-sm hover:bg-amber-700 transition-colors"
                   >
-                    Clear Filters
+                    {t('clearFilters')}
                   </button>
                 )}
               </div>
@@ -479,7 +475,7 @@ const Sponsorships = () => {
                               {sponsor.booth_number && (
                                 <span className="flex items-center gap-1">
                                   <MapPin className="w-3.5 h-3.5" />
-                                  Booth {sponsor.booth_number}
+                                  {t('booth')} {sponsor.booth_number}
                                 </span>
                               )}
                               {sponsor.country && (

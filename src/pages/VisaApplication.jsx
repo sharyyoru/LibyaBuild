@@ -3,11 +3,15 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, FileText, Upload, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
 import Card from '../components/Card'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
+import { useTranslation } from '../i18n/translations'
 import { submitVisaApplication } from '../services/eventxApi'
 
 const VisaApplication = () => {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { language, isRTL } = useLanguage()
+  const { t } = useTranslation(language)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState(null)
   const [error, setError] = useState('')
@@ -67,8 +71,8 @@ const VisaApplication = () => {
               <ArrowLeft className="w-6 h-6" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold">Visa Application</h1>
-              <p className="text-white/80 text-sm">Apply for your event visa</p>
+              <h1 className="text-2xl font-bold">{t('visaApplication')}</h1>
+              <p className="text-white/80 text-sm">{t('applyEventVisa')}</p>
             </div>
           </div>
         </div>
@@ -82,9 +86,9 @@ const VisaApplication = () => {
               <FileText className="w-5 h-5 text-emerald-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-emerald-900">Visa Support</h3>
+              <h3 className="font-semibold text-emerald-900">{t('visaSupport')}</h3>
               <p className="text-sm text-emerald-700 mt-1">
-                We'll help process your visa invitation letter for Libya Build 2026.
+                {t('visaSupportDesc')}
               </p>
             </div>
           </div>
@@ -95,7 +99,7 @@ const VisaApplication = () => {
           <Card className="p-4 mb-6 bg-green-50 border border-green-200">
             <div className="flex items-center gap-3">
               <CheckCircle className="w-5 h-5 text-green-600" />
-              <p className="text-green-800 font-medium">Visa application submitted successfully!</p>
+              <p className="text-green-800 font-medium">{t('visaApplicationSuccess')}</p>
             </div>
           </Card>
         )}
@@ -114,14 +118,14 @@ const VisaApplication = () => {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Company Name *
+                {t('companyName')} *
               </label>
               <input
                 type="text"
                 name="companyName"
                 value={formData.companyName}
                 onChange={handleInputChange}
-                placeholder="Your company name"
+                placeholder={t('companyPlaceholder')}
                 required
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
               />
@@ -129,14 +133,14 @@ const VisaApplication = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Applicant's Full Name *
+                {t('applicantFullName')} *
               </label>
               <input
                 type="text"
                 name="applicantName"
                 value={formData.applicantName}
                 onChange={handleInputChange}
-                placeholder="As shown on passport"
+                placeholder={t('asShownOnPassport')}
                 required
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
               />
@@ -145,28 +149,28 @@ const VisaApplication = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nationality *
+                  {t('nationality')} *
                 </label>
                 <input
                   type="text"
                   name="nationality"
                   value={formData.nationality}
                   onChange={handleInputChange}
-                  placeholder="e.g., Emirati"
+                  placeholder={t('yourNationality')}
                   required
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                 />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Passport Number *
+                  {t('passportNumber')} *
                 </label>
                 <input
                   type="text"
                   name="passportNo"
                   value={formData.passportNo}
                   onChange={handleInputChange}
-                  placeholder="Passport number"
+                  placeholder={t('passportNumberPlaceholder')}
                   required
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                 />
@@ -176,7 +180,7 @@ const VisaApplication = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Mobile Number *
+                  {t('mobileNumber')} *
                 </label>
                 <input
                   type="tel"
@@ -190,14 +194,14 @@ const VisaApplication = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email *
+                  {t('email')} *
                 </label>
                 <input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleInputChange}
-                  placeholder="your@email.com"
+                  placeholder={t('emailPlaceholder')}
                   required
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                 />
@@ -207,7 +211,7 @@ const VisaApplication = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Date of Birth *
+                  {t('dateOfBirth')} *
                 </label>
                 <input
                   type="date"
@@ -220,14 +224,14 @@ const VisaApplication = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Place of Birth *
+                  {t('placeOfBirth')} *
                 </label>
                 <input
                   type="text"
                   name="placeOfBirth"
                   value={formData.placeOfBirth}
                   onChange={handleInputChange}
-                  placeholder="City, Country"
+                  placeholder={t('cityCountry')}
                   required
                   className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
                 />
@@ -236,14 +240,14 @@ const VisaApplication = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Profession *
+                {t('profession')} *
               </label>
               <input
                 type="text"
                 name="profession"
                 value={formData.profession}
                 onChange={handleInputChange}
-                placeholder="Your job title"
+                placeholder={t('jobTitlePlaceholder')}
                 required
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all"
               />
@@ -252,7 +256,7 @@ const VisaApplication = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Passport Issue Date *
+                  {t('passportIssueDate')} *
                 </label>
                 <input
                   type="date"
@@ -265,7 +269,7 @@ const VisaApplication = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Passport Expiry Date *
+                  {t('passportExpiryDate')} *
                 </label>
                 <input
                   type="date"
@@ -281,12 +285,12 @@ const VisaApplication = () => {
             {/* File Upload */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Passport Photocopy *
+                {t('passportPhotocopy')} *
               </label>
               <label className="flex items-center justify-center gap-2 w-full px-4 py-4 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-emerald-400 hover:bg-emerald-50 transition-all">
                 <Upload className="w-5 h-5 text-gray-500" />
                 <span className="text-sm text-gray-600">
-                  {passportFile ? passportFile.name : 'Upload passport photocopy'}
+                  {passportFile ? passportFile.name : t('uploadPassportPhotocopy')}
                 </span>
                 <input
                   type="file"
@@ -305,12 +309,12 @@ const VisaApplication = () => {
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Submitting...
+                  {t('submitting')}
                 </>
               ) : (
                 <>
                   <FileText className="w-5 h-5" />
-                  Submit Visa Application
+                  {t('submitVisaApplication')}
                 </>
               )}
             </button>
