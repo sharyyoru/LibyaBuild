@@ -47,6 +47,7 @@ import Partners from './pages/Partners'
 import PartnerDetail from './pages/PartnerDetail'
 import Sponsorship from './pages/Sponsorship'
 import SponsorshipDetail from './pages/SponsorshipDetail'
+import SharedCard from './pages/SharedCard'
 
 function App() {
   const [isLoading, setIsLoading] = useState(true)
@@ -66,6 +67,7 @@ function App() {
                 <Route path="/login/exhibitor" element={<ExhibitorLogin />} />
                 <Route path="/forgot-password" element={<ForgotPassword />} />
                 <Route path="/register" element={<Registration />} />
+                <Route path="/card/:hash" element={<SharedCard />} />
 
                 {/* Admin Portal Routes */}
               <Route path="/admin/*" element={<AdminApp />} />

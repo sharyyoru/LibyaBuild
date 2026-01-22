@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { QrCode, Camera, X, Users, MessageSquare, Download, Share2, Loader2 } from 'lucide-react'
+import { QrCode, Camera, X, Users, MessageSquare, Download, Share2, Loader2, User, Briefcase, Mail, Phone, EyeOff, MessageCircle } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import jsQR from 'jsqr'
 import Header from '../components/Header'
@@ -11,9 +11,7 @@ import { useAuth } from '../context/AuthContext'
 import { saveScannedCard, getScannedCards, getUserProfile, getPublicUserProfile } from '../lib/supabase'
 import { useLanguage } from '../context/LanguageContext'
 import { useTranslation } from '../i18n/translations'
-import { saveScannedCard, getScannedCards, getPublicUserProfile, getUserProfile } from '../lib/supabase'
 import { format } from 'date-fns'
-import { useNavigate } from 'react-router-dom'
 
 const BusinessCards = () => {
   const { userProfile } = useApp()
@@ -149,70 +147,65 @@ const BusinessCards = () => {
   }
 
   const handleShareCard = async () => {
-    // Make sure we have the most up-to-date QR data
     const userId = user?.id || user?.user_id || user?.visitor_id
+    if (!userId) {
+      alert('You must be logged in to share your card')
+      return
+    }
+    
     let qrDataToShare = myQRData
     
-    // If myQRData is not loaded, fetch it now
-    if (!qrDataToShare && userId) {
+    if (!qrDataToShare) {
       try {
         const { data: profile } = await getUserProfile(userId)
         qrDataToShare = {
           userId: userId,
           name: userProfile.name || user?.first_name || 'Event Attendee',
           company: userProfile.company || user?.company || 'Company',
-          role: userProfile.role || user?.job_title || 'Professional',
-          email: profile?.email_public ? profile.email : null,
-          mobile: profile?.mobile_public ? profile.mobile : null
+          role: userProfile.role || user?.job_title || 'Professional'
         }
       } catch (err) {
         console.error('Failed to load profile for QR:', err)
         qrDataToShare = {
           userId: userId,
-          name: userProfile.name || user?.first_name || 'Event Attendee',
-          company: userProfile.company || user?.company || 'Company',
-          role: userProfile.role || user?.job_title || 'Professional'
+          name: userProfile.name || 'Event Attendee',
+          company: userProfile.company || 'Company',
+          role: userProfile.role || 'Professional'
         }
       }
     }
     
-    const qrString = JSON.stringify(qrDataToShare || {
-      userId: userId,
-      name: userProfile.name || 'Event Attendee',
-      company: userProfile.company || 'Company',
-      role: userProfile.role || 'Professional'
-    })
-
+    const cardHash = btoa(JSON.stringify({ userId: userId, timestamp: Date.now() }))
+    const shareLink = `${window.location.origin}/card/${cardHash}`
+    
     const shareData = {
-      title: `${myQRData?.name || 'Business Card'}`,
-      text: `Connect with me at Libya Build 2026\n\nQR Code Data:\n${qrString}`,
-      url: window.location.origin + '/business-cards'
+      title: `${qrDataToShare?.name || userProfile.name || 'Business Card'} - Libya Build 2026`,
+      text: `Connect with me at Libya Build 2026!\n\n${qrDataToShare?.name || userProfile.name}\n${qrDataToShare?.role || userProfile.role}\n${qrDataToShare?.company || userProfile.company}`,
+      url: shareLink
     }
 
     try {
       if (navigator.share) {
         await navigator.share(shareData)
+        alert('✓ Card shared successfully!')
       } else if (navigator.clipboard && navigator.clipboard.writeText) {
-        // Fallback: copy QR string to clipboard
-        await navigator.clipboard.writeText(qrString)
-        alert('Card QR code data copied to clipboard! You can share this with others.')
+        await navigator.clipboard.writeText(shareLink)
+        alert('✓ Card link copied to clipboard!\n\nShare this link with others:\n' + shareLink)
       } else {
-        // Final fallback: show QR string in alert
-        alert('QR Code Data:\n\n' + qrString + '\n\nCopy this text to share with others.')
+        alert('Share this link with others:\n\n' + shareLink)
       }
     } catch (err) {
       console.error('Error sharing:', err)
-      // Final fallback: copy to clipboard or show
       try {
         if (navigator.clipboard && navigator.clipboard.writeText) {
-          await navigator.clipboard.writeText(qrString)
-          alert('Card QR code data copied to clipboard!')
+          await navigator.clipboard.writeText(shareLink)
+          alert('✓ Card link copied to clipboard!\n\n' + shareLink)
         } else {
-          alert('QR Code Data:\n\n' + qrString + '\n\nCopy this text to share with others.')
+          alert('Share this link with others:\n\n' + shareLink)
         }
       } catch (clipErr) {
         console.error('Clipboard error:', clipErr)
-        alert('QR Code Data:\n\n' + qrString + '\n\nCopy this text to share with others.')
+        alert('Share this link with others:\n\n' + shareLink)
       }
     }
   }
@@ -278,7 +271,7 @@ const BusinessCards = () => {
   }
 
   const scanQRCode = () => {
-    if (!videoRef.current || !canvasRef.current || !isCameraActive) return
+    if (!videoRef.current || !canvasRef.current) return
 
     const video = videoRef.current
     const canvas = canvasRef.current
@@ -292,33 +285,21 @@ const BusinessCards = () => {
       const imageData = context.getImageData(0, 0, canvas.width, canvas.height)
       
       try {
-        // Use jsQR library to detect QR codes
         const code = jsQR(imageData.data, imageData.width, imageData.height, {
           inversionAttempts: "dontInvert",
         })
         
         if (code && code.data) {
-          // QR code detected!
+          console.log('QR Code detected:', code.data)
           setScannedCode(code.data)
-          // Stop camera temporarily while processing
-          setIsCameraActive(false)
-          // Auto-process the scanned code
-          setTimeout(() => {
-            // Trigger the scan handler
-            const event = new Event('qr-detected')
-            event.qrData = code.data
-            window.dispatchEvent(event)
-          }, 100)
-          return // Stop scanning
+          return
         }
       } catch (err) {
         console.error('QR scan error:', err)
       }
     }
 
-    if (isCameraActive) {
-      requestAnimationFrame(scanQRCode)
-    }
+    requestAnimationFrame(scanQRCode)
   }
 
   useEffect(() => {
