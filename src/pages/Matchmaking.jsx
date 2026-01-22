@@ -113,7 +113,7 @@ const Matchmaking = () => {
         }
       }
       
-      // Set preferences from user's registered interests (no need to ask again)
+      // Set preferences from user's registered interests
       const userCountry = user?.country || userProfile?.country || ''
       const updatedPreferences = {
         sectors: userInterests,
@@ -123,10 +123,15 @@ const Matchmaking = () => {
       }
       setPreferences(updatedPreferences)
       
-      // Auto-generate matches using user's registered interests
-      if (exhibitorList.length > 0) {
+      // Scenario 1: User has interests - auto-generate matches
+      // Scenario 2: User has NO interests - show preference selection screen
+      if (userInterests.length > 0 && exhibitorList.length > 0) {
+        // User already filled interests during registration - auto-generate matches
         generateMatchesWithPrefs(exhibitorList, updatedPreferences)
         setCurrentStep('results')
+      } else {
+        // User didn't fill interests yet - show selection screen
+        setCurrentStep('preferences')
       }
     } catch (err) {
       console.error('Failed to load data:', err)
@@ -149,15 +154,35 @@ const Matchmaking = () => {
     
     // Sector matching (highest weight - 40 points max)
     const userSectors = userPrefs.sectors.length > 0 ? userPrefs.sectors : [user?.company_sectors, userProfile?.sector].filter(Boolean)
-    if (userSectors.some(s => exSector.toLowerCase().includes(s?.toLowerCase() || ''))) {
+    
+    // Check exhibitor industries from form3_data_entry
+    let exhibitorIndustries = []
+    if (form3.company_industries) {
+      const industries = Array.isArray(form3.company_industries) ? form3.company_industries : [form3.company_industries]
+      exhibitorIndustries = industries.map(i => {
+        if (typeof i === 'string') return i
+        return i.name || i.en_name || i.ar_name || ''
+      }).filter(Boolean)
+    }
+    
+    // Also check legacy sector field
+    if (exSector) {
+      exhibitorIndustries.push(exSector)
+    }
+    
+    // Match user interests with exhibitor industries
+    const hasMatch = userSectors.some(userSector => 
+      exhibitorIndustries.some(exIndustry => {
+        if (!exIndustry || typeof exIndustry !== 'string' || !userSector) return false
+        const exLower = exIndustry.toLowerCase()
+        const userLower = userSector.toLowerCase()
+        return exLower.includes(userLower) || userLower.includes(exLower)
+      })
+    )
+    
+    if (hasMatch) {
       score += 40
       reasons.push('sector')
-    } else if (form3.industries) {
-      const industries = Array.isArray(form3.industries) ? form3.industries : [form3.industries]
-      if (industries.some(i => userSectors.some(s => (i.name || i.en_name || i || '').toLowerCase().includes(s?.toLowerCase() || '')))) {
-        score += 35
-        reasons.push('sector')
-      }
     }
     
     // Country/Region matching (20 points)

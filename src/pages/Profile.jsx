@@ -33,7 +33,7 @@ const Profile = () => {
   const navigate = useNavigate()
   const { userProfile, setUserProfile, favorites, tickets, meetings: localMeetings } = useApp()
   const { user, logout, deleteAccount, isStaff, userLevel } = useAuth()
-  const { language } = useLanguage()
+  const { language, changeLanguage } = useLanguage()
   const { t } = useTranslation(language)
   const [isEditing, setIsEditing] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
@@ -173,6 +173,7 @@ const Profile = () => {
       await updateProfile({
         firstName,
         lastName,
+        email: formData.email || user?.email,
         company: formData.company,
         jobTitle: formData.role,
         image: profileImage
@@ -543,6 +544,34 @@ const Profile = () => {
                 <Settings className="w-5 h-5 text-gray-600" />
                 <span className="flex-1 font-medium text-gray-900">{t('appSettings')}</span>
               </button>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center gap-3">
+                <Globe className="w-5 h-5 text-gray-600" />
+                <span className="flex-1 font-medium text-gray-900">{t('selectLanguage')}</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => changeLanguage('en')}
+                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                      language === 'en'
+                        ? 'bg-primary-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    EN
+                  </button>
+                  <button
+                    onClick={() => changeLanguage('ar')}
+                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                      language === 'ar'
+                        ? 'bg-primary-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    AR
+                  </button>
+                </div>
+              </div>
             </Card>
             <Card className="p-4">
               <button className="w-full flex items-center gap-3 text-left">

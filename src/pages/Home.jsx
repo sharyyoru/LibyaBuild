@@ -315,44 +315,6 @@ const Home = () => {
             </div>
           )}
 
-          {/* Suggested Exhibitors */}
-          {suggested.length > 0 && (
-            <div className="px-4 mb-6">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-accent-500 flex items-center justify-center">
-                    <Sparkles className="w-4 h-4 text-white" />
-                  </div>
-                  {t('suggestedForYou')}
-                </h2>
-                <Link to="/matchmaking" className="flex items-center gap-1 text-sm font-semibold text-primary-600">
-                  {t('viewAll')}
-                  <ChevronRight className="w-4 h-4" />
-                </Link>
-              </div>
-              <div className="flex gap-3 overflow-x-auto pb-2 -mx-4 px-4 snap-x">
-                {suggested.map(exhibitor => (
-                  <Link key={exhibitor.id} to={`/exhibitors/${exhibitor.id}`} className="snap-start">
-                    <div className="min-w-[260px] p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
-                      <div className="flex items-center gap-3 mb-3">
-                        <img src={exhibitor.logo} alt={exhibitor.name} className="w-14 h-14 rounded-xl object-cover border border-gray-100" />
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-gray-900 truncate">{exhibitor.name}</h4>
-                          <p className="text-sm text-gray-500">{exhibitor.booth}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="px-2.5 py-1 bg-primary-50 text-primary-700 text-xs font-medium rounded-lg">{exhibitor.sector}</span>
-                        <span className="text-xs text-gray-400">•</span>
-                        <span className="text-xs text-gray-500">{exhibitor.country}</span>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          )}
-
           {/* Latest Updates */}
           <div className="px-4">
             <div className="flex items-center justify-between mb-4">

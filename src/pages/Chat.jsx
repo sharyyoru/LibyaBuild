@@ -1,34 +1,85 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Send, ArrowLeft, MoreVertical } from 'lucide-react'
-import { useApp } from '../context/AppContext'
-import { exhibitors } from '../data/mockData'
+import { Send, ArrowLeft, User } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import { sendChatMessage, getChatMessages, subscribeToChatMessages } from '../lib/supabase-chat'
+import { getPublicUserProfile } from '../lib/supabase'
 import { format } from 'date-fns'
 
 const Chat = () => {
   const { userId } = useParams()
   const navigate = useNavigate()
-  const { chats, messages, sendMessage } = useApp()
+  const { user } = useAuth()
   const [newMessage, setNewMessage] = useState('')
+  const [messages, setMessages] = useState([])
+  const [otherUser, setOtherUser] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSending, setIsSending] = useState(false)
+  const messagesEndRef = useRef(null)
+  const currentUserId = user?.id || user?.user_id || user?.visitor_id
 
-  const chat = chats.find(c => c.userId === parseInt(userId))
-  const chatMessages = messages[userId] || []
-  const exhibitor = exhibitors.find(e => e.id === parseInt(userId))
+  useEffect(() => {
+    loadChatData()
+  }, [userId])
 
-  if (!chat && !exhibitor) {
-    return (
-      <div className="h-screen flex items-center justify-center">
-        <p className="text-gray-500">Chat not found</p>
-      </div>
-    )
+  const loadChatData = async () => {
+    if (!currentUserId || !userId) return
+    
+    setIsLoading(true)
+    try {
+      // Load other user profile
+      const { data: userProfile } = await getPublicUserProfile(userId)
+      setOtherUser(userProfile)
+
+      // Load messages
+      const { data: msgs } = await getChatMessages(currentUserId, userId)
+      setMessages(msgs || [])
+
+      // Subscribe to new messages
+      const subscription = subscribeToChatMessages(currentUserId, userId, (newMsg) => {
+        setMessages(prev => [...prev, newMsg])
+        scrollToBottom()
+      })
+
+      return () => {
+        subscription.unsubscribe()
+      }
+    } catch (error) {
+      console.error('Error loading chat:', error)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const handleSend = (e) => {
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const handleSend = async (e) => {
     e.preventDefault()
-    if (newMessage.trim()) {
-      sendMessage(parseInt(userId), newMessage)
-      setNewMessage('')
+    if (!newMessage.trim() || !currentUserId || !userId || isSending) return
+
+    setIsSending(true)
+    try {
+      const { data } = await sendChatMessage(currentUserId, userId, newMessage.trim())
+      if (data) {
+        setMessages(prev => [...prev, data])
+        setNewMessage('')
+        scrollToBottom()
+      }
+    } catch (error) {
+      console.error('Error sending message:', error)
+    } finally {
+      setIsSending(false)
     }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
+      </div>
+    )
   }
 
   return (
@@ -40,55 +91,62 @@ const Chat = () => {
         >
           <ArrowLeft className="w-5 h-5 text-gray-700" />
         </button>
-        <img
-          src={chat?.userAvatar || exhibitor?.logo}
-          alt={chat?.userName || exhibitor?.name}
-          className="w-10 h-10 rounded-full object-cover"
-        />
+        {otherUser?.profile_photo_url ? (
+          <img
+            src={otherUser.profile_photo_url}
+            alt={otherUser.name || 'User'}
+            className="w-10 h-10 rounded-full object-cover"
+          />
+        ) : (
+          <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
+            <User className="w-5 h-5 text-primary-600" />
+          </div>
+        )}
         <div className="flex-1">
           <h2 className="font-semibold text-gray-900">
-            {chat?.userName || exhibitor?.name}
+            {otherUser?.name || 'User'}
           </h2>
           <p className="text-xs text-gray-500">
-            {exhibitor?.booth || 'Exhibitor'}
+            {otherUser?.company || 'Event Attendee'}
           </p>
         </div>
-        <button className="p-2 hover:bg-gray-100 rounded-full">
-          <MoreVertical className="w-5 h-5 text-gray-700" />
-        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
-        {chatMessages.length === 0 ? (
+        {messages.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-500 mb-2">No messages yet</p>
             <p className="text-sm text-gray-400">Start the conversation!</p>
           </div>
         ) : (
-          chatMessages.map(msg => (
-            <div
-              key={msg.id}
-              className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}
-            >
+          messages.map((msg, index) => {
+            const isMyMessage = msg.sender_id === currentUserId
+            return (
               <div
-                className={`max-w-[75%] rounded-2xl px-4 py-2 ${
-                  msg.sender === 'me'
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-white text-gray-900 border border-gray-200'
-                }`}
+                key={msg.id || index}
+                className={`flex ${isMyMessage ? 'justify-end' : 'justify-start'}`}
               >
-                <p className="text-sm">{msg.content}</p>
-                <p
-                  className={`text-xs mt-1 ${
-                    msg.sender === 'me' ? 'text-primary-100' : 'text-gray-500'
+                <div
+                  className={`max-w-[75%] rounded-2xl px-4 py-2 ${
+                    isMyMessage
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-white text-gray-900 border border-gray-200'
                   }`}
                 >
-                  {format(new Date(msg.timestamp), 'h:mm a')}
-                </p>
+                  <p className="text-sm">{msg.message}</p>
+                  <p
+                    className={`text-xs mt-1 ${
+                      isMyMessage ? 'text-primary-100' : 'text-gray-500'
+                    }`}
+                  >
+                    {format(new Date(msg.created_at), 'h:mm a')}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))
+            )
+          })
         )}
+        <div ref={messagesEndRef} />
       </div>
 
       <form
@@ -105,10 +163,14 @@ const Chat = () => {
           />
           <button
             type="submit"
-            disabled={!newMessage.trim()}
+            disabled={!newMessage.trim() || isSending}
             className="w-12 h-12 bg-primary-600 text-white rounded-full flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-transform"
           >
-            <Send className="w-5 h-5" />
+            {isSending ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+            ) : (
+              <Send className="w-5 h-5" />
+            )}
           </button>
         </div>
       </form>
