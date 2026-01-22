@@ -1,26 +1,25 @@
-import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { Search, MapPin, Users, ExternalLink, Heart, Loader2, Crown, Globe, Tag, Filter, LayoutGrid, LayoutList } from 'lucide-react'
-import Card from '../components/Card'
-import Badge from '../components/Badge'
-import Loader from '../components/Loader'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { Search, Crown, LayoutGrid, LayoutList } from 'lucide-react'
+import SponsorCard from '../components/SponsorCard'
 import { getExhibitors, getIndustries } from '../services/eventxApi'
+import { getCachedData, clearCache } from '../services/apiCache'
 import { useApp } from '../context/AppContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useTranslation } from '../i18n/translations'
 import { getLocalizedName, getLocalizedProfile, getLocalizedIndustry } from '../utils/localization'
 import { clsx } from 'clsx'
 
+const CACHE_TTL = 5 * 60 * 1000
+
 const Sponsorships = () => {
   const [sponsors, setSponsors] = useState([])
-  const [filteredSponsors, setFilteredSponsors] = useState([])
   const [industries, setIndustries] = useState([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTier, setSelectedTier] = useState('all')
   const [selectedCountry, setSelectedCountry] = useState('all')
   const [selectedSector, setSelectedSector] = useState('all')
-  const [viewMode, setViewMode] = useState('grid') // 'grid' or 'list'
+  const [viewMode, setViewMode] = useState('grid')
   const { isFavorite, toggleFavorite } = useApp()
   const { language } = useLanguage()
   const { t } = useTranslation(language)
@@ -29,16 +28,17 @@ const Sponsorships = () => {
     loadSponsors()
   }, [])
 
-  useEffect(() => {
-    filterSponsors()
-  }, [sponsors, searchQuery, selectedTier, selectedCountry, selectedSector])
-
-  const loadSponsors = async () => {
+  const loadSponsors = async (forceRefresh = false) => {
     setIsLoading(true)
     try {
+      if (forceRefresh) {
+        clearCache('exhibitors')
+        clearCache('industries')
+      }
+
       const [exhibitorsResponse, industriesResponse] = await Promise.all([
-        getExhibitors(),
-        getIndustries()
+        getCachedData('exhibitors', () => getExhibitors(), CACHE_TTL),
+        getCachedData('industries', () => getIndustries(), CACHE_TTL)
       ])
       
       const allExhibitors = exhibitorsResponse.data || exhibitorsResponse.exhibitors || exhibitorsResponse || []
@@ -91,68 +91,17 @@ const Sponsorships = () => {
     }
   }
 
-  const filterSponsors = () => {
-    let filtered = sponsors
 
-    // Search filter
-    if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase()
-      filtered = filtered.filter(sponsor => 
-        getSponsorName(sponsor).toLowerCase().includes(query) ||
-        getSponsorDescription(sponsor).toLowerCase().includes(query) ||
-        (sponsor.country || '').toLowerCase().includes(query)
-      )
-    }
-
-    // Tier filter
-    if (selectedTier !== 'all') {
-      filtered = filtered.filter(sponsor => getSponsorTier(sponsor) === selectedTier)
-    }
-
-    // Country filter
-    if (selectedCountry !== 'all') {
-      filtered = filtered.filter(sponsor => 
-        (sponsor.country || '').toLowerCase() === selectedCountry.toLowerCase()
-      )
-    }
-
-    // Sector filter - check if sponsor matches selected sector
-    if (selectedSector !== 'all') {
-      filtered = filtered.filter(sponsor => {
-        const sponsorSector = getSponsorSector(sponsor)
-        
-        // Check direct match first
-        if (sponsorSector === selectedSector) {
-          return true
-        }
-        
-        // Also check if sponsor has multiple industries that include the selected sector
-        const form3Entry = sponsor?._form3Entry
-        if (form3Entry?.company_industries && Array.isArray(form3Entry.company_industries)) {
-          return form3Entry.company_industries.some(industry => 
-            (industry.name || industry.en_name || industry) === selectedSector
-          )
-        }
-        
-        return false
-      })
-    }
-
-    setFilteredSponsors(filtered)
-  }
-
-  // Get sponsor tier
-  const getSponsorTier = (sponsor) => {
+  const getSponsorTier = useCallback((sponsor) => {
     const eventsUser = sponsor.events_user || sponsor.event_user || sponsor
     if (eventsUser.platinum_sponsorship === 1 || eventsUser.platinum_sponsorship === true || eventsUser.is_platinum_sponsorship === 1 || eventsUser.is_platinum_sponsorship === true) return 'platinum'
     if (eventsUser.gold_sponsorship === 1 || eventsUser.gold_sponsorship === true) return 'gold'
     if (eventsUser.silver_sponsorship === 1 || eventsUser.silver_sponsorship === true) return 'silver'
     if (eventsUser.is_official_sponsorship === 1 || eventsUser.is_official_sponsorship === true) return 'official'
     return 'sponsor'
-  }
+  }, [])
 
-  // Get tier configuration
-  const getTierConfig = (tier) => {
+  const getTierConfig = useCallback((tier) => {
     switch (tier) {
       case 'platinum':
         return { 
@@ -195,28 +144,13 @@ const Sponsorships = () => {
           light: 'bg-primary-50 text-primary-700 border-primary-200'
         }
     }
-  }
+  }, [])
 
-  // Get unique tiers, countries, and sectors
-  const tiers = ['all', ...new Set(sponsors.map(sponsor => getSponsorTier(sponsor)))]
-  const countries = ['all', ...new Set(sponsors.map(s => s.country).filter(Boolean))]
-  
-  // Extract unique sectors from sponsor _form3Entry company_industries
-  const extractedSectors = sponsors.flatMap(sponsor => {
-    const form3Entry = sponsor?._form3Entry
-    if (form3Entry?.company_industries && Array.isArray(form3Entry.company_industries)) {
-      return form3Entry.company_industries.map(industry => industry.name || industry.en_name || industry).filter(Boolean)
-    }
-    return []
-  })
-  
-  const sectors = ['all', ...new Set(extractedSectors)].filter(Boolean)
-
-  // Helper functions
-  const getSponsorName = (sponsor) => {
+  const getSponsorName = useCallback((sponsor) => {
     return getLocalizedName(sponsor, language)
-  }
-  const getSponsorLogo = (sponsor) => {
+  }, [language])
+
+  const getSponsorLogo = useCallback((sponsor) => {
     // Priority 1: Check the specific _form3Entry for this card
     const form3Entry = sponsor?._form3Entry
     if (form3Entry?.company_logo && typeof form3Entry.company_logo === 'string' && form3Entry.company_logo.trim() && form3Entry.company_logo !== 'null') {
@@ -248,8 +182,9 @@ const Sponsorships = () => {
     }
     
     return '/media/default-company.svg'
-  }
-  const getSponsorSector = (sponsor) => {
+  }, [])
+
+  const getSponsorSector = useCallback((sponsor) => {
     const form3Entry = sponsor?._form3Entry
     if (form3Entry?.company_industries && Array.isArray(form3Entry.company_industries) && form3Entry.company_industries.length > 0) {
       const firstIndustry = form3Entry.company_industries[0]
@@ -274,10 +209,72 @@ const Sponsorships = () => {
     }
     
     return fallback || 'General'
-  }
-  const getSponsorDescription = (sponsor) => {
+  }, [language])
+
+  const getSponsorDescription = useCallback((sponsor) => {
     return getLocalizedProfile(sponsor, language)
-  }
+  }, [language])
+
+  const tiers = useMemo(() => 
+    ['all', ...new Set(sponsors.map(sponsor => getSponsorTier(sponsor)))],
+    [sponsors, getSponsorTier]
+  )
+
+  const countries = useMemo(() => 
+    ['all', ...new Set(sponsors.map(s => s.country).filter(Boolean))],
+    [sponsors]
+  )
+  
+  const sectors = useMemo(() => {
+    const extractedSectors = sponsors.flatMap(sponsor => {
+      const form3Entry = sponsor?._form3Entry
+      if (form3Entry?.company_industries && Array.isArray(form3Entry.company_industries)) {
+        return form3Entry.company_industries.map(industry => industry.name || industry.en_name || industry).filter(Boolean)
+      }
+      return []
+    })
+    return ['all', ...new Set(extractedSectors)].filter(Boolean)
+  }, [sponsors])
+
+  const filteredSponsors = useMemo(() => {
+    let filtered = sponsors
+
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase()
+      filtered = filtered.filter(sponsor => 
+        getSponsorName(sponsor).toLowerCase().includes(query) ||
+        getSponsorDescription(sponsor).toLowerCase().includes(query) ||
+        (sponsor.country || '').toLowerCase().includes(query)
+      )
+    }
+
+    if (selectedTier !== 'all') {
+      filtered = filtered.filter(sponsor => getSponsorTier(sponsor) === selectedTier)
+    }
+
+    if (selectedCountry !== 'all') {
+      filtered = filtered.filter(sponsor => 
+        (sponsor.country || '').toLowerCase() === selectedCountry.toLowerCase()
+      )
+    }
+
+    if (selectedSector !== 'all') {
+      filtered = filtered.filter(sponsor => {
+        const sponsorSector = getSponsorSector(sponsor)
+        if (sponsorSector === selectedSector) return true
+        
+        const form3Entry = sponsor?._form3Entry
+        if (form3Entry?.company_industries && Array.isArray(form3Entry.company_industries)) {
+          return form3Entry.company_industries.some(industry => 
+            (industry.name || industry.en_name || industry) === selectedSector
+          )
+        }
+        return false
+      })
+    }
+
+    return filtered
+  }, [sponsors, searchQuery, selectedTier, selectedCountry, selectedSector, getSponsorName, getSponsorDescription, getSponsorTier, getSponsorSector])
 
   if (isLoading) {
     return (
@@ -423,80 +420,23 @@ const Sponsorships = () => {
                   ? 'grid grid-cols-1 sm:grid-cols-2 gap-4' 
                   : 'space-y-3'
               )}>
-                {filteredSponsors.map(sponsor => {
-                  const tier = getSponsorTier(sponsor)
-                  const tierConfig = getTierConfig(tier)
-                  
-                  return (
-                    <Link key={sponsor.id} to={`/exhibitors/${sponsor.id}`}>
-                      <div className={clsx(
-                        'bg-white rounded-2xl border border-gray-100 overflow-hidden transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-[0.98]',
-                        viewMode === 'list' ? 'p-4' : 'p-5'
-                      )}>
-                        {/* Sponsor Badge */}
-                        <div className="flex items-center gap-2 mb-3">
-                          <span className={clsx(
-                            'flex items-center gap-1.5 px-2.5 py-1 text-xs font-bold rounded-full text-white',
-                            tierConfig.bg
-                          )}>
-                            <Crown className="w-3.5 h-3.5" />
-                            {tierConfig.label.toUpperCase()}
-                          </span>
-                        </div>
-
-                        <div className={clsx(
-                          'flex gap-4',
-                          viewMode === 'list' ? 'items-center' : 'items-start'
-                        )}>
-                          <div className="flex-shrink-0">
-                            <img
-                              src={getSponsorLogo(sponsor)}
-                              alt={getSponsorName(sponsor)}
-                              className={clsx(
-                                'object-cover bg-gray-100 border border-gray-200 rounded-xl',
-                                viewMode === 'list' ? 'w-16 h-16' : 'w-20 h-20'
-                              )}
-                              onError={(e) => { e.target.src = '/media/default-company.svg' }}
-                            />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-bold text-gray-900 mb-1 line-clamp-1">
-                              {getSponsorName(sponsor)}
-                            </h3>
-                            <p className={clsx('text-sm font-medium mb-2', tierConfig.text)}>
-                              {getSponsorSector(sponsor)}
-                            </p>
-                            {getSponsorDescription(sponsor) && (
-                              <p className="text-sm text-gray-600 line-clamp-2 mb-3">
-                                {getSponsorDescription(sponsor)}
-                              </p>
-                            )}
-                            <div className="flex items-center gap-3 text-xs text-gray-500">
-                              {sponsor.booth_number && (
-                                <span className="flex items-center gap-1">
-                                  <MapPin className="w-3.5 h-3.5" />
-                                  {t('booth')} {sponsor.booth_number}
-                                </span>
-                              )}
-                              {sponsor.country && (
-                                <span className="flex items-center gap-1">
-                                  <Globe className="w-3.5 h-3.5" />
-                                  {sponsor.country}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <button
-                            onClick={(e) => { e.preventDefault(); toggleFavorite('exhibitors', sponsor.id) }}
-                            className="p-2 hover:bg-gray-100 rounded-full transition-all"
-                          >
-                            <Heart className={clsx('w-5 h-5 transition-all', isFavorite('exhibitors', sponsor.id) ? 'fill-red-500 text-red-500' : 'text-gray-400')} />
-                          </button>
-                        </div>
-                      </div>
-                    </Link>
-                  )
-                })}
+                {filteredSponsors.map(sponsor => (
+                  <SponsorCard
+                    key={sponsor.id}
+                    sponsor={sponsor}
+                    name={getSponsorName(sponsor)}
+                    logo={getSponsorLogo(sponsor)}
+                    sector={getSponsorSector(sponsor)}
+                    description={getSponsorDescription(sponsor)}
+                    booth={sponsor.booth_number}
+                    country={sponsor.country}
+                    tierConfig={getTierConfig(getSponsorTier(sponsor))}
+                    viewMode={viewMode}
+                    isFavorite={isFavorite('exhibitors', sponsor.id)}
+                    onToggleFavorite={() => toggleFavorite('exhibitors', sponsor.id)}
+                    t={t}
+                  />
+                ))}
               </div>
             )}
           </div>
