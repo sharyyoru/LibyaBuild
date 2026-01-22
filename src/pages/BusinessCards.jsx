@@ -66,69 +66,115 @@ const BusinessCards = () => {
   }
 
   const handleScan = async () => {
-    if (!scannedCode.trim()) return
+    if (!scannedCode.trim()) {
+      alert('Please enter or scan a QR code')
+      return
+    }
 
     const userId = user?.id || user?.user_id || user?.visitor_id
-    if (!userId) return
+    if (!userId) {
+      alert('You must be logged in to scan cards')
+      return
+    }
 
     try {
-      // Parse QR code data
-      const qrData = JSON.parse(scannedCode)
+      // Try to parse QR code data
+      let qrData
+      try {
+        qrData = JSON.parse(scannedCode)
+      } catch (parseErr) {
+        alert('Invalid QR code format. Please scan a valid business card QR code.')
+        setScannedCode('')
+        return
+      }
+
       const scannedUserId = qrData.userId
+      if (!scannedUserId) {
+        alert('Invalid QR code: missing user ID')
+        setScannedCode('')
+        return
+      }
+
+      // Check if already scanned
+      const alreadyScanned = businessCards.some(card => card.scanned_user_id === scannedUserId)
+      if (alreadyScanned) {
+        alert('You have already scanned this contact!')
+        setScannedCode('')
+        stopCamera()
+        return
+      }
 
       // Fetch public profile of scanned user
       let publicProfile = null
-      if (scannedUserId) {
+      try {
         const { data } = await getPublicUserProfile(scannedUserId)
         publicProfile = data
+      } catch (err) {
+        console.warn('Could not fetch public profile:', err)
       }
 
-      // Save to Supabase
+      // Save to Supabase with proper field mapping
       const cardData = {
         scannedUserId: scannedUserId,
         name: qrData.name || 'Scanned Contact',
         company: qrData.company || 'Company',
         role: qrData.role || 'Professional',
-        email: publicProfile?.email || qrData.email || null,
-        phone: publicProfile?.mobile || qrData.mobile || null,
+        email: (publicProfile?.email_public && publicProfile?.email) ? publicProfile.email : (qrData.email || null),
+        phone: (publicProfile?.mobile_public && publicProfile?.mobile) ? publicProfile.mobile : (qrData.mobile || null),
         source: 'qr',
         rawData: scannedCode
       }
 
-      const { data: savedCard } = await saveScannedCard(userId, cardData)
-      if (savedCard) {
-        setBusinessCards(prev => [savedCard, ...prev])
-        // Stop camera and close scanner
-        stopCamera()
-        alert('Contact added successfully! You can now chat with them from the Chats page.')
+      const { data: savedCard, error } = await saveScannedCard(userId, cardData)
+      if (error) {
+        console.error('Error saving card:', error)
+        alert('Failed to save contact. Please try again.')
+        return
       }
 
-      setScannedCode('')
+      if (savedCard) {
+        setBusinessCards(prev => [savedCard, ...prev])
+        stopCamera()
+        setScannedCode('')
+        alert(`✓ ${cardData.name} added successfully!\n\nYou can now chat with them from the Chats page.`)
+      }
     } catch (err) {
       console.error('Failed to scan card:', err)
-      // Fallback to simple save
-      const cardData = {
-        name: 'Scanned Contact',
-        company: 'Company',
-        role: 'Professional',
-        email: null,
-        phone: null,
-        source: 'qr',
-        rawData: scannedCode
-      }
-      const { data: savedCard } = await saveScannedCard(userId, cardData)
-      if (savedCard) {
-        setBusinessCards(prev => [savedCard, ...prev])
-        stopCamera()
-        alert('Contact added successfully!')
-      }
+      alert('Error scanning card. Please try again.')
       setScannedCode('')
     }
   }
 
   const handleShareCard = async () => {
-    const qrString = JSON.stringify(myQRData || {
-      userId: user?.id || user?.user_id || user?.visitor_id,
+    // Make sure we have the most up-to-date QR data
+    const userId = user?.id || user?.user_id || user?.visitor_id
+    let qrDataToShare = myQRData
+    
+    // If myQRData is not loaded, fetch it now
+    if (!qrDataToShare && userId) {
+      try {
+        const { data: profile } = await getUserProfile(userId)
+        qrDataToShare = {
+          userId: userId,
+          name: userProfile.name || user?.first_name || 'Event Attendee',
+          company: userProfile.company || user?.company || 'Company',
+          role: userProfile.role || user?.job_title || 'Professional',
+          email: profile?.email_public ? profile.email : null,
+          mobile: profile?.mobile_public ? profile.mobile : null
+        }
+      } catch (err) {
+        console.error('Failed to load profile for QR:', err)
+        qrDataToShare = {
+          userId: userId,
+          name: userProfile.name || user?.first_name || 'Event Attendee',
+          company: userProfile.company || user?.company || 'Company',
+          role: userProfile.role || user?.job_title || 'Professional'
+        }
+      }
+    }
+    
+    const qrString = JSON.stringify(qrDataToShare || {
+      userId: userId,
       name: userProfile.name || 'Event Attendee',
       company: userProfile.company || 'Company',
       role: userProfile.role || 'Professional'

@@ -4,7 +4,7 @@ import { Sparkles, Building2, Globe, MessageSquare, Calendar, Heart, ThumbsUp, T
 import Card from '../components/Card'
 import Badge from '../components/Badge'
 import Button from '../components/Button'
-import { getExhibitors, getProfile, getIndustries } from '../services/eventxApi'
+import { getExhibitors, getProfile, getIndustries, toggleFavorite } from '../services/eventxApi'
 import { saveMatch, getUserMatches, updateMatchStatus, getUserInterests } from '../lib/supabase'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
@@ -307,11 +307,16 @@ const Matchmaking = () => {
     }
     
     try {
-      const { data, error } = await saveMatch(matchData)
-      if (!error && data) {
-        setSavedMatches(prev => [...prev, data])
+      // Save to both Supabase matches table AND EventX API favorites
+      const [matchResult, favoriteResult] = await Promise.all([
+        saveMatch(matchData),
+        toggleFavorite(exhibitor.id, 11) // event_id = 11
+      ])
+      
+      if (!matchResult.error && matchResult.data) {
+        setSavedMatches(prev => [...prev, matchResult.data])
       } else {
-        console.warn('Could not save match:', error)
+        console.warn('Could not save match:', matchResult.error)
       }
     } catch (err) {
       console.warn('Error saving match:', err)
