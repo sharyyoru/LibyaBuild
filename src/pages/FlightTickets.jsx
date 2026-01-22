@@ -3,11 +3,15 @@ import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plane, Upload, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
 import Card from '../components/Card'
 import { useAuth } from '../context/AuthContext'
+import { useLanguage } from '../context/LanguageContext'
+import { useTranslation } from '../i18n/translations'
 import { storeFlightDetails } from '../services/eventxApi'
 
 const FlightTickets = () => {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { language, isRTL } = useLanguage()
+  const { t } = useTranslation(language)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitStatus, setSubmitStatus] = useState(null)
   const [error, setError] = useState('')
@@ -84,8 +88,8 @@ const FlightTickets = () => {
               <ArrowLeft className="w-6 h-6" />
             </button>
             <div>
-              <h1 className="text-2xl font-bold">Flight Tickets</h1>
-              <p className="text-white/80 text-sm">Submit your flight details</p>
+              <h1 className="text-2xl font-bold">{t('flightTickets')}</h1>
+              <p className="text-white/80 text-sm">{t('submitFlightDetailsHeader')}</p>
             </div>
           </div>
         </div>
@@ -99,9 +103,9 @@ const FlightTickets = () => {
               <Plane className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-blue-900">Flight Information</h3>
+              <h3 className="font-semibold text-blue-900">{t('flightInformation')}</h3>
               <p className="text-sm text-blue-700 mt-1">
-                Please provide your flight details for airport pickup and event coordination.
+                {t('flightInformationDesc')}
               </p>
             </div>
           </div>
@@ -112,7 +116,7 @@ const FlightTickets = () => {
           <Card className="p-4 mb-6 bg-green-50 border border-green-200">
             <div className="flex items-center gap-3">
               <CheckCircle className="w-5 h-5 text-green-600" />
-              <p className="text-green-800 font-medium">Flight details submitted successfully!</p>
+              <p className="text-green-800 font-medium">{t('flightDetailsSuccess')}</p>
             </div>
           </Card>
         )}
@@ -131,14 +135,14 @@ const FlightTickets = () => {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Flight Number *
+                {t('flightNumber')} *
               </label>
               <input
                 type="text"
                 name="flightNo"
                 value={formData.flightNo}
                 onChange={handleInputChange}
-                placeholder="e.g., EK123"
+                placeholder={t('flightNumberPlaceholder')}
                 required
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               />
@@ -146,14 +150,14 @@ const FlightTickets = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Departure City *
+                {t('departureCity')} *
               </label>
               <input
                 type="text"
                 name="departureCity"
                 value={formData.departureCity}
                 onChange={handleInputChange}
-                placeholder="e.g., Dubai"
+                placeholder={t('departureCityPlaceholder')}
                 required
                 className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               />
@@ -162,7 +166,7 @@ const FlightTickets = () => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Arrival Date *
+                  {t('arrivalDate')} *
                 </label>
                 <input
                   type="date"
@@ -175,7 +179,7 @@ const FlightTickets = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Arrival Time *
+                  {t('arrivalTime')} *
                 </label>
                 <input
                   type="time"
@@ -191,12 +195,12 @@ const FlightTickets = () => {
             {/* File Uploads */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Flight Ticket (Optional)
+                {t('flightTicketOptional')}
               </label>
               <label className="flex items-center justify-center gap-2 w-full px-4 py-4 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all">
                 <Upload className="w-5 h-5 text-gray-500" />
                 <span className="text-sm text-gray-600">
-                  {flightTicketFile ? flightTicketFile.name : 'Upload flight ticket'}
+                  {flightTicketFile ? flightTicketFile.name : t('uploadFlightTicket')}
                 </span>
                 <input
                   type="file"
@@ -209,12 +213,12 @@ const FlightTickets = () => {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Passport Copy (Optional)
+                {t('passportCopyOptional')}
               </label>
               <label className="flex items-center justify-center gap-2 w-full px-4 py-4 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-all">
                 <Upload className="w-5 h-5 text-gray-500" />
                 <span className="text-sm text-gray-600">
-                  {passportFile ? passportFile.name : 'Upload passport copy'}
+                  {passportFile ? passportFile.name : t('uploadPassportCopy')}
                 </span>
                 <input
                   type="file"
@@ -233,12 +237,12 @@ const FlightTickets = () => {
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Submitting...
+                  {t('submitting')}
                 </>
               ) : (
                 <>
                   <Plane className="w-5 h-5" />
-                  Submit Flight Details
+                  {t('submitFlightDetails')}
                 </>
               )}
             </button>

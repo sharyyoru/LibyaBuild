@@ -225,10 +225,10 @@ const Sponsorship = () => {
 
   // Sponsor level filter options
   const sponsorLevels = [
-    { key: 'all', label: 'All Sponsors' },
-    { key: 'platinum', label: 'Platinum' },
-    { key: 'gold', label: 'Gold' },
-    { key: 'silver', label: 'Silver' }
+    { key: 'all', label: t('allSponsors') },
+    { key: 'platinum', label: t('platinum') },
+    { key: 'gold', label: t('gold') },
+    { key: 'silver', label: t('silver') }
   ]
 
   const filtered = sponsors.filter(ex => {
@@ -260,16 +260,16 @@ const Sponsorship = () => {
 
   return (
     <>
-      <Header title="Sponsorship" showBack={false} />
+      <Header title={t('sponsorship')} showBack={false} />
       <div className="p-4 space-y-4">
         <SearchBar 
           value={search} 
           onChange={setSearch}
-          placeholder="Search sponsors by name, booth, or description..." 
+          placeholder={t('searchSponsorsByName')} 
         />
 
         <div>
-          <h3 className="text-xs font-semibold text-gray-600 mb-2">Sponsorship Level</h3>
+          <h3 className="text-xs font-semibold text-gray-600 mb-2">{t('sponsorshipLevel')}</h3>
           <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
             {sponsorLevels.map(level => (
               <button
@@ -289,7 +289,7 @@ const Sponsorship = () => {
         </div>
 
         <div>
-          <h3 className="text-xs font-semibold text-gray-600 mb-2">Country</h3>
+          <h3 className="text-xs font-semibold text-gray-600 mb-2">{t('country')}</h3>
           <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
             {countries.map(c => (
               <button
@@ -302,14 +302,14 @@ const Sponsorship = () => {
                     : 'bg-gray-100 text-gray-700 active:bg-gray-200'
                 )}
               >
-                {c === 'all' ? 'All Countries' : c}
+                {c === 'all' ? t('allCountries') : c}
               </button>
             ))}
           </div>
         </div>
 
         <div>
-          <h3 className="text-xs font-semibold text-gray-600 mb-2">Sector</h3>
+          <h3 className="text-xs font-semibold text-gray-600 mb-2">{t('sector')}</h3>
           <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4">
             {sectors.map(s => (
               <button
@@ -322,7 +322,7 @@ const Sponsorship = () => {
                     : 'bg-gray-100 text-gray-700 active:bg-gray-200'
                 )}
               >
-                {s === 'all' ? 'All Sectors' : s}
+                {s === 'all' ? t('allSectors') : s}
               </button>
             ))}
           </div>
@@ -331,7 +331,7 @@ const Sponsorship = () => {
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm">
             {error}
-            <button onClick={loadData} className="ml-2 underline">Retry</button>
+            <button onClick={loadData} className="ml-2 underline">{t('retry')}</button>
           </div>
         )}
 
@@ -342,9 +342,9 @@ const Sponsorship = () => {
         ) : filtered.length === 0 ? (
           <div className="text-center py-12">
             <Crown className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500">No sponsors found</p>
+            <p className="text-gray-500">{t('noSponsorsFound')}</p>
             {sponsors.length === 0 && !error && (
-              <p className="text-sm text-gray-400 mt-1">No exhibitors have sponsorship flags set</p>
+              <p className="text-sm text-gray-400 mt-1">{t('noExhibitorsWithSponsorship')}</p>
             )}
           </div>
         ) : (
@@ -352,10 +352,10 @@ const Sponsorship = () => {
             <div className="bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-2xl p-4 mb-4">
               <div className="flex items-center gap-3 mb-2">
                 <Crown className="w-6 h-6" />
-                <h2 className="text-lg font-bold">Event Sponsors</h2>
+                <h2 className="text-lg font-bold">{t('eventSponsors')}</h2>
               </div>
               <p className="text-primary-100 text-sm">
-                Meet our valued sponsors supporting Libya Build 2026 ({filtered.length} sponsors)
+                {t('meetOurSponsors')} ({filtered.length} {t('sponsorsCount')})
               </p>
             </div>
             
@@ -371,7 +371,7 @@ const Sponsorship = () => {
                     {sponsorConfig && (
                       <div className={`${sponsorConfig.bg} ${sponsorConfig.text} px-4 py-3 flex items-center gap-2`}>
                         <SponsorIcon className="w-5 h-5" />
-                        <span className="text-sm font-bold">{sponsorConfig.label} Sponsor</span>
+                        <span className="text-sm font-bold">{t(sponsorConfig.label.toLowerCase() + 'Sponsor')}</span>
                       </div>
                     )}
                     
@@ -419,7 +419,7 @@ const Sponsorship = () => {
                             {isPartner(exhibitor) && (
                               <Badge variant="success" size="sm">
                                 <BadgeCheck className="w-3 h-3 mr-0.5" />
-                                Partner
+                                {t('partner')}
                               </Badge>
                             )}
                             <Badge variant="primary" size="sm">{getExhibitorSector(exhibitor)}</Badge>
@@ -437,7 +437,7 @@ const Sponsorship = () => {
                               {getTeamCount(exhibitor) > 0 && (
                                 <span className="flex items-center gap-1">
                                   <Building2 className="w-3.5 h-3.5" />
-                                  {getTeamCount(exhibitor)} team
+                                  {getTeamCount(exhibitor)} {t('team')}
                                 </span>
                               )}
                             </div>
@@ -450,7 +450,7 @@ const Sponsorship = () => {
                                 className="flex items-center gap-1 px-3 py-1.5 bg-primary-600 text-white text-xs font-semibold rounded-lg hover:bg-primary-700 transition-colors"
                               >
                                 <Calendar className="w-3.5 h-3.5" />
-                                Request Meeting
+                                {t('requestMeeting')}
                               </button>
                             )}
                           </div>

@@ -12,7 +12,7 @@ import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useTranslation } from '../i18n/translations'
-import { getLocalizedName, getLocalizedIndustry } from '../utils/localization'
+import { getLocalizedName, getLocalizedProfile, getLocalizedIndustry } from '../utils/localization'
 import { clsx } from 'clsx'
 
 const DEFAULT_LOGO = '/media/default-company.svg'
@@ -157,7 +157,9 @@ const Exhibitors = () => {
       const industries = Array.isArray(form3Entry.company_industries) ? form3Entry.company_industries : [form3Entry.company_industries]
       if (industries.length > 0) {
         const first = industries[0]
-        return typeof first === 'string' ? first : first.name || first.en_name || 'General'
+        if (typeof first === 'string') return first
+        // Check for Arabic name if in Arabic mode
+        return getLocalizedIndustry(first, language)
       }
     }
     
@@ -177,11 +179,7 @@ const Exhibitors = () => {
   }
 
   const getExhibitorDescription = (exhibitor) => {
-    const form3Entry = exhibitor?._form3Entry
-    if (form3Entry?.company_profile) {
-      return form3Entry.company_profile
-    }
-    return exhibitor.description || exhibitor.about || exhibitor.company_description || ''
+    return getLocalizedProfile(exhibitor, language)
   }
 
   // Check if partner
@@ -376,7 +374,9 @@ const Exhibitors = () => {
                               {t('partner')}
                             </Badge>
                           )}
-                          <Badge variant="primary" size="sm">{getExhibitorSector(exhibitor)}</Badge>
+                          <Badge variant="primary" size="sm">
+                            {getExhibitorSector(exhibitor)}
+                          </Badge>
                           <Badge size="sm">{getExhibitorCountry(exhibitor)}</Badge>
                         </div>
                         {getExhibitorDescription(exhibitor) && (

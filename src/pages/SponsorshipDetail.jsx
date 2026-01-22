@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { MapPin, Mail, Phone, Globe, Heart, Calendar, Building2, ArrowLeft, Clock, Users, Package, CheckCircle, Loader2, ChevronDown, Send, Star, Award, Crown, BadgeCheck, Briefcase, User } from 'lucide-react'
 import { useLanguage } from '../context/LanguageContext'
-import { getLocalizedName, getLocalizedProfile } from '../utils/localization'
+import { useTranslation } from '../i18n/translations'
+import { getLocalizedName, getLocalizedProfile, getLocalizedIndustry } from '../utils/localization'
 import Header from '../components/Header'
 import Card from '../components/Card'
 import Button from '../components/Button'
@@ -51,6 +52,7 @@ const SponsorshipDetail = () => {
   const { isFavorite, toggleFavorite, addMeeting } = useApp()
   const { user } = useAuth()
   const { language } = useLanguage()
+  const { t } = useTranslation(language)
   const [sponsor, setSponsor] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState('')
@@ -360,7 +362,7 @@ const SponsorshipDetail = () => {
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center animate-pulse">
             <Crown className="w-8 h-8 text-white" />
           </div>
-          <p className="text-gray-600 font-medium">Loading sponsor details...</p>
+          <p className="text-gray-600 font-medium">{t('loading')}</p>
         </div>
       </div>
     )
@@ -373,13 +375,13 @@ const SponsorshipDetail = () => {
           <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-red-100 flex items-center justify-center">
             <Crown className="w-8 h-8 text-red-500" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Sponsor Not Found</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">{t('sponsorDetails')}</h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <Button
             onClick={() => navigate('/sponsorships')}
             variant="primary"
           >
-            Back to Sponsors
+            {t('back')}
           </Button>
         </div>
       </div>
@@ -396,7 +398,7 @@ const SponsorshipDetail = () => {
   return (
     <>
       <Header 
-        title="Sponsor Details" 
+        title={t('sponsorDetails')} 
         showBack={true} 
         onBack={() => navigate('/sponsorships')}
       />
@@ -436,7 +438,7 @@ const SponsorshipDetail = () => {
                   {sponsorConfig && (
                     <span className="flex items-center gap-1">
                       <SponsorIcon className="w-4 h-4" />
-                      {sponsorConfig.label} Sponsor
+                      {t(sponsorConfig.label.toLowerCase() + 'Sponsor')}
                     </span>
                   )}
                   {getSponsorBooth() !== 'TBA' && (
@@ -469,8 +471,8 @@ const SponsorshipDetail = () => {
           <div className="mx-4 mt-4 p-4 bg-green-50 border border-green-200 rounded-2xl flex items-center gap-3">
             <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0" />
             <div>
-              <p className="font-semibold text-green-900">Meeting Request Sent!</p>
-              <p className="text-sm text-green-700">Your meeting request has been submitted to {getSponsorName()}.</p>
+              <p className="font-semibold text-green-900">{t('meetingRequestSent')}</p>
+              <p className="text-sm text-green-700">{t('requestSubmittedTo')} {getSponsorName()}.</p>
             </div>
           </div>
         )}
@@ -483,7 +485,7 @@ const SponsorshipDetail = () => {
             <Card className="p-4">
               <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
                 <Briefcase className="w-5 h-5 text-primary-600" />
-                Company Profile
+                {t('companyProfile')}
               </h3>
               <p className="text-gray-600 leading-relaxed text-sm">
                 {getSponsorProfile()}
@@ -496,7 +498,7 @@ const SponsorshipDetail = () => {
             <Card className="p-4">
               <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
                 <Building2 className="w-5 h-5 text-primary-600" />
-                Industries
+                {t('industries')}
               </h3>
               <div className="flex flex-wrap gap-2">
                 {getSponsorIndustries().map((industry, index) => (
@@ -504,7 +506,7 @@ const SponsorshipDetail = () => {
                     key={index} 
                     className="px-3 py-1.5 bg-primary-100 text-primary-700 text-xs font-medium rounded-full border border-primary-200 hover:bg-primary-200 transition-colors"
                   >
-                    {industry.name || industry.en_name || 'Industry'}
+                    {getLocalizedIndustry(industry, language)}
                   </span>
                 ))}
               </div>
@@ -515,15 +517,15 @@ const SponsorshipDetail = () => {
           <Card className="p-4">
             <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
               <MapPin className="w-5 h-5 text-primary-600" />
-              Location
+              {t('location')}
             </h3>
             <div className="grid grid-cols-2 gap-4">
               <div className="p-3 bg-primary-50 rounded-xl text-center">
-                <p className="text-xs text-gray-500 mb-1">Booth</p>
+                <p className="text-xs text-gray-500 mb-1">{t('booth')}</p>
                 <p className="font-bold text-primary-700 text-lg">{getSponsorBooth() !== 'TBA' ? getSponsorBooth() : 'TBA'}</p>
               </div>
               <div className="p-3 bg-primary-50 rounded-xl text-center">
-                <p className="text-xs text-gray-500 mb-1">Country</p>
+                <p className="text-xs text-gray-500 mb-1">{t('country')}</p>
                 <p className="font-bold text-primary-700 text-sm">{getSponsorCountry()}</p>
               </div>
             </div>
@@ -535,7 +537,7 @@ const SponsorshipDetail = () => {
                 className="mt-4 border-primary-200 text-primary-600 hover:bg-primary-50"
               >
                 <Globe className="w-4 h-4 mr-2" />
-                Visit Website
+                {t('visitWebsite')}
               </Button>
             )}
           </Card>
@@ -544,7 +546,7 @@ const SponsorshipDetail = () => {
           <Card className="p-4">
             <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
               <User className="w-5 h-5 text-primary-600" />
-              Contact Information
+              {t('contactInformation')}
             </h3>
             
             {/* Primary Contact */}
@@ -553,7 +555,7 @@ const SponsorshipDetail = () => {
                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
                   <Mail className="w-5 h-5 text-primary-600 flex-shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Primary Email</p>
+                    <p className="text-sm font-medium text-gray-900">{t('primaryEmail')}</p>
                     <a
                       href={`mailto:${getEmail()}`}
                       className="text-primary-600 hover:text-primary-700 text-sm break-all"
@@ -567,7 +569,7 @@ const SponsorshipDetail = () => {
                 <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
                   <Phone className="w-5 h-5 text-primary-600 flex-shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900">Primary Phone</p>
+                    <p className="text-sm font-medium text-gray-900">{t('primaryPhone')}</p>
                     <a
                       href={`tel:${getPhone()}`}
                       className="text-primary-600 hover:text-primary-700 text-sm"
@@ -582,7 +584,7 @@ const SponsorshipDetail = () => {
             {/* Team Members */}
             {getExhibitorBadges().length > 0 && (
               <div>
-                <h4 className="font-semibold text-gray-900 mb-3 text-sm">Team Members</h4>
+                <h4 className="font-semibold text-gray-900 mb-3 text-sm">{t('teamMembers')}</h4>
                 <div className="space-y-2">
                   {getExhibitorBadges().map((badge, index) => (
                     <div key={index} className="border border-gray-200 rounded-xl p-3">
@@ -608,7 +610,7 @@ const SponsorshipDetail = () => {
             <Card className="p-4">
               <h3 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
                 <Calendar className="w-5 h-5 text-primary-600" />
-                Schedule Meeting
+                {t('scheduleMeeting')}
               </h3>
               
               {!showMeetingForm ? (
@@ -618,13 +620,13 @@ const SponsorshipDetail = () => {
                   className="bg-primary-600 hover:bg-primary-700"
                 >
                   <Calendar className="w-4 h-4 mr-2" />
-                  Request Meeting
+                  {t('requestMeeting')}
                 </Button>
               ) : (
                 <form onSubmit={handleMeetingSubmit} className="space-y-4">
                   {/* Date Selection */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Date</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('selectDate')}</label>
                     <div className="grid grid-cols-2 gap-2">
                       {EVENT_DATES.map(({ date, label }) => (
                         <button
@@ -648,7 +650,7 @@ const SponsorshipDetail = () => {
                   {availableUsers.length > 0 && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Select Users ({selectedUserIds.length} selected)
+                        {t('selectUsers')} ({selectedUserIds.length} {t('selected')})
                       </label>
                       <div className="space-y-2 max-h-32 overflow-y-auto border border-gray-200 rounded-lg p-2">
                         {availableUsers.map((user) => (
@@ -680,8 +682,7 @@ const SponsorshipDetail = () => {
                       </div>
                       {availableUsers.length === 0 && (
                         <div className="text-center py-4 text-sm text-primary-600 bg-primary-50 rounded-lg">
-                          No user contacts found for this sponsor.
-                          You may still request a meeting, but it will be sent to the company directly.
+                          {t('noUserContactsFound')}
                         </div>
                       )}
                     </div>
@@ -689,7 +690,7 @@ const SponsorshipDetail = () => {
 
                   {/* Time Selection */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Time</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('selectTime')}</label>
                     <div className="grid grid-cols-4 gap-2">
                       {TIME_SLOTS.map((time) => (
                         <button
@@ -711,11 +712,11 @@ const SponsorshipDetail = () => {
 
                   {/* Purpose */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Meeting Purpose</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">{t('meetingPurpose')}</label>
                     <textarea
                       value={meetingPurpose}
                       onChange={(e) => setMeetingPurpose(e.target.value)}
-                      placeholder="Describe the purpose of your meeting..."
+                      placeholder={t('describePurpose')}
                       className="w-full p-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none text-sm"
                       rows={3}
                     />
@@ -734,7 +735,7 @@ const SponsorshipDetail = () => {
                       }}
                       disabled={isSubmittingMeeting}
                     >
-                      Cancel
+                      {t('cancel')}
                     </Button>
                     <Button
                       type="submit"
@@ -745,12 +746,12 @@ const SponsorshipDetail = () => {
                       {isSubmittingMeeting ? (
                         <>
                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Sending...
+                          {t('sending')}
                         </>
                       ) : (
                         <>
                           <Send className="w-4 h-4 mr-2" />
-                          Send Request
+                          {t('sendRequest')}
                         </>
                       )}
                     </Button>
