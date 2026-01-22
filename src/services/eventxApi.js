@@ -95,6 +95,7 @@ export const registerVisitor = async (visitorData) => {
     referredEmail: visitorData.referredEmail || '',
     companySector: visitorData.companySector || [],
     howHeardAboutUs: visitorData.howHeardAboutUs || [],
+    prefer_language: visitorData.preferLanguage ? visitorData.preferLanguage.toUpperCase() : 'EN',
   };
 
   return apiRequest('/register-visitor?libya-build-benghazi', {
