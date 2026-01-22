@@ -1,28 +1,21 @@
-import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import { MapPin, Heart, Mail, Phone, Globe, Building2, Crown, Award, Star, BadgeCheck, Search, Calendar } from 'lucide-react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { Building2 } from 'lucide-react'
 import Header from '../components/Header'
 import SearchBar from '../components/SearchBar'
-import Card from '../components/Card'
-import Badge from '../components/Badge'
 import Loader from '../components/Loader'
 import MeetingRequestModal from '../components/MeetingRequestModal'
+import ExhibitorCard from '../components/ExhibitorCard'
 import { getExhibitors, getIndustries } from '../services/eventxApi'
+import { getCachedData, clearCache } from '../services/apiCache'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useTranslation } from '../i18n/translations'
-import { getLocalizedName, getLocalizedProfile, getLocalizedIndustry } from '../utils/localization'
+import { getLocalizedIndustry } from '../utils/localization'
 import { clsx } from 'clsx'
 
 const DEFAULT_LOGO = '/media/default-company.svg'
-
-// Sponsorship configurations
-const SPONSOR_CONFIG = {
-  platinum: { label: 'Platinum', icon: Crown, bg: 'bg-gradient-to-r from-slate-600 to-slate-800', text: 'text-white' },
-  gold: { label: 'Gold', icon: Award, bg: 'bg-gradient-to-r from-amber-400 to-yellow-500', text: 'text-amber-900' },
-  silver: { label: 'Silver', icon: Star, bg: 'bg-gradient-to-r from-gray-300 to-gray-400', text: 'text-gray-800' },
-}
+const CACHE_TTL = 5 * 60 * 1000
 
 const Exhibitors = () => {
   const [exhibitors, setExhibitors] = useState([])
@@ -42,50 +35,41 @@ const Exhibitors = () => {
 
   useEffect(() => {
     loadData()
-  }, []) // Fresh fetch on every mount
-  
-  // Also refresh when user navigates back to this page
-  useEffect(() => {
-    const handleFocus = () => {
-      loadData()
-    }
-    window.addEventListener('focus', handleFocus)
-    return () => window.removeEventListener('focus', handleFocus)
   }, [])
 
-  const loadData = async () => {
+  const loadData = async (forceRefresh = false) => {
     setIsLoading(true)
     setError('')
     try {
+      if (forceRefresh) {
+        clearCache('exhibitors')
+        clearCache('industries')
+      }
+
       const [exhibitorsData, industriesData] = await Promise.all([
-        getExhibitors(),
-        getIndustries()
+        getCachedData('exhibitors', () => getExhibitors(), CACHE_TTL),
+        getCachedData('industries', () => getIndustries(), CACHE_TTL)
       ])
       
-      // Handle different API response structures for exhibitors
       const exhibitorList = exhibitorsData.data || exhibitorsData.exhibitors || exhibitorsData || []
       
-      // Expand exhibitors to include each form3_data_entry as a separate card
       const expandedExhibitors = []
       if (Array.isArray(exhibitorList)) {
         exhibitorList.forEach(exhibitor => {
           if (exhibitor?.form3_data_entry && Array.isArray(exhibitor.form3_data_entry) && exhibitor.form3_data_entry.length > 0) {
-            // Create a card for each form3_data_entry (main exhibitor + co-exhibitors)
             exhibitor.form3_data_entry.forEach(form3Entry => {
               expandedExhibitors.push({
                 ...exhibitor,
-                _form3Entry: form3Entry, // Store the specific form3 entry for this card
+                _form3Entry: form3Entry,
                 _isCoExhibitor: form3Entry.is_coexhibitor === 1
               })
             })
           } else {
-            // No form3_data_entry or empty array - add exhibitor with company base data
-            // This handles exhibitors like "Company Brevo Exhibitor testt" (id 5258)
             expandedExhibitors.push({
               ...exhibitor,
               _form3Entry: null,
               _isCoExhibitor: false,
-              _useCompanyData: true // Flag to use company-level data
+              _useCompanyData: true
             })
           }
         })
@@ -93,7 +77,6 @@ const Exhibitors = () => {
       
       setExhibitors(expandedExhibitors)
       
-      // Handle different API response structures for industries
       const industryList = industriesData.data || industriesData.industries || industriesData || []
       setIndustries(Array.isArray(industryList) ? industryList : [])
     } catch (err) {
@@ -106,21 +89,16 @@ const Exhibitors = () => {
     }
   }
 
-  // Get logo from the specific form3_data_entry item for this card
-  const getExhibitorLogo = (exhibitor) => {
-    // Priority 1: Check the specific _form3Entry for this card
+  const getExhibitorLogo = useCallback((exhibitor) => {
     const form3Entry = exhibitor?._form3Entry
     if (form3Entry?.company_logo && typeof form3Entry.company_logo === 'string' && form3Entry.company_logo.trim() && form3Entry.company_logo !== 'null') {
       const logoPath = form3Entry.company_logo.trim()
-      // If already full URL, return as is
       if (logoPath.startsWith('http')) {
         return logoPath
       }
-      // Build full URL for relative paths
       return `https://eventxcrm.com/storage/${logoPath}`
     }
     
-    // Priority 2: Check other logo fields from main exhibitor
     const alternativeLogos = [
       exhibitor?.logo_url,
       exhibitor?.logo,
@@ -139,56 +117,48 @@ const Exhibitors = () => {
     }
     
     return DEFAULT_LOGO
-  }
+  }, [])
 
   const handleMeetingRequest = (exhibitor) => {
     setSelectedExhibitor(exhibitor)
     setShowMeetingModal(true)
   }
 
-  const closeMeetingModal = () => {
+  const closeMeetingModal = useCallback(() => {
     setShowMeetingModal(false)
     setSelectedExhibitor(null)
-  }
+  }, [])
 
-  // Get exhibitor name based on language
-  const getExhibitorName = (exhibitor) => {
-    // Try form3 entry first
+  const getExhibitorName = useCallback((exhibitor) => {
     const form3Entry = exhibitor?._form3Entry
     if (form3Entry) {
       if (language === 'ar' && form3Entry.ar_company) return form3Entry.ar_company
       if (form3Entry.company) return form3Entry.company
     }
-    // Fallback to company-level data
     if (language === 'ar' && exhibitor.ar_name) return exhibitor.ar_name
     return exhibitor.en_name || exhibitor.company_name || exhibitor.name || 'Unknown Exhibitor'
-  }
+  }, [language])
 
-  // Get Arabic name - kept for compatibility
-  const getExhibitorArabicName = (exhibitor) => {
+  const getExhibitorArabicName = useCallback((exhibitor) => {
     const form3Entry = exhibitor?._form3Entry
     if (form3Entry?.ar_company) {
       return form3Entry.ar_company
     }
     return exhibitor.ar_name || ''
-  }
+  }, [])
 
-  // Get sector/industry from the specific form3Entry for this card
-  const getExhibitorSector = (exhibitor) => {
+  const getExhibitorSector = useCallback((exhibitor) => {
     const form3Entry = exhibitor?._form3Entry
     if (form3Entry?.company_industries) {
-      const industries = Array.isArray(form3Entry.company_industries) ? form3Entry.company_industries : [form3Entry.company_industries]
-      if (industries.length > 0) {
-        const first = industries[0]
+      const industryList = Array.isArray(form3Entry.company_industries) ? form3Entry.company_industries : [form3Entry.company_industries]
+      if (industryList.length > 0) {
+        const first = industryList[0]
         if (typeof first === 'string') return first
-        // Check for Arabic name if in Arabic mode
         return getLocalizedIndustry(first, language)
       }
     }
     
-    // Fallback to company-level sector or find sector name from industries list
     if (exhibitor.sector && typeof exhibitor.sector === 'number') {
-      // Try to find sector name from industries list
       const sectorObj = industries.find(ind => ind.id === exhibitor.sector)
       if (sectorObj) {
         return getLocalizedIndustry(sectorObj, language)
@@ -196,101 +166,98 @@ const Exhibitors = () => {
     }
     
     return exhibitor.sector || exhibitor.industry || exhibitor.category || 'General'
-  }
+  }, [industries, language])
 
-  const getExhibitorCountry = (exhibitor) => {
+  const getExhibitorCountry = useCallback((exhibitor) => {
     const form3Entry = exhibitor?._form3Entry
     if (form3Entry?.country) return form3Entry.country
     return exhibitor.country || exhibitor.location || 'Libya'
-  }
+  }, [])
 
-  const getExhibitorBooth = (exhibitor) => {
-    // Check event_user for stand info
+  const getExhibitorBooth = useCallback((exhibitor) => {
     const eventUser = exhibitor?.event_user
     if (eventUser?.stand_no) return eventUser.stand_no
     if (eventUser?.hall_no && eventUser?.stand_no) {
       return `${eventUser.hall_no} - ${eventUser.stand_no}`
     }
     
-    // Check form3 entry
     const form3Entry = exhibitor?._form3Entry
     if (form3Entry?.stand_no) return form3Entry.stand_no
     
-    // Fallback to company level
     if (exhibitor.booth_number && exhibitor.hall) {
       return `${exhibitor.hall} - ${exhibitor.booth_number}`
     }
     return exhibitor.booth_number || exhibitor.booth || exhibitor.stand || 'TBA'
-  }
+  }, [])
 
-  const getExhibitorDescription = (exhibitor) => {
+  const getExhibitorDescription = useCallback((exhibitor) => {
     const form3Entry = exhibitor?._form3Entry
     if (form3Entry) {
       if (language === 'ar' && form3Entry.ar_company_profile) return form3Entry.ar_company_profile
       if (form3Entry.company_profile) return form3Entry.company_profile
     }
-    // Fallback to company-level description or contact info
     const desc = exhibitor.description || exhibitor.profile || ''
     const contact = exhibitor.email || exhibitor.phone || ''
     return desc || (contact ? `Contact: ${contact}` : 'No description available')
-  }
+  }, [language])
 
-  // Check if partner
-  const isPartner = (exhibitor) => {
+  const isPartner = useCallback((exhibitor) => {
     const eventUser = exhibitor?.event_user || exhibitor
     return eventUser?.is_partner === 1 || eventUser?.is_partner === true
-  }
+  }, [])
 
-  // Get partner type
-  const getPartnerType = (exhibitor) => {
+  const getPartnerType = useCallback((exhibitor) => {
     const eventUser = exhibitor?.event_user || exhibitor
     return eventUser?.partner_type || 'Partner'
-  }
+  }, [])
 
-  // Get sponsorship level
-  const getSponsorshipLevel = (exhibitor) => {
+  const getSponsorshipLevel = useCallback((exhibitor) => {
     const eventUser = exhibitor?.event_user || exhibitor
     if (eventUser?.is_platinum_sponsorship === 1 || eventUser?.is_platinum_sponsorship === true) return 'platinum'
     if (eventUser?.gold_sponsorship === 1 || eventUser?.gold_sponsorship === true) return 'gold'
     if (eventUser?.silver_sponsorship === 1 || eventUser?.silver_sponsorship === true) return 'silver'
     return null
-  }
+  }, [])
 
-  // Get team count from exhibitor_badges
-  const getTeamCount = (exhibitor) => exhibitor?.exhibitor_badges?.length || 0
+  const getTeamCount = useCallback((exhibitor) => exhibitor?.exhibitor_badges?.length || 0, [])
 
-  const countries = ['all', ...new Set(exhibitors.map(e => getExhibitorCountry(e)).filter(Boolean))]
+  const countries = useMemo(() => 
+    ['all', ...new Set(exhibitors.map(e => getExhibitorCountry(e)).filter(Boolean))],
+    [exhibitors, getExhibitorCountry]
+  )
   
-  // Use industries from API instead of extracting from exhibitor data
-  const sectors = ['all', ...industries.map(industry => {
-    // Handle different industry object structures
-    return industry.en_name || industry.name || industry.title || industry
-  }).filter(Boolean)]
+  const sectors = useMemo(() => 
+    ['all', ...industries.map(industry => 
+      industry.en_name || industry.name || industry.title || industry
+    ).filter(Boolean)],
+    [industries]
+  )
 
-  const filtered = exhibitors.filter(ex => {
-    const name = getExhibitorName(ex).toLowerCase()
-    const desc = getExhibitorDescription(ex).toLowerCase()
-    const booth = getExhibitorBooth(ex).toLowerCase()
-    const searchLower = search.toLowerCase()
-    
-    const matchesSearch = !search || 
-      name.includes(searchLower) ||
-      desc.includes(searchLower) ||
-      booth.includes(searchLower)
-    const matchesCountry = country === 'all' || getExhibitorCountry(ex) === country
-    
-    // Fix sector matching to properly compare with exhibitor's actual industries
-    const exhibitorSector = getExhibitorSector(ex)
-    const matchesSector = sector === 'all' || exhibitorSector === sector || 
-      // Also check if exhibitor has multiple industries that include the selected sector
-      (ex?.form3_data_entry?.[0]?.company_industries && 
-       Array.isArray(ex.form3_data_entry[0].company_industries) &&
-       ex.form3_data_entry[0].company_industries.some(industry => 
-         (typeof industry === 'string' ? industry : (industry.name || industry.en_name)) === sector
-       ))
-    
-    return matchesSearch && matchesCountry && matchesSector
-  })
+  const filtered = useMemo(() => 
+    exhibitors.filter(ex => {
+      const name = getExhibitorName(ex).toLowerCase()
+      const desc = getExhibitorDescription(ex).toLowerCase()
+      const booth = getExhibitorBooth(ex).toLowerCase()
+      const searchLower = search.toLowerCase()
+      
+      const matchesSearch = !search || 
+        name.includes(searchLower) ||
+        desc.includes(searchLower) ||
+        booth.includes(searchLower)
+      const matchesCountry = country === 'all' || getExhibitorCountry(ex) === country
+      
+      const exhibitorSector = getExhibitorSector(ex)
+      const matchesSector = sector === 'all' || exhibitorSector === sector || 
+        (ex?.form3_data_entry?.[0]?.company_industries && 
+         Array.isArray(ex.form3_data_entry[0].company_industries) &&
+         ex.form3_data_entry[0].company_industries.some(industry => 
+           (typeof industry === 'string' ? industry : (industry.name || industry.en_name)) === sector
+         ))
+      
+      return matchesSearch && matchesCountry && matchesSector
+    }),
+    [exhibitors, search, country, sector, getExhibitorName, getExhibitorDescription, getExhibitorBooth, getExhibitorCountry, getExhibitorSector]
+  )
 
   return (
     <>
@@ -345,7 +312,7 @@ const Exhibitors = () => {
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-xl text-sm">
             {error}
-            <button onClick={loadData} className="ml-2 underline">{t('retry')}</button>
+            <button onClick={() => loadData(true)} className="ml-2 underline">{t('retry')}</button>
           </div>
         )}
 
@@ -360,99 +327,25 @@ const Exhibitors = () => {
           </div>
         ) : (
           <div className="space-y-3">
-            {filtered.map(exhibitor => {
-              const sponsorLevel = getSponsorshipLevel(exhibitor)
-              const sponsorConfig = sponsorLevel ? SPONSOR_CONFIG[sponsorLevel] : null
-              const SponsorIcon = sponsorConfig?.icon
-              const isExhibitorPartner = isPartner(exhibitor)
-              const partnerType = getPartnerType(exhibitor)
-              
-              return (
-                <div key={exhibitor.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all">
-                  {/* Sponsor banner */}
-                  {sponsorConfig && (
-                    <div className={`${sponsorConfig.bg} ${sponsorConfig.text} px-4 py-2 flex items-center gap-2`}>
-                      <SponsorIcon className="w-4 h-4" />
-                      <span className="text-sm font-semibold">{t(sponsorConfig.label.toLowerCase() + 'Sponsor')}</span>
-                    </div>
-                  )}
-                  
-                  {/* Partner banner */}
-                  {!sponsorConfig && isExhibitorPartner && (
-                    <div className="bg-gradient-to-r from-slate-600 to-slate-800 text-white px-4 py-2 flex items-center gap-2">
-                      <Crown className="w-4 h-4" />
-                      <span className="text-sm font-semibold">{t('partner')}</span>
-                    </div>
-                  )}
-                  
-                  <Link to={`/exhibitors/${exhibitor.id}`} className="block p-4">
-                    <div className="flex gap-4">
-                      <div className="relative flex-shrink-0">
-                        <img
-                          src={getExhibitorLogo(exhibitor)}
-                          alt={getExhibitorName(exhibitor)}
-                          className="w-16 h-16 rounded-xl object-cover bg-gray-100 border border-gray-200"
-                          onError={(e) => { e.target.src = DEFAULT_LOGO }}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <div className="min-w-0">
-                            <h3 className="font-bold text-gray-900 truncate">{getExhibitorName(exhibitor)}</h3>
-                            {getExhibitorArabicName(exhibitor) && (
-                              <p className="text-xs text-gray-500 truncate" dir="rtl">{getExhibitorArabicName(exhibitor)}</p>
-                            )}
-                          </div>
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault()
-                              toggleFavorite('exhibitors', exhibitor.id)
-                            }}
-                            className="p-1.5 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
-                          >
-                            <Heart
-                              className={clsx(
-                                'w-5 h-5 transition-all',
-                                isFavorite('exhibitors', exhibitor.id)
-                                  ? 'fill-red-500 text-red-500 scale-110'
-                                  : 'text-gray-400'
-                              )}
-                            />
-                          </button>
-                        </div>
-                        <div className="flex flex-wrap gap-1.5 mb-2">
-                          {isPartner(exhibitor) && (
-                            <Badge variant="success" size="sm">
-                              <BadgeCheck className="w-3 h-3 mr-0.5" />
-                              {t('partner')}
-                            </Badge>
-                          )}
-                          <Badge variant="primary" size="sm">
-                            {getExhibitorSector(exhibitor)}
-                          </Badge>
-                          <Badge size="sm">{getExhibitorCountry(exhibitor)}</Badge>
-                        </div>
-                        {getExhibitorDescription(exhibitor) && (
-                          <p className="text-sm text-gray-600 line-clamp-2">{getExhibitorDescription(exhibitor)}</p>
-                        )}
-                        <div className="flex items-center gap-4 text-xs text-gray-500 mt-3">
-                          <span className="flex items-center gap-1">
-                            <MapPin className="w-3.5 h-3.5" />
-                            {getExhibitorBooth(exhibitor)}
-                          </span>
-                          {getTeamCount(exhibitor) > 0 && (
-                            <span className="flex items-center gap-1">
-                              <Building2 className="w-3.5 h-3.5" />
-                              {getTeamCount(exhibitor)} {t('team')}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-                </div>
-              )
-            })}
+            {filtered.map(exhibitor => (
+              <ExhibitorCard
+                key={exhibitor.id}
+                exhibitor={exhibitor}
+                name={getExhibitorName(exhibitor)}
+                arabicName={getExhibitorArabicName(exhibitor)}
+                logo={getExhibitorLogo(exhibitor)}
+                sector={getExhibitorSector(exhibitor)}
+                country={getExhibitorCountry(exhibitor)}
+                booth={getExhibitorBooth(exhibitor)}
+                description={getExhibitorDescription(exhibitor)}
+                teamCount={getTeamCount(exhibitor)}
+                sponsorLevel={getSponsorshipLevel(exhibitor)}
+                isPartner={isPartner(exhibitor)}
+                isFavorite={isFavorite('exhibitors', exhibitor.id)}
+                onToggleFavorite={() => toggleFavorite('exhibitors', exhibitor.id)}
+                t={t}
+              />
+            ))}
           </div>
         )}
       </div>
