@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useTranslation } from '../i18n/translations'
 import { updateProfile, getVisitorMeetings, getExhibitorFavorites } from '../services/eventxApi'
+import { saveUserProfile, getUserProfile, uploadProfilePhoto, deleteProfilePhoto } from '../lib/supabase'
 
 const sectors = [
   'Architecture',
@@ -44,6 +45,7 @@ const Profile = () => {
   const [deleteError, setDeleteError] = useState('')
   const [profileImage, setProfileImage] = useState(null)
   const [imagePreview, setImagePreview] = useState(null)
+  const [supabaseProfile, setSupabaseProfile] = useState(null)
   const fileInputRef = useRef(null)
   
   // Initialize form data from user or userProfile
@@ -55,7 +57,11 @@ const Profile = () => {
     country: user?.country || userProfile.country || '',
     bio: userProfile.bio || '',
     persona: userProfile.persona || 'visitor',
-    interests: userProfile.interests || []
+    interests: userProfile.interests || [],
+    email: user?.email || '',
+    mobile: user?.mobile || user?.phone || '',
+    emailPublic: false,
+    mobilePublic: false
   }
   
   const [formData, setFormData] = useState(initialData)
@@ -67,9 +73,12 @@ const Profile = () => {
   const loadProfileData = async () => {
     setIsLoading(true)
     try {
-      const [meetingsData, favoritesData] = await Promise.all([
+      const userId = user?.id || user?.user_id || user?.visitor_id
+      
+      const [meetingsData, favoritesData, supabaseProfileData] = await Promise.all([
         getVisitorMeetings(new Date().toISOString().split('T')[0]).catch(() => []),
-        getExhibitorFavorites().catch(() => ({ data: [] }))
+        getExhibitorFavorites().catch(() => ({ data: [] })),
+        userId ? getUserProfile(userId).catch(() => ({ data: null })) : Promise.resolve({ data: null })
       ])
       
       const meetingList = meetingsData.data || meetingsData.meetings || meetingsData || []
@@ -77,6 +86,21 @@ const Profile = () => {
       
       const favList = favoritesData.data || favoritesData.favorites || []
       setApiFavorites(Array.isArray(favList) ? favList : [])
+      
+      // Load Supabase profile data
+      if (supabaseProfileData.data) {
+        setSupabaseProfile(supabaseProfileData.data)
+        setFormData(prev => ({
+          ...prev,
+          email: supabaseProfileData.data.email || prev.email,
+          mobile: supabaseProfileData.data.mobile || prev.mobile,
+          emailPublic: supabaseProfileData.data.email_public || false,
+          mobilePublic: supabaseProfileData.data.mobile_public || false
+        }))
+        if (supabaseProfileData.data.profile_photo_url) {
+          setImagePreview(supabaseProfileData.data.profile_photo_url)
+        }
+      }
     } catch (err) {
       console.error('Failed to load profile data:', err)
     } finally {
@@ -119,11 +143,32 @@ const Profile = () => {
     setError('')
     
     try {
+      const userId = user?.id || user?.user_id || user?.visitor_id
+      
       // Parse name into first and last
       const nameParts = formData.name.trim().split(' ')
       const firstName = nameParts[0] || ''
       const lastName = nameParts.slice(1).join(' ') || ''
       
+      // Upload profile image to Supabase if changed
+      let photoUrl = imagePreview
+      let photoPath = supabaseProfile?.profile_photo_path
+      
+      if (profileImage && userId) {
+        // Delete old photo if exists
+        if (photoPath) {
+          await deleteProfilePhoto(photoPath).catch(err => console.warn('Could not delete old photo:', err))
+        }
+        
+        // Upload new photo
+        const uploadResult = await uploadProfilePhoto(userId, profileImage)
+        if (uploadResult.data) {
+          photoUrl = uploadResult.data.url
+          photoPath = uploadResult.data.path
+        }
+      }
+      
+      // Save to EventX API
       await updateProfile({
         firstName,
         lastName,
@@ -132,10 +177,21 @@ const Profile = () => {
         image: profileImage
       })
       
+      // Save to Supabase user_profiles
+      if (userId) {
+        await saveUserProfile(userId, {
+          email: formData.email,
+          email_public: formData.emailPublic,
+          mobile: formData.mobile,
+          mobile_public: formData.mobilePublic,
+          profile_photo_path: photoPath,
+          profile_photo_url: photoUrl
+        })
+      }
+      
       setUserProfile(formData)
       setIsEditing(false)
       setProfileImage(null)
-      setImagePreview(null)
     } catch (err) {
       console.error('Failed to save profile:', err)
       setError(err.message || 'Failed to save profile')
@@ -282,6 +338,56 @@ const Profile = () => {
                   rows={3}
                   className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
                 />
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder={t('email')}
+                  className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+                <div className="flex items-center justify-between px-4 py-3 bg-gray-50 rounded-xl">
+                  <span className="text-sm text-gray-600">{t('showEmailOnCard')}</span>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, emailPublic: !formData.emailPublic })}
+                    className={clsx(
+                      'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                      formData.emailPublic ? 'bg-primary-600' : 'bg-gray-300'
+                    )}
+                  >
+                    <span
+                      className={clsx(
+                        'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                        formData.emailPublic ? 'translate-x-6' : 'translate-x-1'
+                      )}
+                    />
+                  </button>
+                </div>
+                <input
+                  type="tel"
+                  value={formData.mobile}
+                  onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
+                  placeholder={t('mobile')}
+                  className="w-full px-4 py-3 bg-gray-50 border-0 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+                <div className="flex items-center justify-between px-4 py-3 bg-gray-50 rounded-xl">
+                  <span className="text-sm text-gray-600">{t('showMobileOnCard')}</span>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, mobilePublic: !formData.mobilePublic })}
+                    className={clsx(
+                      'relative inline-flex h-6 w-11 items-center rounded-full transition-colors',
+                      formData.mobilePublic ? 'bg-primary-600' : 'bg-gray-300'
+                    )}
+                  >
+                    <span
+                      className={clsx(
+                        'inline-block h-4 w-4 transform rounded-full bg-white transition-transform',
+                        formData.mobilePublic ? 'translate-x-6' : 'translate-x-1'
+                      )}
+                    />
+                  </button>
+                </div>
               </div>
             )}
           </div>

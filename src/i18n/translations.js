@@ -166,6 +166,10 @@ export const translations = {
     removePhoto: 'Remove Photo',
     photoUploaded: 'Photo uploaded successfully',
     photoUploadFailed: 'Failed to upload photo',
+    email: 'Email',
+    mobile: 'Mobile Number',
+    showEmailOnCard: 'Show email on business card',
+    showMobileOnCard: 'Show mobile on business card',
     myProfile: 'My Profile',
     yourName: 'Your Name',
     yourRole: 'Your Role',
@@ -393,7 +397,11 @@ export const translations = {
     addContact: 'Add Contact',
     collectedCards: 'Collected Cards',
     noBusinessCards: 'No business cards yet',
-    startNetworking: 'Start networking!',
+    startNetworking: 'Start scanning QR codes to collect business cards',
+    shareCard: 'Share Card',
+    startChat: 'Start Chat',
+    contactHidden: 'Contact info hidden by user',
+    sharedVia: 'Shared via',
     scanned: 'Scanned',
     
     // Tickets & Badges
@@ -600,7 +608,7 @@ export const translations = {
     // Event Info
     eventDate: 'April 20-23, 2026',
     eventLocation: 'Tripoli International Fair Ground',
-    allRightsReserved: '© 2026 Libya Build. All rights reserved.',
+    allRightsReserved: ' 2026 Libya Build. All rights reserved.',
     
     // Errors & Messages
     invalidCredentials: 'Invalid email or password',
@@ -847,6 +855,10 @@ export const translations = {
     removePhoto: 'إزالة الصورة',
     photoUploaded: 'تم رفع الصورة بنجاح',
     photoUploadFailed: 'فشل رفع الصورة',
+    email: 'البريد الإلكتروني',
+    mobile: 'رقم الجوال',
+    showEmailOnCard: 'إظهار البريد الإلكتروني على البطاقة',
+    showMobileOnCard: 'إظهار رقم الجوال على البطاقة',
     myProfile: 'ملفي الشخصي',
     yourName: 'اسمك',
     yourRole: 'دورك',
@@ -1074,7 +1086,11 @@ export const translations = {
     addContact: 'إضافة جهة اتصال',
     collectedCards: 'البطاقات المجمعة',
     noBusinessCards: 'لا توجد بطاقات عمل بعد',
-    startNetworking: 'ابدأ التواصل!',
+    startNetworking: 'ابدأ مسح رموز QR لجمع بطاقات العمل',
+    shareCard: 'مشاركة البطاقة',
+    startChat: 'بدء المحادثة',
+    contactHidden: 'معلومات الاتصال مخفية من قبل المستخدم',
+    sharedVia: 'تمت المشاركة عبر',
     scanned: 'تم المسح',
     
     // Tickets & Badges

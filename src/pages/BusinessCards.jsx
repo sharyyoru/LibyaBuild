@@ -1,34 +1,146 @@
-import { useState } from 'react'
-import { QrCode, User, Briefcase, Mail, Phone, Download } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { QrCode, User, Briefcase, Mail, Phone, Download, Share2, MessageCircle, EyeOff } from 'lucide-react'
 import { QRCodeSVG } from 'qrcode.react'
 import Header from '../components/Header'
 import Card from '../components/Card'
 import Button from '../components/Button'
 import { useApp } from '../context/AppContext'
+import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
 import { useTranslation } from '../i18n/translations'
+import { saveScannedCard, getScannedCards, getPublicUserProfile, getUserProfile } from '../lib/supabase'
 import { format } from 'date-fns'
+import { useNavigate } from 'react-router-dom'
 
 const BusinessCards = () => {
-  const { userProfile, businessCards, addBusinessCard } = useApp()
+  const { userProfile } = useApp()
+  const { user } = useAuth()
   const { language } = useLanguage()
   const { t } = useTranslation(language)
+  const navigate = useNavigate()
   const [showScanner, setShowScanner] = useState(false)
   const [scannedCode, setScannedCode] = useState('')
+  const [businessCards, setBusinessCards] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [myQRData, setMyQRData] = useState(null)
 
-  const handleScan = () => {
-    if (scannedCode.trim()) {
-      addBusinessCard({
-        id: Date.now(),
-        qrCode: scannedCode,
-        name: 'Scanned Contact',
-        company: 'Sample Company',
-        role: 'Business Professional',
-        email: 'contact@example.com',
-        phone: '+218 21 XXX XXXX'
-      })
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    const userId = user?.id || user?.user_id || user?.visitor_id
+    if (!userId) {
+      setIsLoading(false)
+      return
+    }
+
+    try {
+      // Load scanned cards from Supabase
+      const { data: cards } = await getScannedCards(userId)
+      setBusinessCards(cards || [])
+
+      // Load user profile for QR code
+      const { data: profile } = await getUserProfile(userId)
+      if (profile) {
+        setMyQRData({
+          userId: userId,
+          name: userProfile.name || user?.first_name || 'Event Attendee',
+          company: userProfile.company || user?.company || 'Company',
+          role: userProfile.role || user?.job_title || 'Professional',
+          email: profile.email_public ? profile.email : null,
+          mobile: profile.mobile_public ? profile.mobile : null,
+          photo: profile.profile_photo_url
+        })
+      }
+    } catch (err) {
+      console.error('Failed to load business cards:', err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleScan = async () => {
+    if (!scannedCode.trim()) return
+
+    const userId = user?.id || user?.user_id || user?.visitor_id
+    if (!userId) return
+
+    try {
+      // Parse QR code data
+      const qrData = JSON.parse(scannedCode)
+      const scannedUserId = qrData.userId
+
+      // Fetch public profile of scanned user
+      let publicProfile = null
+      if (scannedUserId) {
+        const { data } = await getPublicUserProfile(scannedUserId)
+        publicProfile = data
+      }
+
+      // Save to Supabase
+      const cardData = {
+        scannedUserId: scannedUserId,
+        name: qrData.name || 'Scanned Contact',
+        company: qrData.company || 'Company',
+        role: qrData.role || 'Professional',
+        email: publicProfile?.email || qrData.email || null,
+        phone: publicProfile?.mobile || qrData.mobile || null,
+        source: 'qr',
+        rawData: scannedCode
+      }
+
+      const { data: savedCard } = await saveScannedCard(userId, cardData)
+      if (savedCard) {
+        setBusinessCards(prev => [savedCard, ...prev])
+      }
+
       setScannedCode('')
       setShowScanner(false)
+    } catch (err) {
+      console.error('Failed to scan card:', err)
+      // Fallback to simple save
+      const cardData = {
+        name: 'Scanned Contact',
+        company: 'Company',
+        role: 'Professional',
+        email: null,
+        phone: null,
+        source: 'qr',
+        rawData: scannedCode
+      }
+      const { data: savedCard } = await saveScannedCard(userId, cardData)
+      if (savedCard) {
+        setBusinessCards(prev => [savedCard, ...prev])
+      }
+      setScannedCode('')
+      setShowScanner(false)
+    }
+  }
+
+  const handleShareCard = async () => {
+    const shareData = {
+      title: `${myQRData?.name || 'Business Card'}`,
+      text: `Connect with ${myQRData?.name || 'me'} at Libya Build 2026`,
+      url: window.location.origin + '/business-cards'
+    }
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData)
+      } else {
+        // Fallback: copy to clipboard
+        await navigator.clipboard.writeText(JSON.stringify(myQRData))
+        alert('Card data copied to clipboard!')
+      }
+    } catch (err) {
+      console.error('Error sharing:', err)
+    }
+  }
+
+  const handleStartChat = (card) => {
+    if (card.scanned_user_id) {
+      navigate(`/chat/${card.scanned_user_id}`)
     }
   }
 
@@ -47,8 +159,8 @@ const BusinessCards = () => {
           
           <div className="bg-white rounded-2xl p-4 mb-4">
             <QRCodeSVG
-              value={JSON.stringify({
-                qr: userProfile.qrCode,
+              value={JSON.stringify(myQRData || {
+                userId: user?.id || user?.user_id || user?.visitor_id,
                 name: userProfile.name || 'Event Attendee',
                 company: userProfile.company || 'Company Name',
                 role: userProfile.role || 'Professional'
@@ -78,9 +190,10 @@ const BusinessCards = () => {
           <Button
             variant="secondary"
             fullWidth
-            icon={Download}
+            icon={Share2}
+            onClick={handleShareCard}
           >
-            {t('saveCard')}
+            {t('shareCard')}
           </Button>
         </div>
 
@@ -115,7 +228,12 @@ const BusinessCards = () => {
           <h3 className="font-bold text-gray-900 mb-3">
             {t('collectedCards')} ({businessCards.length})
           </h3>
-          {businessCards.length === 0 ? (
+          {isLoading ? (
+            <Card className="p-8 text-center">
+              <div className="w-12 h-12 mx-auto mb-3 rounded-full border-4 border-primary-600 border-t-transparent animate-spin" />
+              <p className="text-gray-500">Loading cards...</p>
+            </Card>
+          ) : businessCards.length === 0 ? (
             <Card className="p-8 text-center">
               <User className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-500">{t('noBusinessCards')}</p>
@@ -125,7 +243,7 @@ const BusinessCards = () => {
             <div className="space-y-3">
               {businessCards.map(card => (
                 <Card key={card.id} className="p-4">
-                  <div className="flex items-start gap-3">
+                  <div className="flex items-start gap-3 mb-3">
                     <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center flex-shrink-0">
                       <User className="w-6 h-6 text-primary-600" />
                     </div>
@@ -136,19 +254,48 @@ const BusinessCards = () => {
                         <Briefcase className="w-3 h-3" />
                         <span>{card.company}</span>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
-                        <Mail className="w-3 h-3" />
-                        <span className="truncate">{card.email}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Phone className="w-3 h-3" />
-                        <span>{card.phone}</span>
-                      </div>
+                      {card.email ? (
+                        <div className="flex items-center gap-2 text-sm text-gray-600 mb-1">
+                          <Mail className="w-3 h-3" />
+                          <span className="truncate">{card.email}</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-sm text-gray-400 mb-1">
+                          <EyeOff className="w-3 h-3" />
+                          <span className="text-xs">{t('contactHidden')}</span>
+                        </div>
+                      )}
+                      {card.phone ? (
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Phone className="w-3 h-3" />
+                          <span>{card.phone}</span>
+                        </div>
+                      ) : null}
                       <p className="text-xs text-gray-400 mt-2">
-                        {t('scanned')} {format(new Date(card.scannedAt), 'MMM d, h:mm a')}
+                        {t('scanned')} {format(new Date(card.created_at), 'MMM d, h:mm a')}
                       </p>
                     </div>
                   </div>
+                  {card.scanned_user_id && (
+                    <div className="flex gap-2 pt-3 border-t border-gray-100">
+                      <button
+                        onClick={() => handleStartChat(card)}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-xl text-sm font-medium hover:bg-primary-700 transition-colors"
+                      >
+                        <MessageCircle className="w-4 h-4" />
+                        {t('startChat')}
+                      </button>
+                      <button
+                        onClick={() => {
+                          const shareData = { title: card.name, text: `${card.name} - ${card.company}`, url: window.location.href }
+                          if (navigator.share) navigator.share(shareData).catch(() => {})
+                        }}
+                        className="px-4 py-2 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-colors"
+                      >
+                        <Share2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
                 </Card>
               ))}
             </div>
