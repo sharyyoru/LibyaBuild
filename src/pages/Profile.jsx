@@ -11,6 +11,7 @@ import { useLanguage } from '../context/LanguageContext'
 import { useTranslation } from '../i18n/translations'
 import { updateProfile, getVisitorMeetings, getExhibitorFavorites } from '../services/eventxApi'
 import { saveUserProfile, getUserProfile, uploadProfilePhoto, deleteProfilePhoto } from '../lib/supabase'
+import { clsx } from 'clsx'
 
 const sectors = [
   'Architecture',
