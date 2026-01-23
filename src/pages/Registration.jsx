@@ -431,22 +431,20 @@ const Registration = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('phone')}</label>
-                  <div className="flex flex-col sm:flex-row sm:gap-2 gap-3">
-                    <div className="relative w-full sm:w-auto">
+                  <div className="flex gap-2">
+                    <div className="relative flex-shrink-0">
                       <button
                         type="button"
                         onClick={() => setShowPhoneDropdown(!showPhoneDropdown)}
-                        className="w-full sm:w-auto h-full px-3 py-2.5 border border-gray-300 rounded-xl bg-white hover:bg-gray-50 flex items-center gap-1 text-sm font-medium justify-between min-w-[100px]"
+                        className="px-3 py-2.5 border border-gray-300 rounded-xl bg-white hover:bg-gray-50 flex items-center gap-1 text-sm font-medium min-w-[100px]"
                         dir="ltr"
                       >
-                        <div className="flex items-center gap-1">
-                          <span>{COUNTRY_CODES.find(c => c.code === phoneCode)?.flag}</span>
-                          <span className="text-xs">{phoneCode}</span>
-                        </div>
-                        <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        <span>{COUNTRY_CODES.find(c => c.code === phoneCode)?.flag}</span>
+                        <span className="text-xs">{phoneCode}</span>
+                        <ChevronDown className="w-4 h-4 text-gray-400" />
                       </button>
                       {showPhoneDropdown && (
-                        <div className={`absolute top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto w-full sm:w-64 ${isRTL ? 'right-0' : 'left-0'}`}>
+                        <div className={`absolute top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto w-64 ${isRTL ? 'right-0' : 'left-0'}`}>
                           {COUNTRY_CODES.map(item => (
                             <button
                               key={item.code + item.country}
@@ -471,7 +469,7 @@ const Registration = () => {
                       name="phone"
                       value={formData.phone}
                       onChange={handleChange}
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                      className="flex-1 px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
                       placeholder={t('phoneOffice')}
                       dir="ltr"
                     />
@@ -480,22 +478,20 @@ const Registration = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{t('mobile')} *</label>
-                  <div className="flex flex-col sm:flex-row sm:gap-2 gap-3">
-                    <div className="relative w-full sm:w-auto">
+                  <div className="flex gap-2">
+                    <div className="relative flex-shrink-0">
                       <button
                         type="button"
                         onClick={() => setShowMobileDropdown(!showMobileDropdown)}
-                        className="w-full sm:w-auto h-full px-3 py-2.5 border border-gray-300 rounded-xl bg-white hover:bg-gray-50 flex items-center gap-1 text-sm font-medium justify-between min-w-[100px]"
+                        className="px-3 py-2.5 border border-gray-300 rounded-xl bg-white hover:bg-gray-50 flex items-center gap-1 text-sm font-medium min-w-[100px]"
                         dir="ltr"
                       >
-                        <div className="flex items-center gap-1">
-                          <span>{COUNTRY_CODES.find(c => c.code === mobileCode)?.flag}</span>
-                          <span className="text-xs">{mobileCode}</span>
-                        </div>
-                        <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        <span>{COUNTRY_CODES.find(c => c.code === mobileCode)?.flag}</span>
+                        <span className="text-xs">{mobileCode}</span>
+                        <ChevronDown className="w-4 h-4 text-gray-400" />
                       </button>
                       {showMobileDropdown && (
-                        <div className={`absolute top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto w-full sm:w-64 ${isRTL ? 'right-0' : 'left-0'}`}>
+                        <div className={`absolute top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto w-64 ${isRTL ? 'right-0' : 'left-0'}`}>
                           {COUNTRY_CODES.map(item => (
                             <button
                               key={item.code + item.country}
@@ -521,7 +517,7 @@ const Registration = () => {
                       value={formData.mobile}
                       onChange={handleChange}
                       required
-                      className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                      className="flex-1 px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
                       placeholder={t('mobilePlaceholder')}
                       dir="ltr"
                     />
