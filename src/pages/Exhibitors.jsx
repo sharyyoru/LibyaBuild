@@ -16,6 +16,7 @@ import { clsx } from 'clsx'
 
 const DEFAULT_LOGO = '/media/default-company.svg'
 const CACHE_TTL = 5 * 60 * 1000
+const ITEMS_PER_PAGE = 20
 
 const Exhibitors = () => {
   const [exhibitors, setExhibitors] = useState([])
@@ -28,6 +29,8 @@ const Exhibitors = () => {
   const [sector, setSector] = useState('all')
   const [showMeetingModal, setShowMeetingModal] = useState(false)
   const [selectedExhibitor, setSelectedExhibitor] = useState(null)
+  const [displayedCount, setDisplayedCount] = useState(ITEMS_PER_PAGE)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
   const { isFavorite, toggleFavorite } = useApp()
   const { user } = useAuth()
   const { language } = useLanguage()
@@ -259,6 +262,28 @@ const Exhibitors = () => {
     [exhibitors, search, country, sector, getExhibitorName, getExhibitorDescription, getExhibitorBooth, getExhibitorCountry, getExhibitorSector]
   )
 
+  // Reset displayed count when filters change
+  useEffect(() => {
+    setDisplayedCount(ITEMS_PER_PAGE)
+  }, [search, country, sector])
+
+  // Paginated exhibitors to display
+  const displayedExhibitors = useMemo(() => 
+    filtered.slice(0, displayedCount),
+    [filtered, displayedCount]
+  )
+
+  const hasMore = displayedCount < filtered.length
+
+  const handleLoadMore = () => {
+    setIsLoadingMore(true)
+    // Simulate a small delay for better UX
+    setTimeout(() => {
+      setDisplayedCount(prev => prev + ITEMS_PER_PAGE)
+      setIsLoadingMore(false)
+    }, 300)
+  }
+
   return (
     <>
       <Header title={t('exhibitors')} showBack={false} />
@@ -326,27 +351,61 @@ const Exhibitors = () => {
             <p className="text-gray-500">{t('noExhibitorsFound')}</p>
           </div>
         ) : (
-          <div className="space-y-3">
-            {filtered.map(exhibitor => (
-              <ExhibitorCard
-                key={exhibitor.id}
-                exhibitor={exhibitor}
-                name={getExhibitorName(exhibitor)}
-                arabicName={getExhibitorArabicName(exhibitor)}
-                logo={getExhibitorLogo(exhibitor)}
-                sector={getExhibitorSector(exhibitor)}
-                country={getExhibitorCountry(exhibitor)}
-                booth={getExhibitorBooth(exhibitor)}
-                description={getExhibitorDescription(exhibitor)}
-                teamCount={getTeamCount(exhibitor)}
-                sponsorLevel={getSponsorshipLevel(exhibitor)}
-                isPartner={isPartner(exhibitor)}
-                isFavorite={isFavorite('exhibitors', exhibitor.id)}
-                onToggleFavorite={() => toggleFavorite('exhibitors', exhibitor.id)}
-                t={t}
-              />
-            ))}
-          </div>
+          <>
+            <div className="space-y-3">
+              {displayedExhibitors.map(exhibitor => (
+                <ExhibitorCard
+                  key={exhibitor.id}
+                  exhibitor={exhibitor}
+                  name={getExhibitorName(exhibitor)}
+                  arabicName={getExhibitorArabicName(exhibitor)}
+                  logo={getExhibitorLogo(exhibitor)}
+                  sector={getExhibitorSector(exhibitor)}
+                  country={getExhibitorCountry(exhibitor)}
+                  booth={getExhibitorBooth(exhibitor)}
+                  description={getExhibitorDescription(exhibitor)}
+                  teamCount={getTeamCount(exhibitor)}
+                  sponsorLevel={getSponsorshipLevel(exhibitor)}
+                  isPartner={isPartner(exhibitor)}
+                  isFavorite={isFavorite('exhibitors', exhibitor.id)}
+                  onToggleFavorite={() => toggleFavorite('exhibitors', exhibitor.id)}
+                  t={t}
+                />
+              ))}
+            </div>
+
+            {/* Load More Button */}
+            {hasMore && (
+              <div className="space-y-3 py-4">
+                <button
+                  onClick={handleLoadMore}
+                  disabled={isLoadingMore}
+                  className="w-full py-4 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl font-semibold text-base hover:from-primary-700 hover:to-primary-800 active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-lg shadow-primary-500/30 flex items-center justify-center gap-2"
+                >
+                  {isLoadingMore ? (
+                    <>
+                      <Loader size="sm" />
+                      <span>{t('loading')}...</span>
+                    </>
+                  ) : (
+                    <span>{t('loadMore')}</span>
+                  )}
+                </button>
+                <p className="text-center text-sm text-gray-500">
+                  {t('showing')} {displayedCount} {t('of')} {filtered.length} {t('exhibitors')}
+                </p>
+              </div>
+            )}
+
+            {/* All items loaded message */}
+            {!hasMore && filtered.length > ITEMS_PER_PAGE && (
+              <div className="text-center py-6">
+                <p className="text-sm text-gray-500">
+                  {t('allExhibitorsLoaded')} ({filtered.length} {t('total')})
+                </p>
+              </div>
+            )}
+          </>
         )}
       </div>
       

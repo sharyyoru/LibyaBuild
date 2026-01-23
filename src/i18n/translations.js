@@ -158,6 +158,11 @@ export const translations = {
     platinumSponsor: 'Platinum Sponsor',
     goldSponsor: 'Gold Sponsor',
     silverSponsor: 'Silver Sponsor',
+    loadMore: 'Load More',
+    showing: 'Showing',
+    of: 'of',
+    total: 'total',
+    allExhibitorsLoaded: 'All exhibitors loaded',
     
     // Profile Page
     editProfile: 'Edit Profile',
@@ -888,6 +893,11 @@ export const translations = {
     platinumSponsor: 'راعي بلاتيني',
     goldSponsor: 'راعي ذهبي',
     silverSponsor: 'راعي فضي',
+    loadMore: 'تحميل المزيد',
+    showing: 'عرض',
+    of: 'من',
+    total: 'إجمالي',
+    allExhibitorsLoaded: 'تم تحميل جميع العارضين',
     
     // Profile Page
     editProfile: 'تعديل الملف الشخصي',
