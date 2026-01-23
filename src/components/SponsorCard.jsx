@@ -42,7 +42,7 @@ const SponsorCard = memo(({
               src={logo}
               alt={name}
               className={clsx(
-                'object-cover bg-gray-100 border border-gray-200 rounded-xl',
+                'object-contain bg-gray-100 border border-gray-200 rounded-xl',
                 viewMode === 'list' ? 'w-16 h-16' : 'w-20 h-20'
               )}
               loading="lazy"

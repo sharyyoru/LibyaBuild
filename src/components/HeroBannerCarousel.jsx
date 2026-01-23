@@ -62,8 +62,7 @@ const HeroBannerCarousel = () => {
 
         {/* Banner Content */}
         <div
-          onClick={() => navigate(currentBanner.link)}
-          className="relative h-52 cursor-pointer group overflow-hidden"
+          className="relative h-52 group overflow-hidden"
         >
           {/* Image with Full Detail Visibility - No Cropping */}
           <div className="absolute inset-0">

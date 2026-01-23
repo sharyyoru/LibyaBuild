@@ -9,7 +9,7 @@ import Card from '../components/Card'
 import Button from '../components/Button'
 import Badge from '../components/Badge'
 import Loader from '../components/Loader'
-import { getExhibitors, scheduleMeeting } from '../services/eventxApi'
+import { getExhibitorFiltered, scheduleMeeting } from '../services/eventxApi'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import { clsx } from 'clsx'
@@ -86,22 +86,22 @@ const SponsorshipDetail = () => {
     setIsLoading(true)
     setError('')
     try {
-      const response = await getExhibitors()
-      const exhibitorList = response.data || response.exhibitors || response || []
-      const allExhibitors = Array.isArray(exhibitorList) ? exhibitorList : []
+      const response = await getExhibitorFiltered(id)
+      const dataArray = response.data || []
+      const sponsorData = Array.isArray(dataArray) ? dataArray[0] : dataArray
       
-      // Find sponsor by ID and ensure it has sponsorship flags
-      const sponsorData = allExhibitors.find(exhibitor => {
-        const eventUser = exhibitor?.event_user || exhibitor
-        const isThisId = exhibitor.id == id
+      // Verify it's actually a sponsor
+      if (sponsorData) {
+        const eventUser = sponsorData?.event_user || sponsorData
         const isThisSponsor = eventUser?.is_platinum_sponsorship === 1 || 
                              eventUser?.gold_sponsorship === 1 || 
                              eventUser?.silver_sponsorship === 1
-        return isThisId && isThisSponsor
-      })
-      
-      if (sponsorData) {
-        setSponsor(sponsorData)
+        
+        if (isThisSponsor) {
+          setSponsor(sponsorData)
+        } else {
+          setError('Not a sponsor')
+        }
       } else {
         setError('Sponsor not found')
       }
@@ -240,6 +240,7 @@ const SponsorshipDetail = () => {
         name: `${sponsor.user.first_name || ''} ${sponsor.user.last_name || ''}`.trim(),
         email: sponsor.user.email,
         job_title: sponsor.user.job_title,
+        image: sponsor.user.image,
         type: 'main_user'
       })
     }
@@ -254,6 +255,7 @@ const SponsorshipDetail = () => {
             name: `${badge.fnameEN || ''} ${badge.lnameEN || ''}`.trim(),
             email: badge.email,
             job_title: badge.role,
+            image: badge.badge_user.image,
             type: 'badge_user'
           })
         }
@@ -269,6 +271,7 @@ const SponsorshipDetail = () => {
             name: `${entry.user.first_name || ''} ${entry.user.last_name || ''}`.trim(),
             email: entry.user.email,
             job_title: entry.user.job_title,
+            image: entry.user.image,
             type: 'form3_user'
           })
         }
@@ -664,9 +667,25 @@ const SponsorshipDetail = () => {
                               onChange={() => handleUserSelect(user.id)}
                               className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
                             />
+                            <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-gray-200">
+                              {user.image ? (
+                                <img
+                                  src={user.image.startsWith('http') ? user.image : `https://eventxcrm.com/storage/${user.image}`}
+                                  alt={user.name || 'User'}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.target.onerror = null
+                                    e.target.src = '/media/default-user.svg'
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-primary-100">
+                                  <User className="w-5 h-5 text-primary-600" />
+                                </div>
+                              )}
+                            </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center space-x-2">
-                                <User className="w-4 h-4 text-gray-400" />
                                 <span className="text-sm font-medium text-gray-900 truncate">
                                   {user.name || 'No Name'}
                                 </span>

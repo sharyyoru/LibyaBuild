@@ -6,7 +6,7 @@ import Card from '../components/Card'
 import Button from '../components/Button'
 import Badge from '../components/Badge'
 import Loader from '../components/Loader'
-import { getExhibitor, scheduleMeeting } from '../services/eventxApi'
+import { getExhibitorFiltered, scheduleMeeting } from '../services/eventxApi'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -77,10 +77,10 @@ const ExhibitorDetail = () => {
     setIsLoading(true)
     setError('')
     try {
-      const response = await getExhibitor(id)
+      const response = await getExhibitorFiltered(id)
       // Handle different response structures
       const dataArray = response.data || []
-      const exhibitorData = Array.isArray(dataArray) ? dataArray.find(e => e.id == id) || dataArray[0] : dataArray
+      const exhibitorData = Array.isArray(dataArray) ? dataArray[0] : dataArray
       
       if (exhibitorData) {
         setExhibitor(exhibitorData)
@@ -245,6 +245,7 @@ const ExhibitorDetail = () => {
         name: `${exhibitor.user.first_name || ''} ${exhibitor.user.last_name || ''}`.trim(),
         email: exhibitor.user.email,
         job_title: exhibitor.user.job_title,
+        image: exhibitor.user.image,
         type: 'main_user'
       })
     }
@@ -259,6 +260,7 @@ const ExhibitorDetail = () => {
             name: `${badge.fnameEN || ''} ${badge.lnameEN || ''}`.trim(),
             email: badge.email,
             job_title: badge.role,
+            image: badge.badge_user.image,
             type: 'badge_user'
           })
         }
@@ -274,6 +276,7 @@ const ExhibitorDetail = () => {
             name: `${entry.user.first_name || ''} ${entry.user.last_name || ''}`.trim(),
             email: entry.user.email,
             job_title: entry.user.job_title,
+            image: entry.user.image,
             type: 'form3_user'
           })
         }
@@ -683,9 +686,25 @@ const ExhibitorDetail = () => {
                               onChange={() => handleUserSelect(user.id)}
                               className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
                             />
+                            <div className="w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-gray-200">
+                              {user.image ? (
+                                <img
+                                  src={user.image.startsWith('http') ? user.image : `https://eventxcrm.com/storage/${user.image}`}
+                                  alt={user.name || 'User'}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.target.onerror = null
+                                    e.target.src = '/media/default-user.svg'
+                                  }}
+                                />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-primary-100">
+                                  <User className="w-5 h-5 text-primary-600" />
+                                </div>
+                              )}
+                            </div>
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center space-x-2">
-                                <User className="w-4 h-4 text-gray-400" />
                                 <span className="text-sm font-medium text-gray-900 truncate">
                                   {user.name || 'No Name'}
                                 </span>

@@ -138,7 +138,7 @@ const Home = () => {
       {/* Hero Header Section */}
       <div className="relative overflow-hidden">
         {/* Cyan to Blue Gradient Background */}
-        <div className="bg-gradient-to-r from-cyan-400 via-blue-500 to-blue-900 px-4 pt-16 pb-4 safe-top">
+        <div className="bg-gradient-to-r from-cyan-400 via-blue-500 to-blue-900 px-4 pt-2 pb-2 safe-top">
           {/* Header with Search Bar */}
           <div className="flex items-center gap-3">
             {/* Exhibitor Search */}
@@ -150,7 +150,7 @@ const Home = () => {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={t('searchExhibitors')}
-                  className="w-full pl-12 pr-4 py-3.5 bg-white rounded-2xl focus:ring-2 focus:ring-white/50 focus:outline-none transition-all text-gray-700 placeholder:text-gray-400"
+                  className="w-full pl-12 pr-4 pb-2 mt-2 bg-white rounded-2xl focus:ring-2 focus:ring-white/50 focus:outline-none transition-all text-gray-700 placeholder:text-gray-400"
                 />
               </div>
             </form>
@@ -224,7 +224,7 @@ const Home = () => {
                 <QuickAction to="/speakers" icon="/media/PNG/App Icons-11.png" title={t('speakers')} delay={100} comingSoon={true} comingSoonText={t('comingSoon')} />
                 <QuickAction to="/schedule" icon="/media/PNG/App Icons-09.png" title={t('agenda')} delay={150} comingSoon={true} comingSoonText={t('comingSoon')} />
                 <QuickAction to="/tickets" icon="/media/PNG/App Icons-08.png" title={t('myBadge')} delay={200} />
-                <QuickAction to="/business-cards" icon="/media/PNG/App Icons-01.png" title={t('digitalCard')} delay={250} />
+                <QuickAction to="/business-cards" icon="/media/PNG/App Icons-01.png" title={t('digitalCard')} delay={250} comingSoon={true} comingSoonText={t('comingSoon')} />
                 <QuickAction to="/meetings" icon="/media/PNG/App Icons-15.png" title={t('meetings')} delay={300} />
                 <QuickAction to="/navigation" icon="/media/PNG/App Icons-03.png" title={t('eventMap')} delay={350} comingSoon={true} comingSoonText={t('comingSoon')} />
               </div>
@@ -263,12 +263,12 @@ const Home = () => {
           {/* Promotional Banner */}
           <div className="px-4 mb-6">
             <Link to="/sponsorships">
-              <div className="relative overflow-hidden rounded-3xl h-48 cursor-pointer group">
+              <div className="relative overflow-hidden rounded-3xl cursor-pointer group">
                 {/* Full Background Image - No Zoom, Full Details Visible */}
                 <img
                   src="/media/1920-length-x-1080-height.jpg"
                   alt="Libya Build Promotion"
-                  className="w-full h-full object-contain transition-all duration-300"
+                  className="w-full h-auto object-cover transition-all duration-300 rounded-3xl"
                 />
                 
                 {/* Minimal Overlay for Future Carousel Functionality */}

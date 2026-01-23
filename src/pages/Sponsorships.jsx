@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Search, Crown, LayoutGrid, LayoutList } from 'lucide-react'
 import SponsorCard from '../components/SponsorCard'
-import { getExhibitors, getIndustries } from '../services/eventxApi'
+import { getExhibitorSponsorships, getIndustries } from '../services/eventxApi'
 import { getCachedData, clearCache } from '../services/apiCache'
 import { useApp } from '../context/AppContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -32,48 +32,37 @@ const Sponsorships = () => {
     setIsLoading(true)
     try {
       if (forceRefresh) {
-        clearCache('exhibitors')
+        clearCache('sponsorships')
         clearCache('industries')
       }
 
-      const [exhibitorsResponse, industriesResponse] = await Promise.all([
-        getCachedData('exhibitors', () => getExhibitors(), CACHE_TTL),
+      const [sponsorshipsResponse, industriesResponse] = await Promise.all([
+        getCachedData('sponsorships', () => getExhibitorSponsorships(), CACHE_TTL),
         getCachedData('industries', () => getIndustries(), CACHE_TTL)
       ])
       
-      const allExhibitors = exhibitorsResponse.data || exhibitorsResponse.exhibitors || exhibitorsResponse || []
-      
-
-      // Filter only sponsors (have sponsorship variables in events_user)
-      const sponsorsList = allExhibitors.filter(exhibitor => {
-        const eventsUser = exhibitor.events_user || exhibitor.event_user || exhibitor
-        return eventsUser.platinum_sponsorship === 1 || 
-               eventsUser.gold_sponsorship === 1 || 
-               eventsUser.silver_sponsorship === 1 || 
-               eventsUser.is_platinum_sponsorship === 1 ||
-               eventsUser.is_official_sponsorship === 1 ||
-               eventsUser.platinum_sponsorship === true || 
-               eventsUser.gold_sponsorship === true || 
-               eventsUser.silver_sponsorship === true || 
-               eventsUser.is_platinum_sponsorship === true ||
-               eventsUser.is_official_sponsorship === true
-      })
+      const sponsorsList = sponsorshipsResponse.data || sponsorshipsResponse.exhibitors || sponsorshipsResponse || []
       
       // Expand sponsors to include each form3_data_entry as a separate card
       const expandedSponsors = []
       sponsorsList.forEach(sponsor => {
         if (sponsor?.form3_data_entry && Array.isArray(sponsor.form3_data_entry)) {
           // Create a card for each form3_data_entry (main sponsor + co-exhibitors)
-          sponsor.form3_data_entry.forEach(form3Entry => {
+          sponsor.form3_data_entry.forEach((form3Entry, index) => {
             expandedSponsors.push({
               ...sponsor,
               _form3Entry: form3Entry, // Store the specific form3 entry for this card
-              _isCoExhibitor: form3Entry.is_coexhibitor === 1
+              _isCoExhibitor: form3Entry.is_coexhibitor === 1,
+              _uniqueKey: `${sponsor.id}-${index}`, // Unique key for React rendering
+              booth_number: form3Entry.booth_number || sponsor.booth_number // Prioritize form3 booth number
             })
           })
         } else {
           // No form3_data_entry, add sponsor as-is
-          expandedSponsors.push(sponsor)
+          expandedSponsors.push({
+            ...sponsor,
+            _uniqueKey: `${sponsor.id}-single`
+          })
         }
       })
       
@@ -407,7 +396,12 @@ const Sponsorships = () => {
                 </p>
                 {filteredSponsors.length !== sponsors.length && (
                   <button
-                    onClick={() => { setSearchQuery(''); setSelectedTier('all'); setSelectedCountry('all') }}
+                    onClick={() => { 
+                      setSearchQuery('')
+                      setSelectedTier('all')
+                      setSelectedCountry('all')
+                      setSelectedSector('all')
+                    }}
                     className="mt-4 px-6 py-2.5 bg-amber-600 text-white rounded-xl font-medium text-sm hover:bg-amber-700 transition-colors"
                   >
                     {t('clearFilters')}
@@ -422,7 +416,7 @@ const Sponsorships = () => {
               )}>
                 {filteredSponsors.map(sponsor => (
                   <SponsorCard
-                    key={sponsor.id}
+                    key={sponsor._uniqueKey || sponsor.id}
                     sponsor={sponsor}
                     name={getSponsorName(sponsor)}
                     logo={getSponsorLogo(sponsor)}

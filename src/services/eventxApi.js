@@ -343,6 +343,21 @@ export const getExhibitors = async () => {
 };
 
 /**
+ * Get exhibitor sponsorships
+ */
+export const getExhibitorSponsorships = async () => {
+  return apiRequest('/get-exhibitor-sponsorships?event_id=11');
+};
+
+/**
+ * Get filtered exhibitor by ID
+ * @param {number} exhibitorId - Exhibitor ID
+ */
+export const getExhibitorFiltered = async (exhibitorId) => {
+  return apiRequest(`/get-exhibitor-filtered?event_id=11&exhibitor_id=${exhibitorId}`);
+};
+
+/**
  * Search exhibitors
  * @param {string} searchTerm - Search term
  */
@@ -698,6 +713,8 @@ export default {
   getExhibitionEvents,
   getExhibitionEventDetails,
   getExhibitors,
+  getExhibitorSponsorships,
+  getExhibitorFiltered,
   searchExhibitors,
   getExhibitorBadges,
   
