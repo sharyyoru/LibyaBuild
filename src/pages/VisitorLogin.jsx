@@ -755,17 +755,6 @@ const VisitorLogin = () => {
                     <h2 className="text-xl font-bold text-gray-900 text-center mb-4">{t('additionalInformation')}</h2>
 
                     <div>
-                      <label className={labelClass}>{t('referredBy')}</label>
-                      <input
-                        type="email"
-                        value={regData.referredEmail}
-                        onChange={(e) => handleRegDataChange('referredEmail', e.target.value)}
-                        className={inputClass}
-                        placeholder={t('referredEmailPlaceholder')}
-                      />
-                    </div>
-
-                    <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">{t('howHeardAboutUs')}</label>
                       <div className="flex flex-wrap gap-2">
                         {HOW_HEARD.map(source => (
