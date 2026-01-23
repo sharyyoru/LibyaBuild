@@ -57,42 +57,138 @@ const apiRequest = async (endpoint, options = {}) => {
     headers['Content-Type'] = 'application/json';
   }
 
-  const response = await fetch(`${EVENTX_API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  });
+  try {
+    const response = await fetch(`${EVENTX_API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers,
+    });
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    // Handle validation errors (400 status with errors object)
-    if (response.status === 400 && data.errors) {
-      // Extract all error messages from the errors object
-      const errorMessages = [];
-      for (const field in data.errors) {
-        if (Array.isArray(data.errors[field])) {
-          errorMessages.push(...data.errors[field]);
-        }
-      }
-      
-      // Create a user-friendly error message
-      const errorText = errorMessages.length > 0 
-        ? errorMessages.join('. ') 
-        : (data.message || 'Validation failed');
-      
-      const error = new Error(errorText);
-      error.validationErrors = data.errors; // Keep structured errors for advanced handling
+    // Try to parse JSON response
+    let data;
+    try {
+      data = await response.json();
+    } catch (jsonError) {
+      console.error('Failed to parse JSON response:', jsonError);
+      const error = new Error(`API Error: ${response.status}`);
       error.status = response.status;
       throw error;
     }
-    
-    // Handle other errors
-    const error = new Error(data.message || `API Error: ${response.status}`);
-    error.status = response.status;
-    throw error;
-  }
 
-  return data;
+    // Log the response for debugging
+    console.log('=== API Response Debug ===');
+    console.log('Status:', response.status);
+    console.log('Data type:', typeof data);
+    console.log('Data:', data);
+    console.log('Has errors?', data?.errors);
+    console.log('Has message?', data?.message);
+    console.log('==========================');
+
+    if (!response.ok) {
+      // Handle validation errors (400 status)
+      // Backend can return errors in two formats:
+      // 1. {errors: {field: [...]}} - Laravel standard
+      // 2. {field: [...]} - Direct field errors
+      if (response.status === 400 && data && typeof data === 'object') {
+        console.log('Processing 400 error...');
+        
+        // Check if errors are wrapped in 'errors' object or returned directly
+        const errorsObject = data.errors || data;
+        console.log('Errors object:', JSON.stringify(errorsObject, null, 2));
+        
+        // Extract all error messages from the errors object
+        const errorMessages = [];
+        let hasValidationErrors = false;
+        
+        for (const field in errorsObject) {
+          if (Array.isArray(errorsObject[field])) {
+            hasValidationErrors = true;
+            console.log(`Processing field "${field}" with ${errorsObject[field].length} errors`);
+            
+            // Process each error message to extract clean text
+            errorsObject[field].forEach((msg, index) => {
+              console.log(`  Error ${index + 1}:`, msg);
+              
+              // Try to extract message from nested JSON in error string
+              // Pattern: Client error: `POST url` resulted in a `400 Bad Request` response: {"message":"..."}
+              const jsonMatch = msg.match(/response:\s*(\{[^}]*\})/);
+              if (jsonMatch) {
+                console.log(`  Found JSON in error:`, jsonMatch[1]);
+                try {
+                  const nestedError = JSON.parse(jsonMatch[1]);
+                  console.log(`  Parsed nested error:`, nestedError);
+                  if (nestedError.message) {
+                    console.log(`  Extracted message:`, nestedError.message);
+                    errorMessages.push(nestedError.message);
+                    return;
+                  }
+                } catch (e) {
+                  console.log(`  Failed to parse JSON:`, e.message);
+                }
+              }
+              
+              // Add original message if no nested JSON found
+              console.log(`  Using original message:`, msg);
+              errorMessages.push(msg);
+            });
+          }
+        }
+        
+        // If we found validation errors, return them
+        if (hasValidationErrors) {
+          const errorText = errorMessages.length > 0 
+            ? errorMessages.join('. ') 
+            : 'Validation failed';
+          
+          console.log('Final error message to display:', errorText);
+          
+          const error = new Error(errorText);
+          error.validationErrors = errorsObject;
+          error.status = response.status;
+          throw error;
+        }
+      }
+      
+      // Handle other errors with message extraction
+      console.log('Processing non-validation error...');
+      let errorMessage = data?.message || `API Error: ${response.status}`;
+      console.log('Initial error message:', errorMessage);
+      
+      // Try to extract clean message from nested error strings
+      if (errorMessage && typeof errorMessage === 'string') {
+        const jsonMatch = errorMessage.match(/response:\s*(\{[^}]*\})/);
+        if (jsonMatch) {
+          console.log('Found JSON in message:', jsonMatch[1]);
+          try {
+            const nestedError = JSON.parse(jsonMatch[1]);
+            console.log('Parsed nested error:', nestedError);
+            if (nestedError.message) {
+              errorMessage = nestedError.message;
+              console.log('Extracted clean message:', errorMessage);
+            }
+          } catch (e) {
+            console.log('Failed to parse JSON:', e.message);
+          }
+        }
+      }
+      
+      console.log('Final non-validation error:', errorMessage);
+      
+      const error = new Error(errorMessage);
+      error.status = response.status;
+      throw error;
+    }
+
+    return data;
+  } catch (error) {
+    // Re-throw errors that we've already formatted
+    if (error.status) {
+      throw error;
+    }
+    
+    // Handle network errors
+    console.error('Network or fetch error:', error);
+    throw new Error('Network error. Please check your connection and try again.');
+  }
 };
 
 // ============================================================================
