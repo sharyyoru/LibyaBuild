@@ -437,6 +437,7 @@ const Registration = () => {
                         type="button"
                         onClick={() => setShowPhoneDropdown(!showPhoneDropdown)}
                         className="w-full sm:w-auto h-full px-3 py-2.5 border border-gray-300 rounded-xl bg-white hover:bg-gray-50 flex items-center gap-1 text-sm font-medium justify-between min-w-[100px]"
+                        dir="ltr"
                       >
                         <div className="flex items-center gap-1">
                           <span>{COUNTRY_CODES.find(c => c.code === phoneCode)?.flag}</span>
@@ -445,7 +446,7 @@ const Registration = () => {
                         <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
                       </button>
                       {showPhoneDropdown && (
-                        <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto w-full sm:w-64">
+                        <div className={`absolute top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto w-full sm:w-64 ${isRTL ? 'right-0' : 'left-0'}`}>
                           {COUNTRY_CODES.map(item => (
                             <button
                               key={item.code + item.country}
@@ -455,6 +456,7 @@ const Registration = () => {
                                 setShowPhoneDropdown(false)
                               }}
                               className="w-full px-3 py-2 hover:bg-gray-50 flex items-center gap-2 text-sm text-left"
+                              dir="ltr"
                             >
                               <span>{item.flag}</span>
                               <span className="font-medium">{item.code}</span>
@@ -470,7 +472,8 @@ const Registration = () => {
                       value={formData.phone}
                       onChange={handleChange}
                       className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-                      placeholder="Office phone"
+                      placeholder={t('phoneOffice')}
+                      dir="ltr"
                     />
                   </div>
                 </div>
@@ -483,6 +486,7 @@ const Registration = () => {
                         type="button"
                         onClick={() => setShowMobileDropdown(!showMobileDropdown)}
                         className="w-full sm:w-auto h-full px-3 py-2.5 border border-gray-300 rounded-xl bg-white hover:bg-gray-50 flex items-center gap-1 text-sm font-medium justify-between min-w-[100px]"
+                        dir="ltr"
                       >
                         <div className="flex items-center gap-1">
                           <span>{COUNTRY_CODES.find(c => c.code === mobileCode)?.flag}</span>
@@ -491,7 +495,7 @@ const Registration = () => {
                         <ChevronDown className="w-4 h-4 text-gray-400 flex-shrink-0" />
                       </button>
                       {showMobileDropdown && (
-                        <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto w-full sm:w-64">
+                        <div className={`absolute top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto w-full sm:w-64 ${isRTL ? 'right-0' : 'left-0'}`}>
                           {COUNTRY_CODES.map(item => (
                             <button
                               key={item.code + item.country}
@@ -501,6 +505,7 @@ const Registration = () => {
                                 setShowMobileDropdown(false)
                               }}
                               className="w-full px-3 py-2 hover:bg-gray-50 flex items-center gap-2 text-sm text-left"
+                              dir="ltr"
                             >
                               <span>{item.flag}</span>
                               <span className="font-medium">{item.code}</span>
@@ -517,7 +522,8 @@ const Registration = () => {
                       onChange={handleChange}
                       required
                       className="w-full px-3 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
-                      placeholder="Mobile number"
+                      placeholder={t('mobilePlaceholder')}
+                      dir="ltr"
                     />
                   </div>
                 </div>
