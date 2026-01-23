@@ -547,12 +547,12 @@ const VisitorLogin = () => {
                           <button
                             type="button"
                             onClick={() => setShowPhoneDropdown(!showPhoneDropdown)}
-                            className="px-3 py-3 border border-gray-300 rounded-xl bg-white hover:bg-gray-50 flex items-center gap-1 text-sm font-medium min-w-[100px]"
+                            className="px-2 py-3 border border-gray-300 rounded-xl bg-white hover:bg-gray-50 flex items-center gap-1 text-sm font-medium w-[90px]"
                             dir="ltr"
                           >
                             <span>{COUNTRY_CODES.find(c => c.code === phoneCode)?.flag}</span>
                             <span className="text-xs">{phoneCode}</span>
-                            <ChevronDown className="w-4 h-4 text-gray-400" />
+                            <ChevronDown className="w-3 h-3 text-gray-400" />
                           </button>
                           {showPhoneDropdown && (
                             <div className={`absolute top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto w-64 ${isRTL ? 'right-0' : 'left-0'}`}>
@@ -583,7 +583,7 @@ const VisitorLogin = () => {
                             if (value.startsWith('0')) value = value.substring(1)
                             handleRegDataChange('phone', value)
                           }}
-                          className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                          className="flex-1 min-w-0 px-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
                           placeholder={t('phoneOffice')}
                           dir="ltr"
                         />
@@ -597,12 +597,12 @@ const VisitorLogin = () => {
                           <button
                             type="button"
                             onClick={() => setShowMobileDropdown(!showMobileDropdown)}
-                            className="px-3 py-3 border border-gray-300 rounded-xl bg-white hover:bg-gray-50 flex items-center gap-1 text-sm font-medium min-w-[100px]"
+                            className="px-2 py-3 border border-gray-300 rounded-xl bg-white hover:bg-gray-50 flex items-center gap-1 text-sm font-medium w-[90px]"
                             dir="ltr"
                           >
                             <span>{COUNTRY_CODES.find(c => c.code === mobileCode)?.flag}</span>
                             <span className="text-xs">{mobileCode}</span>
-                            <ChevronDown className="w-4 h-4 text-gray-400" />
+                            <ChevronDown className="w-3 h-3 text-gray-400" />
                           </button>
                           {showMobileDropdown && (
                             <div className={`absolute top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-60 overflow-y-auto w-64 ${isRTL ? 'right-0' : 'left-0'}`}>
@@ -634,7 +634,7 @@ const VisitorLogin = () => {
                             handleRegDataChange('mobile', value)
                           }}
                           required
-                          className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                          className="flex-1 min-w-0 px-3 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
                           placeholder={t('mobilePlaceholder')}
                           dir="ltr"
                         />
