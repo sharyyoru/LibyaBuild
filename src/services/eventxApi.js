@@ -65,7 +65,31 @@ const apiRequest = async (endpoint, options = {}) => {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(data.message || `API Error: ${response.status}`);
+    // Handle validation errors (400 status with errors object)
+    if (response.status === 400 && data.errors) {
+      // Extract all error messages from the errors object
+      const errorMessages = [];
+      for (const field in data.errors) {
+        if (Array.isArray(data.errors[field])) {
+          errorMessages.push(...data.errors[field]);
+        }
+      }
+      
+      // Create a user-friendly error message
+      const errorText = errorMessages.length > 0 
+        ? errorMessages.join('. ') 
+        : (data.message || 'Validation failed');
+      
+      const error = new Error(errorText);
+      error.validationErrors = data.errors; // Keep structured errors for advanced handling
+      error.status = response.status;
+      throw error;
+    }
+    
+    // Handle other errors
+    const error = new Error(data.message || `API Error: ${response.status}`);
+    error.status = response.status;
+    throw error;
   }
 
   return data;

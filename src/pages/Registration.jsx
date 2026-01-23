@@ -278,24 +278,8 @@ const Registration = () => {
       
       setSuccess(true)
     } catch (err) {
-      // Parse error to extract clean user-friendly message
-      let errorMessage = 'Registration failed. Please try again.'
-      
-      if (err.message) {
-        // Try to extract JSON message from error string
-        const jsonMatch = err.message.match(/\{[^}]*"message"\s*:\s*"([^"]+)"[^}]*\}/)
-        if (jsonMatch && jsonMatch[1]) {
-          errorMessage = jsonMatch[1]
-        } else if (err.response?.data?.message) {
-          errorMessage = err.response.data.message
-        } else if (err.response?.data?.error) {
-          errorMessage = err.response.data.error
-        } else if (!err.message.includes('Client error:') && !err.message.includes('resulted in')) {
-          // Use original message if it's not a technical error
-          errorMessage = err.message
-        }
-      }
-      
+      // Display clear error message from backend validation
+      const errorMessage = err.message || 'Registration failed. Please try again.'
       setError(errorMessage)
     } finally {
       setIsLoading(false)
