@@ -281,7 +281,11 @@ const VisitorLogin = () => {
       setEmail(regData.email)
       setRegStep(1)
     } catch (err) {
-      setError(err.message || 'Registration failed')
+      // Display clear error message from backend validation
+      const errorMessage = err.message || (language === 'ar' 
+        ? 'فشل التسجيل. يرجى المحاولة مرة أخرى.' 
+        : 'Registration failed. Please try again.');
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
