@@ -6,8 +6,7 @@ import SearchBar from '../components/SearchBar'
 import Card from '../components/Card'
 import Badge from '../components/Badge'
 import Loader from '../components/Loader'
-import MeetingRequestModal from '../components/MeetingRequestModal'
-import { getExhibitors, getIndustries } from '../services/eventxApi'
+import { getExhibitorSponsorships, getIndustries } from '../services/eventxApi'
 import { useApp } from '../context/AppContext'
 import { useAuth } from '../context/AuthContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -21,6 +20,10 @@ const SPONSOR_CONFIG = {
   platinum: { label: 'Platinum', icon: Crown, bg: 'bg-gradient-to-r from-slate-600 to-slate-800', text: 'text-white' },
   gold: { label: 'Gold', icon: Award, bg: 'bg-gradient-to-r from-amber-400 to-yellow-500', text: 'text-amber-900' },
   silver: { label: 'Silver', icon: Star, bg: 'bg-gradient-to-r from-gray-300 to-gray-400', text: 'text-gray-800' },
+  paint: { label: 'Paint Sponsor', icon: Crown, bg: 'bg-gradient-to-r from-purple-500 to-purple-600', text: 'text-white' },
+  hvac: { label: 'HVAC Sponsor', icon: Crown, bg: 'bg-gradient-to-r from-cyan-500 to-cyan-600', text: 'text-white' },
+  machinery: { label: 'Heavy Machinery Sponsor', icon: Crown, bg: 'bg-gradient-to-r from-orange-500 to-orange-600', text: 'text-white' },
+  sponsor: { label: 'Sponsor', icon: BadgeCheck, bg: 'bg-gradient-to-r from-primary-500 to-primary-600', text: 'text-white' },
 }
 
 const Sponsorship = () => {
@@ -33,8 +36,6 @@ const Sponsorship = () => {
   const [sponsorLevel, setSponsorLevel] = useState('all')
   const [country, setCountry] = useState('all')
   const [sector, setSector] = useState('all')
-  const [showMeetingModal, setShowMeetingModal] = useState(false)
-  const [selectedExhibitor, setSelectedExhibitor] = useState(null)
   const { isFavorite, toggleFavorite } = useApp()
   const { user } = useAuth()
   const { language } = useLanguage()
@@ -49,7 +50,7 @@ const Sponsorship = () => {
     setError('')
     try {
       const [exhibitorsData, industriesData] = await Promise.all([
-        getExhibitors(),
+        getExhibitorSponsorships(),
         getIndustries()
       ])
       
@@ -58,29 +59,31 @@ const Sponsorship = () => {
       const allExhibitors = Array.isArray(exhibitorList) ? exhibitorList : []
       setExhibitors(allExhibitors)
       
-      // Filter only sponsors (those with sponsorship flags = 1)
+      // Filter only sponsors (those with is_sponsorship = 1)
       const sponsorsList = allExhibitors.filter(exhibitor => {
         const eventUser = exhibitor?.event_user || exhibitor
-        return eventUser?.is_platinum_sponsorship === 1 || 
-               eventUser?.gold_sponsorship === 1 || 
-               eventUser?.silver_sponsorship === 1
+        return eventUser?.is_sponsorship == 1 || eventUser?.is_sponsorship === '1'
       })
       
       // Expand sponsors to include each form3_data_entry as a separate card
       const expandedSponsors = []
       sponsorsList.forEach(sponsor => {
-        if (sponsor?.form3_data_entry && Array.isArray(sponsor.form3_data_entry)) {
+        if (sponsor?.form3_data_entry && Array.isArray(sponsor.form3_data_entry) && sponsor.form3_data_entry.length > 0) {
           // Create a card for each form3_data_entry (main sponsor + co-exhibitors)
-          sponsor.form3_data_entry.forEach(form3Entry => {
+          sponsor.form3_data_entry.forEach((form3Entry, index) => {
             expandedSponsors.push({
               ...sponsor,
               _form3Entry: form3Entry, // Store the specific form3 entry for this card
-              _isCoExhibitor: form3Entry.is_coexhibitor === 1
+              _isCoExhibitor: form3Entry.is_coexhibitor === 1,
+              _uniqueKey: `${sponsor.id}-${form3Entry.id || index}` // Unique key for React rendering
             })
           })
         } else {
-          // No form3_data_entry, add sponsor as-is
-          expandedSponsors.push(sponsor)
+          // No form3_data_entry or empty array, add sponsor using event_user and main details
+          expandedSponsors.push({
+            ...sponsor,
+            _uniqueKey: `${sponsor.id}-single`
+          })
         }
       })
       
@@ -135,15 +138,6 @@ const Sponsorship = () => {
     return DEFAULT_LOGO
   }
 
-  const handleMeetingRequest = (exhibitor) => {
-    setSelectedExhibitor(exhibitor)
-    setShowMeetingModal(true)
-  }
-
-  const closeMeetingModal = () => {
-    setShowMeetingModal(false)
-    setSelectedExhibitor(null)
-  }
 
   // Get company name - check form3Entry first, then fallback to exhibitor
   const getExhibitorName = (exhibitor) => {
@@ -151,7 +145,8 @@ const Sponsorship = () => {
     if (form3Entry?.company) {
       return form3Entry.company
     }
-    return exhibitor.en_name || exhibitor.company_name || exhibitor.name || exhibitor.company || 'Unknown Company'
+    // Fallback to en_name and other exhibitor fields
+    return exhibitor?.en_name || exhibitor?.company_name || exhibitor?.name || exhibitor?.company || 'Unknown Company'
   }
 
   // Get Arabic name - check form3Entry first
@@ -160,7 +155,7 @@ const Sponsorship = () => {
     if (form3Entry?.ar_company) {
       return form3Entry.ar_company
     }
-    return exhibitor.ar_name || ''
+    return exhibitor?.ar_name || ''
   }
 
   // Get sector/industry from the specific form3Entry for this card
@@ -173,18 +168,30 @@ const Sponsorship = () => {
         return typeof first === 'string' ? first : first.name || first.en_name || 'General'
       }
     }
-    return exhibitor.sector || exhibitor.industry || exhibitor.category || 'General'
+    // Fallback to event_user industry or exhibitor fields
+    const eventUser = exhibitor?.event_user || exhibitor
+    return eventUser?.industry || exhibitor?.sector || exhibitor?.industry || exhibitor?.category || 'General'
   }
 
   const getExhibitorCountry = (exhibitor) => {
-    return exhibitor.country || exhibitor?.form3_data_entry?.country || exhibitor.location || 'Libya'
+    const form3Entry = exhibitor?._form3Entry
+    if (form3Entry?.country) {
+      return form3Entry.country
+    }
+    // Fallback to event_user or exhibitor fields
+    const eventUser = exhibitor?.event_user || exhibitor
+    return eventUser?.country || exhibitor?.country || exhibitor?.location || 'Libya'
   }
 
   const getExhibitorBooth = (exhibitor) => {
-    if (exhibitor.booth_number && exhibitor.hall) {
+    const eventUser = exhibitor?.event_user || exhibitor
+    if (eventUser?.booth_number && eventUser?.hall) {
+      return `${eventUser.hall} - ${eventUser.booth_number}`
+    }
+    if (exhibitor?.booth_number && exhibitor?.hall) {
       return `${exhibitor.hall} - ${exhibitor.booth_number}`
     }
-    return exhibitor.booth_number || exhibitor.booth || exhibitor.stand || 'TBA'
+    return eventUser?.booth_number || exhibitor?.booth_number || exhibitor?.booth || exhibitor?.stand || 'TBA'
   }
 
   const getExhibitorDescription = (exhibitor) => {
@@ -192,7 +199,9 @@ const Sponsorship = () => {
     if (form3Entry?.company_profile) {
       return form3Entry.company_profile
     }
-    return exhibitor.description || exhibitor.about || exhibitor.company_description || ''
+    // Fallback to event_user or exhibitor fields
+    const eventUser = exhibitor?.event_user || exhibitor
+    return eventUser?.description || exhibitor?.description || exhibitor?.profile || exhibitor?.about || exhibitor?.company_description || ''
   }
 
   // Check if partner
@@ -201,9 +210,19 @@ const Sponsorship = () => {
   // Get sponsorship level
   const getSponsorshipLevel = (exhibitor) => {
     const eventUser = exhibitor?.event_user || exhibitor
-    if (eventUser?.is_platinum_sponsorship === 1 || eventUser?.is_platinum_sponsorship === true) return 'platinum'
-    if (eventUser?.gold_sponsorship === 1 || eventUser?.gold_sponsorship === true) return 'gold'
-    if (eventUser?.silver_sponsorship === 1 || eventUser?.silver_sponsorship === true) return 'silver'
+    if (eventUser?.is_sponsorship == 1 || eventUser?.is_sponsorship === '1') {
+      const sponsorshipType = eventUser?.sponsorship_type
+      if (sponsorshipType) {
+        const lowerType = sponsorshipType.toLowerCase()
+        if (lowerType.includes('platinum')) return 'platinum'
+        if (lowerType.includes('gold')) return 'gold'
+        if (lowerType.includes('silver')) return 'silver'
+        if (lowerType.includes('paint')) return 'paint'
+        if (lowerType.includes('hvac')) return 'hvac'
+        if (lowerType.includes('machinery')) return 'machinery'
+        return 'sponsor'
+      }
+    }
     return null
   }
 
@@ -212,24 +231,30 @@ const Sponsorship = () => {
 
   const countries = ['all', ...new Set(sponsors.map(e => getExhibitorCountry(e)).filter(Boolean))]
   
-  // Extract unique sectors from sponsor _form3Entry company_industries
+  // Extract unique sectors from sponsor _form3Entry company_industries and fallback to main fields
   const extractedSectors = sponsors.flatMap(sponsor => {
     const form3Entry = sponsor?._form3Entry
     if (form3Entry?.company_industries && Array.isArray(form3Entry.company_industries)) {
       return form3Entry.company_industries.map(industry => industry.name || industry.en_name || industry).filter(Boolean)
+    }
+    // Fallback to main sponsor sector/industry if no form3Entry
+    const eventUser = sponsor?.event_user || sponsor
+    const mainSector = eventUser?.industry || sponsor?.sector || sponsor?.industry || sponsor?.category
+    if (mainSector && typeof mainSector === 'string' && isNaN(mainSector)) {
+      return [mainSector]
     }
     return []
   })
   
   const sectors = ['all', ...new Set(extractedSectors)].filter(Boolean)
 
-  // Sponsor level filter options
-  const sponsorLevels = [
-    { key: 'all', label: t('allSponsors') },
-    { key: 'platinum', label: t('platinum') },
-    { key: 'gold', label: t('gold') },
-    { key: 'silver', label: t('silver') }
-  ]
+  // Sponsor level filter options - dynamically extract from sponsors
+  const uniqueSponsorLevels = ['all', ...new Set(sponsors.map(s => getSponsorshipLevel(s)).filter(Boolean))]
+  const sponsorLevels = uniqueSponsorLevels.map(level => {
+    if (level === 'all') return { key: 'all', label: t('allSponsors') }
+    const config = SPONSOR_CONFIG[level]
+    return { key: level, label: config?.label || level }
+  })
 
   const filtered = sponsors.filter(ex => {
     const name = getExhibitorName(ex).toLowerCase()
@@ -243,7 +268,7 @@ const Sponsorship = () => {
       booth.includes(searchLower)
     const matchesCountry = country === 'all' || getExhibitorCountry(ex) === country
     
-    // Enhanced sector matching to check all industries in the form3Entry
+    // Enhanced sector matching to check all industries in the form3Entry and fallback fields
     const exhibitorSector = getExhibitorSector(ex)
     const matchesSector = sector === 'all' || exhibitorSector === sector ||
       // Also check if sponsor has multiple industries that include the selected sector
@@ -251,7 +276,13 @@ const Sponsorship = () => {
        Array.isArray(ex._form3Entry.company_industries) &&
        ex._form3Entry.company_industries.some(industry => 
          (typeof industry === 'string' ? industry : (industry.name || industry.en_name)) === sector
-       ))
+       )) ||
+      // Fallback to main sponsor fields
+      (() => {
+        const eventUser = ex?.event_user || ex
+        const mainSector = eventUser?.industry || ex?.sector || ex?.industry || ex?.category
+        return mainSector && typeof mainSector === 'string' && mainSector === sector
+      })()
     
     const matchesSponsorLevel = sponsorLevel === 'all' || getSponsorshipLevel(ex) === sponsorLevel
     
@@ -366,7 +397,7 @@ const Sponsorship = () => {
                 const SponsorIcon = sponsorConfig?.icon
                 
                 return (
-                  <div key={exhibitor.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all">
+                  <div key={exhibitor._uniqueKey || exhibitor.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-all">
                     {/* Sponsor banner */}
                     {sponsorConfig && (
                       <div className={`${sponsorConfig.bg} ${sponsorConfig.text} px-4 py-3 flex items-center gap-2`}>
@@ -441,18 +472,6 @@ const Sponsorship = () => {
                                 </span>
                               )}
                             </div>
-                            {user && (
-                              <button
-                                onClick={(e) => {
-                                  e.preventDefault()
-                                  handleMeetingRequest(exhibitor)
-                                }}
-                                className="flex items-center gap-1 px-3 py-1.5 bg-primary-600 text-white text-xs font-semibold rounded-lg hover:bg-primary-700 transition-colors"
-                              >
-                                <Calendar className="w-3.5 h-3.5" />
-                                {t('requestMeeting')}
-                              </button>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -464,14 +483,6 @@ const Sponsorship = () => {
           </>
         )}
       </div>
-      
-      {/* Meeting Request Modal */}
-      <MeetingRequestModal
-        isOpen={showMeetingModal}
-        onClose={closeMeetingModal}
-        recipient={selectedExhibitor}
-        recipientType="exhibitor"
-      />
     </>
   )
 }

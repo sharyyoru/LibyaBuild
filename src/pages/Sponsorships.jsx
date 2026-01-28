@@ -31,22 +31,52 @@ const Sponsorships = () => {
   const loadSponsors = async (forceRefresh = false) => {
     setIsLoading(true)
     try {
-      if (forceRefresh) {
-        clearCache('sponsorships')
-        clearCache('industries')
-      }
+      // Clear cache to get fresh data
+      clearCache('sponsorships')
+      clearCache('industries')
 
-      const [sponsorshipsResponse, industriesResponse] = await Promise.all([
-        getCachedData('sponsorships', () => getExhibitorSponsorships(), CACHE_TTL),
-        getCachedData('industries', () => getIndustries(), CACHE_TTL)
-      ])
+      console.log('=== Sponsorships API Call Debug ===')
+      console.log('Calling getExhibitorSponsorships()...')
+      
+      const sponsorshipsResponse = await getExhibitorSponsorships()
+      const industriesResponse = await getIndustries()
+      
+      console.log('Raw API Response:', sponsorshipsResponse)
+      console.log('Response keys:', Object.keys(sponsorshipsResponse || {}))
       
       const sponsorsList = sponsorshipsResponse.data || sponsorshipsResponse.exhibitors || sponsorshipsResponse || []
       
+      console.log('=== Sponsorships Data Debug ===')
+      console.log('Total sponsors from API:', sponsorsList.length)
+      console.log('Is Array?', Array.isArray(sponsorsList))
+      
+      // Filter to only include sponsors where is_sponsorship === 1
+      const actualSponsors = sponsorsList.filter(sponsor => {
+        const eventUser = sponsor.event_user || sponsor
+        const isSponsorship = eventUser?.is_sponsorship
+        const sponsorshipType = eventUser?.sponsorship_type
+        
+        // Log first 5 items for debugging
+        if (sponsorsList.indexOf(sponsor) < 5) {
+          console.log(`Sponsor ${sponsor.id}:`, {
+            en_name: sponsor.en_name,
+            is_sponsorship: isSponsorship,
+            sponsorship_type: sponsorshipType,
+            has_event_user: !!sponsor.event_user
+          })
+        }
+        
+        // Handle both number and string comparison
+        return isSponsorship == 1 || isSponsorship === '1'
+      })
+      
+      console.log('Filtered sponsors with is_sponsorship=1:', actualSponsors.length)
+      console.log('=========================')
+      
       // Expand sponsors to include each form3_data_entry as a separate card
       const expandedSponsors = []
-      sponsorsList.forEach(sponsor => {
-        if (sponsor?.form3_data_entry && Array.isArray(sponsor.form3_data_entry)) {
+      actualSponsors.forEach(sponsor => {
+        if (sponsor?.form3_data_entry && Array.isArray(sponsor.form3_data_entry) && sponsor.form3_data_entry.length > 0) {
           // Create a card for each form3_data_entry (main sponsor + co-exhibitors)
           sponsor.form3_data_entry.forEach((form3Entry, index) => {
             expandedSponsors.push({
@@ -58,7 +88,7 @@ const Sponsorships = () => {
             })
           })
         } else {
-          // No form3_data_entry, add sponsor as-is
+          // No form3_data_entry or empty array, add sponsor using event_user and main details
           expandedSponsors.push({
             ...sponsor,
             _uniqueKey: `${sponsor.id}-single`
@@ -82,56 +112,89 @@ const Sponsorships = () => {
 
 
   const getSponsorTier = useCallback((sponsor) => {
-    const eventsUser = sponsor.events_user || sponsor.event_user || sponsor
-    if (eventsUser.platinum_sponsorship === 1 || eventsUser.platinum_sponsorship === true || eventsUser.is_platinum_sponsorship === 1 || eventsUser.is_platinum_sponsorship === true) return 'platinum'
-    if (eventsUser.gold_sponsorship === 1 || eventsUser.gold_sponsorship === true) return 'gold'
-    if (eventsUser.silver_sponsorship === 1 || eventsUser.silver_sponsorship === true) return 'silver'
-    if (eventsUser.is_official_sponsorship === 1 || eventsUser.is_official_sponsorship === true) return 'official'
-    return 'sponsor'
+    const eventUser = sponsor.event_user || sponsor
+    if (eventUser?.is_sponsorship === 1) {
+      const sponsorshipType = eventUser?.sponsorship_type
+      if (sponsorshipType) {
+        return sponsorshipType
+      }
+    }
+    return 'Sponsor'
   }, [])
 
   const getTierConfig = useCallback((tier) => {
-    switch (tier) {
-      case 'platinum':
-        return { 
-          label: 'Platinum Sponsor', 
-          color: 'from-slate-700 to-slate-800', 
-          bg: 'bg-slate-700', 
-          text: 'text-slate-700',
-          light: 'bg-slate-50 text-slate-700 border-slate-200'
-        }
-      case 'gold':
-        return { 
-          label: 'Gold Sponsor', 
-          color: 'from-amber-500 to-amber-600', 
-          bg: 'bg-amber-500', 
-          text: 'text-amber-600',
-          light: 'bg-amber-50 text-amber-700 border-amber-200'
-        }
-      case 'silver':
-        return { 
-          label: 'Silver Sponsor', 
-          color: 'from-gray-400 to-gray-500', 
-          bg: 'bg-gray-400', 
-          text: 'text-gray-600',
-          light: 'bg-gray-50 text-gray-700 border-gray-200'
-        }
-      case 'official':
-        return { 
-          label: 'Official Sponsor', 
-          color: 'from-blue-500 to-blue-600', 
-          bg: 'bg-blue-500', 
-          text: 'text-blue-600',
-          light: 'bg-blue-50 text-blue-700 border-blue-200'
-        }
-      default:
-        return { 
-          label: 'Sponsor', 
-          color: 'from-primary-500 to-primary-600', 
-          bg: 'bg-primary-500', 
-          text: 'text-primary-600',
-          light: 'bg-primary-50 text-primary-700 border-primary-200'
-        }
+    const lowerTier = tier?.toLowerCase() || ''
+    
+    if (lowerTier.includes('platinum')) {
+      return { 
+        label: tier, 
+        color: 'from-slate-700 to-slate-800', 
+        bg: 'bg-slate-700', 
+        text: 'text-slate-700',
+        light: 'bg-slate-50 text-slate-700 border-slate-200'
+      }
+    }
+    if (lowerTier.includes('gold')) {
+      return { 
+        label: tier, 
+        color: 'from-amber-500 to-amber-600', 
+        bg: 'bg-amber-500', 
+        text: 'text-amber-600',
+        light: 'bg-amber-50 text-amber-700 border-amber-200'
+      }
+    }
+    if (lowerTier.includes('silver')) {
+      return { 
+        label: tier, 
+        color: 'from-gray-400 to-gray-500', 
+        bg: 'bg-gray-400', 
+        text: 'text-gray-600',
+        light: 'bg-gray-50 text-gray-700 border-gray-200'
+      }
+    }
+    if (lowerTier.includes('official')) {
+      return { 
+        label: tier, 
+        color: 'from-blue-500 to-blue-600', 
+        bg: 'bg-blue-500', 
+        text: 'text-blue-600',
+        light: 'bg-blue-50 text-blue-700 border-blue-200'
+      }
+    }
+    if (lowerTier.includes('paint')) {
+      return { 
+        label: tier, 
+        color: 'from-purple-500 to-purple-600', 
+        bg: 'bg-purple-500', 
+        text: 'text-purple-600',
+        light: 'bg-purple-50 text-purple-700 border-purple-200'
+      }
+    }
+    if (lowerTier.includes('hvac')) {
+      return { 
+        label: tier, 
+        color: 'from-cyan-500 to-cyan-600', 
+        bg: 'bg-cyan-500', 
+        text: 'text-cyan-600',
+        light: 'bg-cyan-50 text-cyan-700 border-cyan-200'
+      }
+    }
+    if (lowerTier.includes('machinery')) {
+      return { 
+        label: tier, 
+        color: 'from-orange-500 to-orange-600', 
+        bg: 'bg-orange-500', 
+        text: 'text-orange-600',
+        light: 'bg-orange-50 text-orange-700 border-orange-200'
+      }
+    }
+    
+    return { 
+      label: tier || 'Sponsor', 
+      color: 'from-primary-500 to-primary-600', 
+      bg: 'bg-primary-500', 
+      text: 'text-primary-600',
+      light: 'bg-primary-50 text-primary-700 border-primary-200'
     }
   }, [])
 
@@ -209,16 +272,24 @@ const Sponsorships = () => {
     [sponsors, getSponsorTier]
   )
 
-  const countries = useMemo(() => 
-    ['all', ...new Set(sponsors.map(s => s.country).filter(Boolean))],
-    [sponsors]
-  )
+  const countries = useMemo(() => {
+    const extractedCountries = sponsors.map(sponsor => {
+      // Check _form3Entry first, then fallback to main sponsor
+      return sponsor?._form3Entry?.country || sponsor?.country || null
+    }).filter(Boolean)
+    return ['all', ...new Set(extractedCountries)]
+  }, [sponsors])
   
   const sectors = useMemo(() => {
     const extractedSectors = sponsors.flatMap(sponsor => {
       const form3Entry = sponsor?._form3Entry
       if (form3Entry?.company_industries && Array.isArray(form3Entry.company_industries)) {
         return form3Entry.company_industries.map(industry => industry.name || industry.en_name || industry).filter(Boolean)
+      }
+      // Fallback to main sponsor sector/industry if no form3Entry
+      const mainSector = sponsor?.sector || sponsor?.industry || sponsor?.category
+      if (mainSector && typeof mainSector === 'string' && isNaN(mainSector)) {
+        return [mainSector]
       }
       return []
     })
@@ -242,9 +313,10 @@ const Sponsorships = () => {
     }
 
     if (selectedCountry !== 'all') {
-      filtered = filtered.filter(sponsor => 
-        (sponsor.country || '').toLowerCase() === selectedCountry.toLowerCase()
-      )
+      filtered = filtered.filter(sponsor => {
+        const sponsorCountry = sponsor?._form3Entry?.country || sponsor?.country || ''
+        return sponsorCountry.toLowerCase() === selectedCountry.toLowerCase()
+      })
     }
 
     if (selectedSector !== 'all') {
@@ -252,12 +324,20 @@ const Sponsorships = () => {
         const sponsorSector = getSponsorSector(sponsor)
         if (sponsorSector === selectedSector) return true
         
+        // Check all industries in form3Entry
         const form3Entry = sponsor?._form3Entry
         if (form3Entry?.company_industries && Array.isArray(form3Entry.company_industries)) {
           return form3Entry.company_industries.some(industry => 
             (industry.name || industry.en_name || industry) === selectedSector
           )
         }
+        
+        // Fallback to main sponsor fields
+        const mainSector = sponsor?.sector || sponsor?.industry || sponsor?.category
+        if (mainSector && typeof mainSector === 'string') {
+          return mainSector === selectedSector
+        }
+        
         return false
       })
     }

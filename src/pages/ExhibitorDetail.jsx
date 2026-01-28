@@ -201,7 +201,14 @@ const ExhibitorDetail = () => {
   
   const getWebsite = () => {
     const form3 = exhibitor?.form3_data_entry
-    return form3?.website || exhibitor?.website || exhibitor?.company_website || ''
+    let website = form3?.website || exhibitor?.website || exhibitor?.company_website || ''
+    
+    // Ensure URL has proper protocol
+    if (website && !website.startsWith('http://') && !website.startsWith('https://')) {
+      website = 'https://' + website
+    }
+    
+    return website
   }
   
   const getAllContacts = () => {

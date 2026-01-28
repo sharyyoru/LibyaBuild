@@ -71,18 +71,20 @@ export const getLocalizedName = (entity, language = 'en') => {
   if (!entity) return 'Unknown'
   
   if (language === 'ar') {
-    // Try Arabic name patterns
-    const arName = entity.ar_name || 
-                   entity.ar_company || 
-                   entity.arName ||
+    // Try Arabic name patterns - prioritize _form3Entry for this specific card
+    const arName = entity._form3Entry?.ar_company || 
                    entity.form3_data_entry?.[0]?.ar_company ||
-                   entity._form3Entry?.ar_company
+                   entity.ar_name || 
+                   entity.ar_company || 
+                   entity.arName
     
     if (arName) return arName
   }
   
-  // Fallback to English name
-  return entity.en_name || 
+  // Fallback to English name - prioritize _form3Entry for this specific card
+  return entity._form3Entry?.company || 
+         entity.form3_data_entry?.[0]?.company ||
+         entity.en_name || 
          entity.company_name || 
          entity.name || 
          entity.company || 
@@ -96,6 +98,11 @@ export const getLocalizedProfile = (entity, language = 'en') => {
   if (!entity) return ''
   
   if (language === 'ar') {
+    // Check _form3Entry for this specific card first
+    if (entity._form3Entry?.ar_company_profile) {
+      return entity._form3Entry.ar_company_profile
+    }
+    
     // Check form3_data_entry for Arabic profile
     const form3Array = entity?.form3_data_entry
     if (Array.isArray(form3Array) && form3Array.length > 0) {
@@ -107,7 +114,11 @@ export const getLocalizedProfile = (entity, language = 'en') => {
     if (arProfile) return arProfile
   }
   
-  // Fallback to English
+  // Fallback to English - check _form3Entry first
+  if (entity._form3Entry?.company_profile) {
+    return entity._form3Entry.company_profile
+  }
+  
   const form3Array = entity?.form3_data_entry
   if (Array.isArray(form3Array) && form3Array.length > 0) {
     const enProfile = form3Array[0]?.company_profile || form3Array[0]?.profile

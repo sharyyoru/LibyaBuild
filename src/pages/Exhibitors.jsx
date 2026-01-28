@@ -216,9 +216,12 @@ const Exhibitors = () => {
 
   const getSponsorshipLevel = useCallback((exhibitor) => {
     const eventUser = exhibitor?.event_user || exhibitor
-    if (eventUser?.is_platinum_sponsorship === 1 || eventUser?.is_platinum_sponsorship === true) return 'platinum'
-    if (eventUser?.gold_sponsorship === 1 || eventUser?.gold_sponsorship === true) return 'gold'
-    if (eventUser?.silver_sponsorship === 1 || eventUser?.silver_sponsorship === true) return 'silver'
+    if (eventUser?.is_sponsorship === 1) {
+      const sponsorshipType = eventUser?.sponsorship_type
+      if (sponsorshipType) {
+        return sponsorshipType.toLowerCase()
+      }
+    }
     return null
   }, [])
 

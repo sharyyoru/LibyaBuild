@@ -206,7 +206,14 @@ const PartnerDetail = () => {
   
   const getWebsite = () => {
     const form3Data = partner?.form3_data_entry?.[0]
-    return form3Data?.website || partner?.website || partner?.company_website || ''
+    let website = form3Data?.website || partner?.website || partner?.company_website || ''
+    
+    // Ensure URL has proper protocol
+    if (website && !website.startsWith('http://') && !website.startsWith('https://')) {
+      website = 'https://' + website
+    }
+    
+    return website
   }
   
   const getAllContacts = () => {

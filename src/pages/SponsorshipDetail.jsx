@@ -93,9 +93,8 @@ const SponsorshipDetail = () => {
       // Verify it's actually a sponsor
       if (sponsorData) {
         const eventUser = sponsorData?.event_user || sponsorData
-        const isThisSponsor = eventUser?.is_platinum_sponsorship === 1 || 
-                             eventUser?.gold_sponsorship === 1 || 
-                             eventUser?.silver_sponsorship === 1
+        // Check if is_sponsorship flag is set to 1 or '1'
+        const isThisSponsor = eventUser?.is_sponsorship == 1 || eventUser?.is_sponsorship === '1'
         
         if (isThisSponsor) {
           setSponsor(sponsorData)
@@ -115,13 +114,17 @@ const SponsorshipDetail = () => {
 
   // Helper functions to get sponsor data
   const getSponsorLogo = () => {
-    const form3Logo = sponsor?.form3_data_entry?.company_logo
-    if (form3Logo && typeof form3Logo === 'string' && form3Logo.trim() && form3Logo !== 'null') {
-      const logoPath = form3Logo.trim()
-      if (logoPath.startsWith('http')) {
-        return logoPath
+    // Check form3_data_entry array first
+    const form3Array = sponsor?.form3_data_entry
+    if (Array.isArray(form3Array) && form3Array.length > 0) {
+      const form3Logo = form3Array[0]?.company_logo
+      if (form3Logo && typeof form3Logo === 'string' && form3Logo.trim() && form3Logo !== 'null') {
+        const logoPath = form3Logo.trim()
+        if (logoPath.startsWith('http')) {
+          return logoPath
+        }
+        return `https://eventxcrm.com/storage/${logoPath}`
       }
-      return `https://eventxcrm.com/storage/${logoPath}`
     }
     
     const alternativeLogos = [
@@ -145,8 +148,20 @@ const SponsorshipDetail = () => {
   }
 
   const getSponsorName = () => getLocalizedName(sponsor, language)
-  const getSponsorArabicName = () => sponsor?.ar_name || ''
-  const getSponsorCountry = () => sponsor?.country || sponsor?.form3_data_entry?.country || sponsor?.location || 'Libya'
+  const getSponsorArabicName = () => {
+    const form3Array = sponsor?.form3_data_entry
+    if (Array.isArray(form3Array) && form3Array.length > 0) {
+      return form3Array[0]?.ar_company || sponsor?.ar_name || ''
+    }
+    return sponsor?.ar_name || ''
+  }
+  const getSponsorCountry = () => {
+    const form3Array = sponsor?.form3_data_entry
+    if (Array.isArray(form3Array) && form3Array.length > 0) {
+      return form3Array[0]?.country || sponsor?.country || sponsor?.location || 'Libya'
+    }
+    return sponsor?.country || sponsor?.location || 'Libya'
+  }
   const getSponsorSector = () => {
     // Check direct company_industries from API response first
     if (sponsor?.company_industries?.length > 0) {
@@ -186,12 +201,22 @@ const SponsorshipDetail = () => {
 
   const getSponsorProfile = () => getLocalizedProfile(sponsor, language)
 
-  const getSponsorDescription = () => sponsor?.form3_data_entry?.company_description || sponsor?.description || sponsor?.about || sponsor?.company_description || ''
+  const getSponsorDescription = () => {
+    const form3Array = sponsor?.form3_data_entry
+    if (Array.isArray(form3Array) && form3Array.length > 0) {
+      return form3Array[0]?.company_description || sponsor?.description || sponsor?.about || sponsor?.company_description || ''
+    }
+    return sponsor?.description || sponsor?.about || sponsor?.company_description || ''
+  }
   const getSponsorBooth = () => {
+    const eventUser = sponsor?.event_user || sponsor
+    if (eventUser?.booth_number && eventUser?.hall) {
+      return `${eventUser.hall} - ${eventUser.booth_number}`
+    }
     if (sponsor?.booth_number && sponsor?.hall) {
       return `${sponsor.hall} - ${sponsor.booth_number}`
     }
-    return sponsor?.booth_number || sponsor?.booth || sponsor?.stand || 'TBA'
+    return eventUser?.booth_number || sponsor?.booth_number || sponsor?.booth || sponsor?.stand || 'TBA'
   }
 
   const getMainContact = () => {
@@ -200,15 +225,43 @@ const SponsorshipDetail = () => {
 
   const getEmail = () => {
     const mainContact = getMainContact()
-    return mainContact?.email || sponsor?.email || sponsor?.contact_email || ''
+    if (mainContact?.email) return mainContact.email
+    
+    const form3Array = sponsor?.form3_data_entry
+    if (Array.isArray(form3Array) && form3Array.length > 0) {
+      return form3Array[0]?.email || sponsor?.email || sponsor?.contact_email || ''
+    }
+    return sponsor?.email || sponsor?.contact_email || ''
   }
 
   const getPhone = () => {
     const mainContact = getMainContact()
-    return mainContact?.mobile || mainContact?.phone || sponsor?.phone || sponsor?.contact_phone || ''
+    if (mainContact?.mobile || mainContact?.phone) return mainContact?.mobile || mainContact?.phone
+    
+    const form3Array = sponsor?.form3_data_entry
+    if (Array.isArray(form3Array) && form3Array.length > 0) {
+      return form3Array[0]?.mobile || sponsor?.phone || sponsor?.contact_phone || ''
+    }
+    return sponsor?.phone || sponsor?.contact_phone || ''
   }
 
-  const getWebsite = () => sponsor?.website || sponsor?.company_website || ''
+  const getWebsite = () => {
+    const form3Array = sponsor?.form3_data_entry
+    let website = ''
+    
+    if (Array.isArray(form3Array) && form3Array.length > 0) {
+      website = form3Array[0]?.website || sponsor?.website || sponsor?.company_website || ''
+    } else {
+      website = sponsor?.website || sponsor?.company_website || ''
+    }
+    
+    // Ensure URL has proper protocol
+    if (website && !website.startsWith('http://') && !website.startsWith('https://')) {
+      website = 'https://' + website
+    }
+    
+    return website
+  }
 
   const getAllContacts = () => sponsor?.contacts || []
   const getExhibitorBadges = () => sponsor?.exhibitor_badges || []
@@ -216,10 +269,21 @@ const SponsorshipDetail = () => {
   // Get sponsorship level
   const getSponsorshipLevel = () => {
     const eventUser = sponsor?.event_user || sponsor
-    if (eventUser?.is_platinum_sponsorship === 1 || eventUser?.is_platinum_sponsorship === true) return 'platinum'
-    if (eventUser?.gold_sponsorship === 1 || eventUser?.gold_sponsorship === true) return 'gold'
-    if (eventUser?.silver_sponsorship === 1 || eventUser?.silver_sponsorship === true) return 'silver'
-    return null
+    // Check individual tier flags
+    if (eventUser?.is_platinum_sponsorship === 1 || eventUser?.is_platinum_sponsorship === '1') return 'platinum'
+    if (eventUser?.gold_sponsorship === 1 || eventUser?.gold_sponsorship === '1') return 'gold'
+    if (eventUser?.silver_sponsorship === 1 || eventUser?.silver_sponsorship === '1') return 'silver'
+    
+    // Fallback: check sponsorship_type string
+    const sponsorshipType = eventUser?.sponsorship_type
+    if (sponsorshipType) {
+      const lowerType = sponsorshipType.toLowerCase()
+      if (lowerType.includes('platinum')) return 'platinum'
+      if (lowerType.includes('gold')) return 'gold'
+      if (lowerType.includes('silver')) return 'silver'
+    }
+    
+    return 'gold' // Default fallback
   }
 
   const getSponsorConfig = () => {
