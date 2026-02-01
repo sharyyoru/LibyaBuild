@@ -20,9 +20,9 @@ const SPONSOR_CONFIG = {
   platinum: { label: 'Platinum', icon: Crown, bg: 'bg-gradient-to-r from-slate-600 to-slate-800', text: 'text-white' },
   gold: { label: 'Gold', icon: Award, bg: 'bg-gradient-to-r from-amber-400 to-yellow-500', text: 'text-amber-900' },
   silver: { label: 'Silver', icon: Star, bg: 'bg-gradient-to-r from-gray-300 to-gray-400', text: 'text-gray-800' },
-  paint: { label: 'Paint Sponsor', icon: Crown, bg: 'bg-gradient-to-r from-purple-500 to-purple-600', text: 'text-white' },
-  hvac: { label: 'HVAC Sponsor', icon: Crown, bg: 'bg-gradient-to-r from-cyan-500 to-cyan-600', text: 'text-white' },
-  machinery: { label: 'Heavy Machinery Sponsor', icon: Crown, bg: 'bg-gradient-to-r from-orange-500 to-orange-600', text: 'text-white' },
+  paint: { label: 'Paint', icon: Crown, bg: 'bg-gradient-to-r from-purple-500 to-purple-600', text: 'text-white' },
+  hvac: { label: 'HVAC', icon: Crown, bg: 'bg-gradient-to-r from-cyan-500 to-cyan-600', text: 'text-white' },
+  machinery: { label: 'Heavy Machinery', icon: Crown, bg: 'bg-gradient-to-r from-orange-500 to-orange-600', text: 'text-white' },
   sponsor: { label: 'Sponsor', icon: BadgeCheck, bg: 'bg-gradient-to-r from-primary-500 to-primary-600', text: 'text-white' },
 }
 
@@ -256,6 +256,20 @@ const Sponsorship = () => {
     return { key: level, label: config?.label || level }
   })
 
+  // Define sponsor level priority (lower number = higher priority)
+  const getSponsorPriority = (level) => {
+    const priorities = {
+      'platinum': 1,
+      'gold': 2,
+      'silver': 3,
+      'paint': 4,
+      'hvac': 5,
+      'machinery': 6,
+      'sponsor': 7
+    }
+    return priorities[level] || 999
+  }
+
   const filtered = sponsors.filter(ex => {
     const name = getExhibitorName(ex).toLowerCase()
     const desc = getExhibitorDescription(ex).toLowerCase()
@@ -287,6 +301,13 @@ const Sponsorship = () => {
     const matchesSponsorLevel = sponsorLevel === 'all' || getSponsorshipLevel(ex) === sponsorLevel
     
     return matchesSearch && matchesCountry && matchesSector && matchesSponsorLevel
+  }).sort((a, b) => {
+    // Sort by sponsor level priority (platinum first)
+    const levelA = getSponsorshipLevel(a)
+    const levelB = getSponsorshipLevel(b)
+    const priorityA = getSponsorPriority(levelA)
+    const priorityB = getSponsorPriority(levelB)
+    return priorityA - priorityB
   })
 
   return (
@@ -386,7 +407,7 @@ const Sponsorship = () => {
                 <h2 className="text-lg font-bold">{t('eventSponsors')}</h2>
               </div>
               <p className="text-primary-100 text-sm">
-                {t('meetOurSponsors')} ({filtered.length} {t('sponsorsCount')})
+                {t('meetOurSponsors')}
               </p>
             </div>
             
@@ -402,7 +423,7 @@ const Sponsorship = () => {
                     {sponsorConfig && (
                       <div className={`${sponsorConfig.bg} ${sponsorConfig.text} px-4 py-3 flex items-center gap-2`}>
                         <SponsorIcon className="w-5 h-5" />
-                        <span className="text-sm font-bold">{t(sponsorConfig.label.toLowerCase() + 'Sponsor')}</span>
+                        <span className="text-sm font-bold">{sponsorConfig.label} Sponsor</span>
                       </div>
                     )}
                     
