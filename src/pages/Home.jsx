@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { QrCode, Sparkles, Plane, FileText, Hotel, Bell, ChevronRight, Calendar, MapPin, Users, Zap, ArrowRight, Clock, Star, Search } from 'lucide-react'
+import { QrCode, Sparkles, Plane, FileText, Hotel, Bell, ChevronRight, Calendar, MapPin, Users, Zap, ArrowRight, Clock, Star, Search, ChevronLeft } from 'lucide-react'
 import HeroBannerCarousel from '../components/HeroBannerCarousel'
 import PromotionalBanner from '../components/PromotionalBanner'
+import SponsorshipCarousel from '../components/SponsorshipCarousel'
 import { newsItems, exhibitors } from '../data/mockData'
 import { useApp } from '../context/AppContext'
 import { useLanguage } from '../context/LanguageContext'
@@ -260,34 +261,8 @@ const Home = () => {
             )}
           </div>
 
-          {/* Promotional Banner */}
-          <div className="px-4 mb-6">
-            <Link to="/sponsorships">
-              <div className="relative overflow-hidden rounded-3xl cursor-pointer group">
-                {/* Full Background Image - No Zoom, Full Details Visible */}
-                <img
-                  src="/media/1920-length-x-1080-height.jpg"
-                  alt="Libya Build Promotion"
-                  className="w-full h-auto object-cover transition-all duration-300 rounded-3xl"
-                />
-                
-                {/* Minimal Overlay for Future Carousel Functionality */}
-                <div className="absolute inset-0 bg-black/5" />
-                
-                {/* View Profile Button - Bottom Right Corner */}
-                <div className="absolute bottom-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <div className="flex items-center gap-2 px-4 py-2 bg-white/20 backdrop-blur-md rounded-full border border-white/20 hover:bg-white/30 transition-all">
-                    <span className="text-white text-sm font-medium">
-                      {t('viewProfile')}
-                    </span>
-                    <div className="w-5 h-5 rounded-full bg-white/30 flex items-center justify-center">
-                      <ArrowRight className="w-3 h-3 text-white" />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Link>
-          </div>
+          {/* Sponsorship Carousel */}
+          <SponsorshipCarousel t={t} />
 
           {/* AI Matchmaking CTA */}
           {suggested.length === 0 && (
